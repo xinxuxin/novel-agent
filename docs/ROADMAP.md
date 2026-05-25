@@ -31,13 +31,16 @@ WenForge Studio will use Strategy D from the fusion plan:
 
 Deferred from the broader product stack: shadcn component generation, TanStack Query, TipTap, Monaco, LangGraph.js, provider adapters, credentials, and persistence features are added only when their phase needs them.
 
-## Phase 2: Local Data Foundation
+## Phase 2: Local Data Foundation (Complete)
 
-- Add SQLite with `better-sqlite3`, Drizzle schema definitions, and migrations.
-- Implement repositories for projects, books, volumes, chapters, scenes, manuscript versions, app settings, and story bible records.
-- Add rollbackable manuscript versioning before any AI overwrite feature exists.
-- Add SQLite FTS5 memory chunks for keyword retrieval across summaries, story bible entries, and approved manuscript context.
-- Add fixtures and tests for schema creation, migrations, version rollback, and FTS search.
+- [x] Add SQLite with `better-sqlite3`, Drizzle schema definitions, startup migrations, and development DB scripts.
+- [x] Store the runtime DB at `<userData>/data/wenforge.sqlite`.
+- [x] Implement repositories for projects, books, volumes, chapters, manuscript versions, app settings, generated artifacts, story bible entries, memory, costs, and generation runs.
+- [x] Add rollbackable manuscript versioning before any AI overwrite feature exists.
+- [x] Add SQLite FTS5-backed search with fallback keyword retrieval across memory chunks and story bible entries.
+- [x] Seed optional demo data for `演示：都市异能爽文`.
+- [x] Wire the renderer project tree and canonical manuscript preview through typed IPC.
+- [x] Add tests for migrations, CRUD, manuscript canonical switching, rollback, generated artifact non-canonical behavior, search fallback, and invalid IPC payload rejection.
 
 ## Phase 3: Credentials, Providers, Router, And Cost
 

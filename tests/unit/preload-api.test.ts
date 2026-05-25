@@ -28,7 +28,19 @@ describe("preload API", () => {
       return { ok: false, error: { code: "NOT_FOUND", message: "Missing test endpoint" } };
     });
 
-    expect(Object.keys(api).sort()).toEqual(["app", "diagnostics", "settings", "window"]);
+    expect(Object.keys(api).sort()).toEqual([
+      "app",
+      "books",
+      "chapters",
+      "diagnostics",
+      "manuscripts",
+      "memory",
+      "projects",
+      "settings",
+      "storyBible",
+      "volumes",
+      "window"
+    ]);
     expect(Object.keys(api.app).sort()).toEqual(["getEnvironment", "getPlatform", "getVersion"]);
     expect(Object.keys(api.window).sort()).toEqual(["close", "minimize", "toggleStudioMode"]);
     expect(Object.keys(api.settings).sort()).toEqual(["getTheme", "setTheme"]);

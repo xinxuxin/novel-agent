@@ -3,12 +3,25 @@ import type { JSX } from "react";
 import { useEffect, useState } from "react";
 
 import { CommandPalette } from "@components/CommandPalette";
+import type {
+  BookRecord,
+  ChapterRecord,
+  ManuscriptVersionRecord,
+  ProjectRecord,
+  StoryBibleEntryRecord,
+  VolumeRecord
+} from "@contracts/data";
 import { useUiStore } from "@renderer/stores/ui-store";
-
-const chapters = ["Chapter 001", "Chapter 002", "Chapter 003"];
 
 export function App(): JSX.Element {
   const [version, setVersion] = useState("0.1.0");
+  const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [books, setBooks] = useState<BookRecord[]>([]);
+  const [volumes, setVolumes] = useState<VolumeRecord[]>([]);
+  const [chapters, setChapters] = useState<ChapterRecord[]>([]);
+  const [selectedChapter, setSelectedChapter] = useState<ChapterRecord | null>(null);
+  const [canonical, setCanonical] = useState<ManuscriptVersionRecord | null>(null);
+  const [storyBibleEntries, setStoryBibleEntries] = useState<StoryBibleEntryRecord[]>([]);
   const commandPaletteOpen = useUiStore((state) => state.commandPaletteOpen);
   const studioMode = useUiStore((state) => state.studioMode);
   const openCommandPalette = useUiStore((state) => state.openCommandPalette);
@@ -18,6 +31,48 @@ export function App(): JSX.Element {
 
   useEffect(() => {
     void window.wenforge.app.getVersion().then(setVersion);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadWorkspace(): Promise<void> {
+      const nextProjects = await window.wenforge.projects.list();
+      const firstProject = nextProjects[0];
+      const nextBooks = firstProject
+        ? await window.wenforge.books.listByProject(firstProject.id)
+        : [];
+      const firstBook = nextBooks[0];
+      const [nextVolumes, nextChapters, nextStoryBible] = firstBook
+        ? await Promise.all([
+            window.wenforge.volumes.listByBook(firstBook.id),
+            window.wenforge.chapters.listByBook(firstBook.id),
+            window.wenforge.storyBible.entries.list(firstBook.id)
+          ])
+        : [[], [], []];
+      const firstChapter = nextChapters[0] ?? null;
+      const nextCanonical = firstChapter
+        ? await window.wenforge.manuscripts.getCanonical(firstChapter.id)
+        : null;
+
+      if (!mounted) {
+        return;
+      }
+
+      setProjects(nextProjects);
+      setBooks(nextBooks);
+      setVolumes(nextVolumes);
+      setChapters(nextChapters);
+      setStoryBibleEntries(nextStoryBible);
+      setSelectedChapter(firstChapter);
+      setCanonical(nextCanonical);
+    }
+
+    void loadWorkspace();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -35,6 +90,15 @@ export function App(): JSX.Element {
   const toggleStudioMode = async (): Promise<void> => {
     setStudioMode(await window.wenforge.window.toggleStudioMode());
   };
+
+  const openChapter = async (chapter: ChapterRecord): Promise<void> => {
+    setSelectedChapter(chapter);
+    setCanonical(await window.wenforge.manuscripts.getCanonical(chapter.id));
+  };
+
+  const activeProject = projects[0] ?? null;
+  const activeBook = books[0] ?? null;
+  const activeVolume = volumes[0] ?? null;
 
   return (
     <main className="min-h-screen overflow-hidden bg-transparent p-3 text-slate-100">
@@ -117,7 +181,8 @@ export function App(): JSX.Element {
                     {chapters.map((chapter, index) => (
                       <button
                         className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-xs text-slate-300"
-                        key={chapter}
+                        key={chapter.id}
+                        onClick={() => void openChapter(chapter)}
                         type="button"
                       >
                         {index + 1}
@@ -133,23 +198,34 @@ export function App(): JSX.Element {
                     key="expanded"
                   >
                     <div>
-                      <p className="text-sm font-medium text-white">Sample Project</p>
-                      <p className="text-xs text-slate-500">Book 1 / Volume 1</p>
+                      <p className="text-sm font-medium text-white">
+                        {activeProject?.name ?? "No project yet"}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {activeBook?.title ?? "Create a book"} /{" "}
+                        {activeVolume?.title ?? "No volume"}
+                      </p>
                     </div>
                     <div className="space-y-1">
                       {chapters.map((chapter, index) => (
                         <button
                           className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${
-                            index === 0
+                            selectedChapter?.id === chapter.id
                               ? "bg-forge-blue/12 text-forge-blue"
                               : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                           }`}
-                          key={chapter}
+                          key={chapter.id}
+                          onClick={() => void openChapter(chapter)}
                           type="button"
                         >
-                          {chapter}
+                          Chapter {String(index + 1).padStart(3, "0")} · {chapter.title}
                         </button>
                       ))}
+                      {chapters.length === 0 ? (
+                        <p className="rounded-lg border border-white/10 px-3 py-3 text-sm text-slate-500">
+                          No chapters yet.
+                        </p>
+                      ) : null}
                     </div>
                   </motion.div>
                 )}
@@ -165,7 +241,9 @@ export function App(): JSX.Element {
                     <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
                       Active chapter
                     </p>
-                    <h2 className="mt-1 text-xl font-semibold text-white">Chapter 001 Draft</h2>
+                    <h2 className="mt-1 text-xl font-semibold text-white">
+                      {selectedChapter?.title ?? "No chapter selected"}
+                    </h2>
                   </div>
                   <div className="flex gap-2">
                     <span className="rounded-full border border-forge-mint/30 bg-forge-mint/10 px-3 py-1 text-xs text-forge-mint">
@@ -184,7 +262,16 @@ export function App(): JSX.Element {
                     <div className="rounded-xl border border-white/10 bg-graphite-900/60 p-5">
                       <p className="text-sm leading-7 text-slate-300">
                         The manuscript editor will live here in Phase 4. Phase 1 keeps this shell
-                        intentionally static while the secure desktop foundation settles.
+                        lightweight while Phase 2 proves local persistence. The canonical manuscript
+                        preview below is loaded from SQLite through typed IPC.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/25 p-5">
+                      <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                        Canonical manuscript
+                      </p>
+                      <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-300">
+                        {canonical?.contentMarkdown ?? "No canonical manuscript saved yet."}
                       </p>
                     </div>
                     <div className="rounded-xl border border-white/10 bg-black/25 p-5">
@@ -234,10 +321,18 @@ export function App(): JSX.Element {
           <aside className="min-h-0 overflow-auto border-l border-white/10 bg-black/18">
             <div className="space-y-4 p-4">
               {[
-                ["Story bible", "Characters, factions, locations, rules"],
+                [
+                  "Story bible",
+                  storyBibleEntries.length > 0
+                    ? storyBibleEntries.map((entry) => entry.title).join(" · ")
+                    : "No entries yet"
+                ],
                 ["Continuity", "No warnings in this placeholder"],
                 ["Model router", "Task presets will appear here"],
-                ["Cost meter", "$0.0000 session spend"]
+                [
+                  "Cost meter",
+                  `${selectedChapter?.currentWords ?? 0} words tracked / $0.0000 session spend`
+                ]
               ].map(([title, body]) => (
                 <section
                   className="rounded-xl border border-white/10 bg-graphite-900/60 p-4"

@@ -4,7 +4,9 @@ import { join } from "node:path";
 import { isAllowedAppNavigation, openValidatedExternalUrl } from "@main/security/navigation";
 import { normalizeWindowBounds, readWindowBounds, writeWindowBounds } from "./window-state";
 
-export async function createMainWindow(): Promise<BrowserWindow> {
+export async function createMainWindow(
+  beforeLoad?: (window: BrowserWindow) => void
+): Promise<BrowserWindow> {
   const windowStatePath = join(app.getPath("userData"), "window-state.json");
   const bounds = readWindowBounds(windowStatePath);
   const mainWindow = new BrowserWindow({
@@ -58,6 +60,8 @@ export async function createMainWindow(): Promise<BrowserWindow> {
       event.preventDefault();
     }
   });
+
+  beforeLoad?.(mainWindow);
 
   if (process.env.ELECTRON_RENDERER_URL) {
     await mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);

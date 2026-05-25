@@ -48,7 +48,7 @@ Each endpoint returns safe errors. Credential APIs return only redacted labels a
 
 ## Persistence
 
-SQLite is the source of truth. Drizzle owns schema and migrations.
+SQLite is the source of truth. Drizzle owns schema definitions, while startup migrations run in the Electron main process against the database stored at `<userData>/data/wenforge.sqlite`.
 
 Core records:
 
@@ -60,6 +60,8 @@ Core records:
 - app configuration: provider credentials, logging settings, route defaults, UI preferences
 
 Generated outputs are drafts until accepted. Canonical manuscript and story bible updates are versioned.
+
+Phase 2 implements main-process repositories for projects, books, volumes, chapters, manuscripts, story bible entries, memory search, generation artifacts, cost placeholders, and settings. The renderer receives data through typed IPC only and does not import database modules.
 
 ## Workflow Runtime
 
@@ -98,4 +100,3 @@ The cost layer wraps every model call:
 - MIT/Apache-2.0 source can be copied or closely adapted only after review and a `THIRD_PARTY_NOTICES.md` update.
 - OpenAI/Codex product names, logos, screenshots, branded assets, and distinctive identity are not reusable.
 - WenForge prompts and skill text must be original unless a future task explicitly approves permissive source adaptation.
-

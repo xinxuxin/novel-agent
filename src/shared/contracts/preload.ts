@@ -1,4 +1,19 @@
 import type { ThemePreference } from "@shared/theme";
+import type {
+  BookRecord,
+  ChapterRecord,
+  CreateBookInput,
+  CreateChapterInput,
+  CreateProjectInput,
+  CreateStoryBibleEntryInput,
+  CreateVolumeInput,
+  ManuscriptVersionRecord,
+  MemorySearchResult,
+  ProjectRecord,
+  SaveManualVersionInput,
+  StoryBibleEntryRecord,
+  VolumeRecord
+} from "./data";
 
 export type WenForgePlatform =
   | "aix"
@@ -44,5 +59,50 @@ export interface WenForgeApi {
   };
   diagnostics: {
     ping: () => Promise<DiagnosticPing>;
+  };
+  projects: {
+    list: () => Promise<ProjectRecord[]>;
+    get: (id: string) => Promise<ProjectRecord | null>;
+    create: (input: CreateProjectInput) => Promise<ProjectRecord>;
+    update: (
+      id: string,
+      input: Partial<CreateProjectInput> & { status?: string }
+    ) => Promise<ProjectRecord | null>;
+    delete: (id: string, confirmed: boolean) => Promise<boolean>;
+  };
+  books: {
+    listByProject: (projectId: string) => Promise<BookRecord[]>;
+    get: (id: string) => Promise<BookRecord | null>;
+    create: (input: CreateBookInput) => Promise<BookRecord>;
+    delete: (id: string, confirmed: boolean) => Promise<boolean>;
+  };
+  volumes: {
+    listByBook: (bookId: string) => Promise<VolumeRecord[]>;
+    create: (input: CreateVolumeInput) => Promise<VolumeRecord>;
+  };
+  chapters: {
+    listByBook: (bookId: string) => Promise<ChapterRecord[]>;
+    get: (id: string) => Promise<ChapterRecord | null>;
+    create: (input: CreateChapterInput) => Promise<ChapterRecord>;
+    setStatus: (id: string, status: string) => Promise<ChapterRecord | null>;
+  };
+  manuscripts: {
+    listVersions: (chapterId: string) => Promise<ManuscriptVersionRecord[]>;
+    getCanonical: (chapterId: string) => Promise<ManuscriptVersionRecord | null>;
+    saveManualVersion: (input: SaveManualVersionInput) => Promise<ManuscriptVersionRecord>;
+    rollback: (
+      chapterId: string,
+      versionId: string,
+      confirmed: boolean
+    ) => Promise<ManuscriptVersionRecord>;
+  };
+  storyBible: {
+    entries: {
+      list: (bookId: string) => Promise<StoryBibleEntryRecord[]>;
+      create: (input: CreateStoryBibleEntryInput) => Promise<StoryBibleEntryRecord>;
+    };
+  };
+  memory: {
+    search: (bookId: string, query: string) => Promise<MemorySearchResult[]>;
   };
 }

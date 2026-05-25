@@ -17,11 +17,11 @@
 
 ## Phase 2: Local Data Foundation
 
-- [ ] Add SQLite, `better-sqlite3`, Drizzle schema, and migrations.
-- [ ] Implement project, book, volume, chapter, scene, and manuscript version repositories.
-- [ ] Add story bible and memory tables.
-- [ ] Add SQLite FTS5 indexing for memory retrieval.
-- [ ] Test migrations, CRUD, rollback, and FTS search.
+- [x] Add SQLite, `better-sqlite3`, Drizzle schema, and migrations.
+- [x] Implement project, book, volume, chapter, scene, and manuscript version repositories.
+- [x] Add story bible and memory tables.
+- [x] Add SQLite FTS5 indexing for memory retrieval.
+- [x] Test migrations, CRUD, rollback, and FTS search.
 
 ## Phase 3: Providers, Credentials, Router, And Cost
 

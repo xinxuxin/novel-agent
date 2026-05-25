@@ -35,6 +35,9 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm test:smoke
+pnpm db:generate
+pnpm db:migrate
+pnpm db:studio
 ```
 
 `pnpm test:smoke` launches the built Electron output, so run `pnpm build` first.
@@ -46,6 +49,7 @@ pnpm test:smoke
 - [AI Workflows](docs/AI_WORKFLOWS.md)
 - [Security](docs/SECURITY.md)
 - [Cost Tracking](docs/COST_TRACKING.md)
+- [Database](docs/DATABASE.md)
 - [UI Spec](docs/UI_SPEC.md)
 - [Reference Repos](docs/REFERENCE_REPOS.md)
 - [Fusion Plan](docs/FUSION_PLAN.md)
