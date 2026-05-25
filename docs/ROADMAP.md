@@ -42,21 +42,28 @@ Deferred from the broader product stack: shadcn component generation, TanStack Q
 - [x] Wire the renderer project tree and canonical manuscript preview through typed IPC.
 - [x] Add tests for migrations, CRUD, manuscript canonical switching, rollback, generated artifact non-canonical behavior, search fallback, and invalid IPC payload rejection.
 
-## Phase 3: Credentials, Providers, Router, And Cost
+## Phase 3: Credentials, Model Routing, And Pricing Registry (Complete)
 
-- Store provider credentials encrypted in the Electron main process using `safeStorage`, with no plaintext fallback.
-- Build provider adapters in the main process for OpenAI, Anthropic, Gemini, DeepSeek, OpenAI-compatible endpoints, OpenRouter, DashScope/Qwen, Moonshot/Kimi, and xAI.
-- Add model profiles, task model routes, provider health checks, and editable route settings.
-- Add price registry and `llm_runs` records before enabling real generation.
-- Track live estimated cost during streaming and reconcile final cost from provider usage when available.
+- [x] Store provider credentials encrypted in the Electron main process using `safeStorage`, with no plaintext fallback.
+- [x] Add `CredentialService`, `SecretEncryptionService`, `ProviderCredentialRepository`, and `RedactionService`.
+- [x] Expose credential metadata through typed IPC without returning decrypted secrets or encrypted bytes to the renderer.
+- [x] Add configurable provider profiles for OpenAI, Anthropic, Gemini, DeepSeek, DashScope/Qwen, Moonshot/Kimi, xAI, OpenRouter, and generic OpenAI-compatible providers.
+- [x] Seed editable model profile placeholders for the requested Phase 3 model catalog without claiming metadata or prices are authoritative.
+- [x] Add editable `model_prices`, stale price detection, and route warnings for missing/stale price rows.
+- [x] Add task routes for all WenForge task presets across economy, balanced, and premium quality modes.
+- [x] Add a model router skeleton that validates route availability, model profile status, credential presence, and price policy without making provider calls.
+- [x] Add Settings tabs for Providers, Models, Pricing, Routing, Privacy, and Advanced.
+- [x] Add tests for encryption behavior, no plaintext persistence, renderer DTO safety, redaction, cost formula, route resolution, stale price warnings, and invalid IPC payloads.
 
-## Phase 4: Studio UI Shell
+Deferred from Phase 3: real provider adapters, network health checks, streaming generation, token reconciliation, and live `llm_runs` updates. `credentials.testConnection` only verifies stored configuration unless a later provider adapter adds a safe probe.
 
-- Build the first usable studio screen instead of a marketing page.
-- Add top command bar, left project tree, center chapter workspace, and right story/cost/model panel.
-- Add popover launcher mode that expands into full studio mode.
-- Integrate TipTap for manuscript editing and diff/review surfaces for generated drafts.
-- Add model route, credential status, logging settings, and cost meter views without exposing decrypted secrets.
+## Phase 4: Editor And Review Workspace
+
+- Integrate TipTap for manuscript editing with canonical version previews and manual save flows.
+- Add generated draft, diff/review, and accept/reject surfaces without overwriting canonical manuscript in place.
+- Add story bible editing surfaces and state proposal preview cards.
+- Promote the current cost/status placeholders into real run, chapter, session, and project cost views once generation exists.
+- Add provider route selection affordances inside the chapter workflow panel while continuing to hide decrypted credentials.
 
 ## Phase 5: LangGraph Workflow MVP
 

@@ -8,6 +8,17 @@ import type {
   StoryBibleEntryRecord,
   VolumeRecord
 } from "@contracts/data";
+import type {
+  CredentialStatusDto,
+  CredentialTestResult,
+  ModelPriceRecord,
+  ModelProfileRecord,
+  ModelRouteResolution,
+  ProviderCredentialDto,
+  TaskRouteRecord
+} from "@contracts/model-routing";
+import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
+import type { QualityMode, TaskType } from "@shared/domain/model-routing";
 import { IPC_CONTRACTS, ipcEnvelopeSchema } from "@shared/ipc/contracts";
 import { normalizeTheme } from "@shared/theme";
 import type { ThemePreference } from "@shared/theme";
@@ -278,6 +289,131 @@ export function createPreloadApi(invoke: IpcInvoker): WenForgeApi {
           IPC_CONTRACTS.memory.search.channel,
           IPC_CONTRACTS.memory.search.response,
           { bookId, query }
+        )
+    },
+    credentials: {
+      list: () =>
+        invokeContract<ProviderCredentialDto[]>(
+          invoke,
+          IPC_CONTRACTS.credentials.list.channel,
+          IPC_CONTRACTS.credentials.list.response
+        ),
+      save: (input) =>
+        invokeContract<ProviderCredentialDto>(
+          invoke,
+          IPC_CONTRACTS.credentials.save.channel,
+          IPC_CONTRACTS.credentials.save.response,
+          input
+        ),
+      delete: (id, confirmed) =>
+        invokeContract<boolean>(
+          invoke,
+          IPC_CONTRACTS.credentials.delete.channel,
+          IPC_CONTRACTS.credentials.delete.response,
+          { id, confirmed }
+        ),
+      getStatus: (id) =>
+        invokeContract<CredentialStatusDto>(
+          invoke,
+          IPC_CONTRACTS.credentials.getStatus.channel,
+          IPC_CONTRACTS.credentials.getStatus.response,
+          { id }
+        ),
+      testConnection: (id) =>
+        invokeContract<CredentialTestResult>(
+          invoke,
+          IPC_CONTRACTS.credentials.testConnection.channel,
+          IPC_CONTRACTS.credentials.testConnection.response,
+          { id }
+        ),
+      updateBaseUrl: (id, baseUrl) =>
+        invokeContract<ProviderCredentialDto | null>(
+          invoke,
+          IPC_CONTRACTS.credentials.updateBaseUrl.channel,
+          IPC_CONTRACTS.credentials.updateBaseUrl.response,
+          { id, baseUrl }
+        )
+    },
+    modelProfiles: {
+      list: () =>
+        invokeContract<ModelProfileRecord[]>(
+          invoke,
+          IPC_CONTRACTS.modelProfiles.list.channel,
+          IPC_CONTRACTS.modelProfiles.list.response
+        ),
+      upsert: (input) =>
+        invokeContract<ModelProfileRecord>(
+          invoke,
+          IPC_CONTRACTS.modelProfiles.upsert.channel,
+          IPC_CONTRACTS.modelProfiles.upsert.response,
+          input
+        )
+    },
+    modelPrices: {
+      list: () =>
+        invokeContract<ModelPriceRecord[]>(
+          invoke,
+          IPC_CONTRACTS.modelPrices.list.channel,
+          IPC_CONTRACTS.modelPrices.list.response
+        ),
+      upsert: (input) =>
+        invokeContract<ModelPriceRecord>(
+          invoke,
+          IPC_CONTRACTS.modelPrices.upsert.channel,
+          IPC_CONTRACTS.modelPrices.upsert.response,
+          input
+        )
+    },
+    taskRoutes: {
+      list: () =>
+        invokeContract<TaskRouteRecord[]>(
+          invoke,
+          IPC_CONTRACTS.taskRoutes.list.channel,
+          IPC_CONTRACTS.taskRoutes.list.response
+        ),
+      upsert: (input) =>
+        invokeContract<TaskRouteRecord>(
+          invoke,
+          IPC_CONTRACTS.taskRoutes.upsert.channel,
+          IPC_CONTRACTS.taskRoutes.upsert.response,
+          input
+        ),
+      resolve: (taskType: TaskType, qualityMode: QualityMode) =>
+        invokeContract<ModelRouteResolution>(
+          invoke,
+          IPC_CONTRACTS.taskRoutes.resolve.channel,
+          IPC_CONTRACTS.taskRoutes.resolve.response,
+          { taskType, qualityMode }
+        )
+    },
+    privacy: {
+      get: () =>
+        invokeContract<PrivacySettings>(
+          invoke,
+          IPC_CONTRACTS.privacy.get.channel,
+          IPC_CONTRACTS.privacy.get.response
+        ),
+      update: (input) =>
+        invokeContract<PrivacySettings>(
+          invoke,
+          IPC_CONTRACTS.privacy.update.channel,
+          IPC_CONTRACTS.privacy.update.response,
+          input
+        )
+    },
+    routingSettings: {
+      get: () =>
+        invokeContract<RoutingSettings>(
+          invoke,
+          IPC_CONTRACTS.routingSettings.get.channel,
+          IPC_CONTRACTS.routingSettings.get.response
+        ),
+      update: (input) =>
+        invokeContract<RoutingSettings>(
+          invoke,
+          IPC_CONTRACTS.routingSettings.update.channel,
+          IPC_CONTRACTS.routingSettings.update.response,
+          input
         )
     }
   };

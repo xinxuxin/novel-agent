@@ -72,4 +72,32 @@ IPC endpoints should be allowlisted, typed, and validated. Avoid generic `invoke
 - safe error mapping
 - tests for invalid payloads
 
-Phase 1 implements this pattern with explicit IPC contracts for app metadata, window controls, theme settings, studio mode toggling, and diagnostics. The preload bridge unwraps safe envelopes and does not expose a generic IPC method to the renderer.
+Phase 1 implements this pattern with explicit IPC contracts for app metadata, window controls, theme settings, studio mode toggling, and diagnostics. Phase 2 extends the same pattern to local data repositories. Phase 3 extends it again to credentials, model profiles, pricing, routing, privacy, and routing settings. The preload bridge unwraps safe envelopes and does not expose a generic IPC method to the renderer.
+
+## Phase 3 Credential Implementation
+
+Phase 3 adds the first credential path:
+
+- `SecretEncryptionService` wraps Electron `safeStorage`.
+- Encryption and decryption are main-process only.
+- If `safeStorage.isEncryptionAvailable()` is false, saving a secret fails instead of falling back to plaintext.
+- `ProviderCredentialRepository` stores `encrypted_secret_base64`, provider metadata, status fields, and redacted labels only.
+- `CredentialService` returns renderer DTOs with no decrypted secret and no encrypted byte payload.
+- `credentials.testConnection` performs a configuration/status check only. It does not send a test prompt and does not invent provider-specific probe endpoints.
+- `RedactionService` scrubs Authorization headers, bearer tokens, API-key-like strings, and common secret assignment patterns before log output.
+
+The renderer may collect an API key in a password field for save/update, but it never receives the stored secret back from the main process. Deletion still requires an explicit confirmation flag.
+
+## Privacy Defaults
+
+Phase 3 stores privacy settings in SQLite through typed IPC:
+
+- `storeFullPrompts`: false
+- `storeFullResponses`: false
+- `storeManuscriptsInLogs`: false
+- `allowSendingFullRecentChapters`: false
+- `recentChapterCount`: 3
+- `maxContextTokenBudget`: 120000
+- `enableDebugLogging`: false
+
+These defaults keep future provider runs from persisting complete prompts, responses, or manuscript text unless the user deliberately opts into a more verbose local logging mode.

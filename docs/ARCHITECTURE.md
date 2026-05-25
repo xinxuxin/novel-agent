@@ -61,7 +61,7 @@ Core records:
 
 Generated outputs are drafts until accepted. Canonical manuscript and story bible updates are versioned.
 
-Phase 2 implements main-process repositories for projects, books, volumes, chapters, manuscripts, story bible entries, memory search, generation artifacts, cost placeholders, and settings. The renderer receives data through typed IPC only and does not import database modules.
+Phase 2 implements main-process repositories for projects, books, volumes, chapters, manuscripts, story bible entries, memory search, generation artifacts, cost placeholders, and settings. Phase 3 adds repositories for provider credentials, model profiles, model prices, and task routes. The renderer receives data through typed IPC only and does not import database modules.
 
 ## Workflow Runtime
 
@@ -84,7 +84,16 @@ Workflow nodes call the provider layer through the cost wrapper. Human gates pau
 
 Provider adapters run only in the main process. Supported providers are OpenAI, Anthropic, Google Gemini, DeepSeek, DashScope/Qwen, Moonshot/Kimi, xAI, OpenRouter, and generic OpenAI-compatible endpoints.
 
-The cost layer wraps every model call:
+Phase 3 implements the configuration layer before any real provider calls:
+
+- provider credential metadata and encrypted secret storage
+- editable model profiles
+- editable model prices
+- task routes by task type and quality mode
+- route resolution that validates credential, profile, and price readiness
+- privacy settings that keep full prompts, responses, and manuscripts out of run records by default
+
+Later, the cost layer wraps every model call:
 
 - estimate input tokens before request
 - create an `llm_runs` row before sending
@@ -92,6 +101,8 @@ The cost layer wraps every model call:
 - reconcile with provider-reported usage when present
 - mark costs as estimated when usage is unavailable
 - store hashes rather than full prompts/responses by default
+
+`credentials.testConnection` is intentionally conservative in Phase 3: it reports configured-but-untested unless a future provider adapter supplies a safe, known probe endpoint.
 
 ## License Guardrails
 

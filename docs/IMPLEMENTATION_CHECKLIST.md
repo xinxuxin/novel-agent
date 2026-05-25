@@ -25,13 +25,15 @@
 
 ## Phase 3: Providers, Credentials, Router, And Cost
 
-- [ ] Encrypt provider credentials in the main process with Electron `safeStorage`.
-- [ ] Ensure renderer never receives decrypted credentials.
-- [ ] Add provider adapters for required providers and generic OpenAI-compatible endpoints.
-- [ ] Add model profiles and DB-backed task routes.
-- [ ] Add model price registry and `llm_runs`.
-- [ ] Add live cost estimation and final usage reconciliation.
-- [ ] Add redacted logging and prompt/response hashes.
+- [x] Encrypt provider credentials in the main process with Electron `safeStorage`.
+- [x] Ensure renderer never receives decrypted credentials or encrypted secret bytes.
+- [x] Add provider configuration profiles for required providers and generic OpenAI-compatible endpoints.
+- [x] Add model profiles and DB-backed task routes.
+- [x] Add editable model price registry and `llm_runs` schema foundation.
+- [x] Add redacted logging helpers and prompt/response hash fields.
+- [x] Add Settings tabs for providers, models, pricing, routing, privacy, and advanced routing policy.
+- [ ] Add real provider adapters and safe provider-specific health checks.
+- [ ] Add live cost estimation and final usage reconciliation once streaming generation exists.
 
 ## Phase 4: Studio UI
 

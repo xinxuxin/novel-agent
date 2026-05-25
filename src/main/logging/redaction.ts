@@ -1,8 +1,5 @@
-const SECRET_PATTERNS = [/sk-[a-zA-Z0-9_-]+/g, /Bearer\s+[a-zA-Z0-9._-]+/g];
+import { RedactionService } from "@main/security/redaction-service";
 
 export function redactLogValue(value: string): string {
-  return SECRET_PATTERNS.reduce(
-    (current, pattern) => current.replace(pattern, "[redacted]"),
-    value
-  );
+  return new RedactionService().redact(value);
 }

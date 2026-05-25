@@ -1,4 +1,4 @@
-import { BrowserWindow, app } from "electron";
+import { BrowserWindow, app, safeStorage } from "electron";
 import { join } from "node:path";
 
 import { SettingsStore } from "@main/app/settings-store";
@@ -7,6 +7,9 @@ import { createAppTray } from "@main/app/tray";
 import { createMainWindow } from "@main/app/window";
 import { createAppDatabaseService } from "@main/db/service";
 import { registerIpc } from "@main/ipc/register";
+import { CredentialService } from "@main/providers/credential-service";
+import { RedactionService } from "@main/security/redaction-service";
+import { SecretEncryptionService } from "@main/security/secret-encryption-service";
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -31,13 +34,19 @@ if (!hasSingleInstanceLock) {
   app.whenReady().then(async () => {
     const settingsStore = new SettingsStore(join(app.getPath("userData"), "settings.json"));
     const databaseService = createAppDatabaseService(app);
+    const credentialService = new CredentialService({
+      repository: databaseService.repositories.providerCredentials,
+      encryption: new SecretEncryptionService(safeStorage),
+      redaction: new RedactionService()
+    });
     const openMainWindow = async (): Promise<BrowserWindow> => {
       const window = await createMainWindow((createdWindow) => {
         const studioModeController = new StudioModeController(createdWindow);
         registerIpc({
           settingsStore,
           studioModeController,
-          repositories: databaseService.repositories
+          repositories: databaseService.repositories,
+          credentialService
         });
       });
       mainWindow = window;

@@ -328,6 +328,12 @@ create table if not exists provider_credentials (
   id text primary key,
   provider text not null,
   display_name text not null,
+  base_url text,
+  encrypted_secret_base64 text,
+  redacted_key_label text not null default '[redacted]',
+  is_configured integer not null default 0,
+  last_tested_at text,
+  last_status text not null default 'unknown',
   encrypted_secret_ref text,
   redacted_hint text,
   status text not null default 'not_configured',
@@ -349,9 +355,19 @@ create table if not exists model_profiles (
   provider text not null,
   model text not null,
   display_name text not null,
+  context_window integer,
+  max_output_tokens integer,
+  supports_streaming integer not null default 1,
+  supports_json integer not null default 0,
+  supports_tools integer not null default 0,
+  supports_vision integer not null default 0,
+  supports_prompt_caching integer not null default 0,
+  default_temperature real not null default 0.7,
+  recommended_tasks_json text not null default '[]',
   enabled integer not null default 1,
   created_at text not null,
-  updated_at text not null
+  updated_at text not null,
+  unique(provider, model)
 );
 
 create table if not exists model_prices (
@@ -373,12 +389,20 @@ create table if not exists model_prices (
 
 create table if not exists task_model_routes (
   id text primary key,
-  task_type text not null unique,
-  provider text not null,
-  model text not null,
+  task_type text not null,
+  quality_mode text not null default 'balanced',
+  provider text,
+  model text,
+  primary_model_profile_id text,
+  fallback_model_profile_id_1 text,
+  fallback_model_profile_id_2 text,
+  temperature real not null default 0.7,
+  max_output_tokens integer not null default 4000,
+  budget_cap_per_call real,
   enabled integer not null default 1,
   created_at text not null,
-  updated_at text not null
+  updated_at text not null,
+  unique(task_type, quality_mode)
 );
 
 create table if not exists provider_health (
@@ -457,6 +481,7 @@ create virtual table if not exists search_index using fts5(
 
 export function migrateDatabase(sqlite: SqliteDatabase): void {
   sqlite.exec(INITIAL_SCHEMA_SQL);
+  ensureColumns(sqlite);
 
   try {
     sqlite.exec(SEARCH_INDEX_SQL);
@@ -469,4 +494,128 @@ export function migrateDatabase(sqlite: SqliteDatabase): void {
   sqlite
     .prepare("insert or ignore into __drizzle_migrations (hash, created_at) values (?, ?)")
     .run("0000_initial_wenforge_schema", Date.now());
+}
+
+function ensureColumns(sqlite: SqliteDatabase): void {
+  ensureColumn(sqlite, "provider_credentials", "base_url", "text");
+  ensureColumn(sqlite, "provider_credentials", "encrypted_secret_base64", "text");
+  ensureColumn(
+    sqlite,
+    "provider_credentials",
+    "redacted_key_label",
+    "text not null default '[redacted]'"
+  );
+  ensureColumn(sqlite, "provider_credentials", "is_configured", "integer not null default 0");
+  ensureColumn(sqlite, "provider_credentials", "last_tested_at", "text");
+  ensureColumn(sqlite, "provider_credentials", "last_status", "text not null default 'unknown'");
+
+  ensureColumn(sqlite, "model_profiles", "context_window", "integer");
+  ensureColumn(sqlite, "model_profiles", "max_output_tokens", "integer");
+  ensureColumn(sqlite, "model_profiles", "supports_streaming", "integer not null default 1");
+  ensureColumn(sqlite, "model_profiles", "supports_json", "integer not null default 0");
+  ensureColumn(sqlite, "model_profiles", "supports_tools", "integer not null default 0");
+  ensureColumn(sqlite, "model_profiles", "supports_vision", "integer not null default 0");
+  ensureColumn(sqlite, "model_profiles", "supports_prompt_caching", "integer not null default 0");
+  ensureColumn(sqlite, "model_profiles", "default_temperature", "real not null default 0.7");
+  ensureColumn(sqlite, "model_profiles", "recommended_tasks_json", "text not null default '[]'");
+
+  ensureColumn(sqlite, "task_model_routes", "quality_mode", "text not null default 'balanced'");
+  ensureColumn(sqlite, "task_model_routes", "primary_model_profile_id", "text");
+  ensureColumn(sqlite, "task_model_routes", "fallback_model_profile_id_1", "text");
+  ensureColumn(sqlite, "task_model_routes", "fallback_model_profile_id_2", "text");
+  ensureColumn(sqlite, "task_model_routes", "temperature", "real not null default 0.7");
+  ensureColumn(sqlite, "task_model_routes", "max_output_tokens", "integer not null default 4000");
+  ensureColumn(sqlite, "task_model_routes", "budget_cap_per_call", "real");
+  ensureTaskRouteTableShape(sqlite);
+  sqlite.exec(
+    "create unique index if not exists model_profiles_provider_model_unique on model_profiles(provider, model)"
+  );
+  sqlite.exec(
+    "create unique index if not exists task_model_routes_task_quality_unique on task_model_routes(task_type, quality_mode)"
+  );
+}
+
+function ensureTaskRouteTableShape(sqlite: SqliteDatabase): void {
+  const table = sqlite
+    .prepare("select sql from sqlite_master where type = 'table' and name = 'task_model_routes'")
+    .get() as { sql: string } | undefined;
+  const createSql = table?.sql ?? "";
+  const hasLegacyTaskUnique =
+    /task_type\s+text\s+not\s+null\s+unique/i.test(createSql) ||
+    /unique\s*\(\s*task_type\s*\)/i.test(createSql);
+
+  if (!hasLegacyTaskUnique) {
+    return;
+  }
+
+  sqlite.exec(`
+    alter table task_model_routes rename to task_model_routes_legacy;
+
+    create table task_model_routes (
+      id text primary key,
+      task_type text not null,
+      quality_mode text not null default 'balanced',
+      provider text,
+      model text,
+      primary_model_profile_id text,
+      fallback_model_profile_id_1 text,
+      fallback_model_profile_id_2 text,
+      temperature real not null default 0.7,
+      max_output_tokens integer not null default 4000,
+      budget_cap_per_call real,
+      enabled integer not null default 1,
+      created_at text not null,
+      updated_at text not null,
+      unique(task_type, quality_mode)
+    );
+
+    insert or ignore into task_model_routes (
+      id,
+      task_type,
+      quality_mode,
+      provider,
+      model,
+      primary_model_profile_id,
+      fallback_model_profile_id_1,
+      fallback_model_profile_id_2,
+      temperature,
+      max_output_tokens,
+      budget_cap_per_call,
+      enabled,
+      created_at,
+      updated_at
+    )
+    select
+      id,
+      task_type,
+      coalesce(nullif(quality_mode, ''), 'balanced'),
+      provider,
+      model,
+      primary_model_profile_id,
+      fallback_model_profile_id_1,
+      fallback_model_profile_id_2,
+      temperature,
+      max_output_tokens,
+      budget_cap_per_call,
+      enabled,
+      created_at,
+      updated_at
+    from task_model_routes_legacy;
+
+    drop table task_model_routes_legacy;
+  `);
+}
+
+function ensureColumn(
+  sqlite: SqliteDatabase,
+  tableName: string,
+  columnName: string,
+  definition: string
+): void {
+  const columns = sqlite.prepare(`pragma table_info(${tableName})`).all() as Array<{
+    name: string;
+  }>;
+  if (!columns.some((column) => column.name === columnName)) {
+    sqlite.exec(`alter table ${tableName} add column ${columnName} ${definition}`);
+  }
 }

@@ -5,20 +5,26 @@ import { normalizeTheme } from "@shared/theme";
 import type { SettingsStore } from "@main/app/settings-store";
 import type { StudioModeController } from "@main/app/studio-mode";
 import type { RepositoryRegistry } from "@main/db/service";
+import type { CredentialService } from "@main/providers/credential-service";
+import { ModelRouter } from "@main/providers/model-router";
 import { getEnvironment } from "@main/platform/environment";
 import { SafeIpcError } from "./typed-ipc";
 import { registerIpcContract } from "./typed-ipc";
+import { DEFAULT_PRIVACY_SETTINGS, DEFAULT_ROUTING_SETTINGS } from "@contracts/settings";
+import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
 
 interface RegisterIpcOptions {
   settingsStore: SettingsStore;
   studioModeController: StudioModeController;
   repositories?: RepositoryRegistry;
+  credentialService?: CredentialService;
 }
 
 export function registerIpc({
   settingsStore,
   studioModeController,
-  repositories
+  repositories,
+  credentialService
 }: RegisterIpcOptions): void {
   for (const contract of IPC_CONTRACT_LIST) {
     ipcMain.removeHandler(contract.channel);
@@ -54,7 +60,7 @@ export function registerIpc({
   }));
 
   if (repositories) {
-    registerDataIpc(repositories);
+    registerDataIpc(repositories, credentialService);
   }
 }
 
@@ -64,7 +70,10 @@ function requireConfirmation(confirmed: boolean | undefined): void {
   }
 }
 
-function registerDataIpc(repositories: RepositoryRegistry): void {
+function registerDataIpc(
+  repositories: RepositoryRegistry,
+  credentialService?: CredentialService
+): void {
   registerIpcContract(IPC_CONTRACTS.projects.list, () => repositories.projects.list());
   registerIpcContract(IPC_CONTRACTS.projects.get, (request) =>
     repositories.projects.get(request.id)
@@ -190,4 +199,85 @@ function registerDataIpc(repositories: RepositoryRegistry): void {
   registerIpcContract(IPC_CONTRACTS.memory.search, (request) =>
     repositories.memory.search(request.bookId, request.query)
   );
+
+  if (credentialService) {
+    registerIpcContract(IPC_CONTRACTS.credentials.list, () => credentialService.listCredentials());
+    registerIpcContract(IPC_CONTRACTS.credentials.save, (request) =>
+      credentialService.saveCredential(
+        request as Parameters<typeof credentialService.saveCredential>[0]
+      )
+    );
+    registerIpcContract(IPC_CONTRACTS.credentials.delete, (request) => {
+      requireConfirmation(request.confirmed);
+      return credentialService.deleteCredential(request.id, true);
+    });
+    registerIpcContract(IPC_CONTRACTS.credentials.getStatus, (request) =>
+      credentialService.getStatus(request.id)
+    );
+    registerIpcContract(IPC_CONTRACTS.credentials.testConnection, (request) =>
+      credentialService.testConnection(request.id)
+    );
+    registerIpcContract(IPC_CONTRACTS.credentials.updateBaseUrl, (request) =>
+      credentialService.updateBaseUrl(request.id, request.baseUrl)
+    );
+  }
+
+  registerIpcContract(IPC_CONTRACTS.modelProfiles.list, () => repositories.modelProfiles.list());
+  registerIpcContract(IPC_CONTRACTS.modelProfiles.upsert, (request) =>
+    repositories.modelProfiles.upsert(
+      request as Parameters<typeof repositories.modelProfiles.upsert>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.modelPrices.list, () => repositories.modelPrices.list());
+  registerIpcContract(IPC_CONTRACTS.modelPrices.upsert, (request) =>
+    repositories.modelPrices.upsert(
+      request as Parameters<typeof repositories.modelPrices.upsert>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.taskRoutes.list, () => repositories.taskRoutes.list());
+  registerIpcContract(IPC_CONTRACTS.taskRoutes.upsert, (request) =>
+    repositories.taskRoutes.upsert(request as Parameters<typeof repositories.taskRoutes.upsert>[0])
+  );
+  registerIpcContract(IPC_CONTRACTS.taskRoutes.resolve, (request) => {
+    const routingSettings = getRoutingSettings(repositories);
+    return new ModelRouter({
+      credentials: repositories.providerCredentials,
+      modelProfiles: repositories.modelProfiles,
+      prices: repositories.modelPrices,
+      routes: repositories.taskRoutes,
+      settings: routingSettings
+    }).resolveRoute(request.taskType, request.qualityMode);
+  });
+  registerIpcContract(IPC_CONTRACTS.privacy.get, () => getPrivacySettings(repositories));
+  registerIpcContract(IPC_CONTRACTS.privacy.update, (request) => {
+    const next = {
+      ...getPrivacySettings(repositories),
+      ...withoutUndefined(request)
+    } as PrivacySettings;
+    repositories.settings.set("privacy", next);
+    return next;
+  });
+  registerIpcContract(IPC_CONTRACTS.routingSettings.get, () => getRoutingSettings(repositories));
+  registerIpcContract(IPC_CONTRACTS.routingSettings.update, (request) => {
+    const next = {
+      ...getRoutingSettings(repositories),
+      ...withoutUndefined(request)
+    } as RoutingSettings;
+    repositories.settings.set("routing", next);
+    return next;
+  });
+}
+
+function withoutUndefined<T extends Record<string, unknown>>(value: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entryValue]) => typeof entryValue !== "undefined")
+  ) as Partial<T>;
+}
+
+function getPrivacySettings(repositories: RepositoryRegistry): PrivacySettings {
+  return repositories.settings.get<PrivacySettings>("privacy") ?? DEFAULT_PRIVACY_SETTINGS;
+}
+
+function getRoutingSettings(repositories: RepositoryRegistry): RoutingSettings {
+  return repositories.settings.get<RoutingSettings>("routing") ?? DEFAULT_ROUTING_SETTINGS;
 }

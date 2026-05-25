@@ -10,12 +10,18 @@ import { CostRepository } from "./repositories/cost-repository";
 import { GenerationRepository } from "./repositories/generation-repository";
 import { ManuscriptRepository } from "./repositories/manuscript-repository";
 import { MemoryRepository } from "./repositories/memory-repository";
+import { ModelPriceRepository } from "./repositories/model-price-repository";
+import { ModelProfileRepository } from "./repositories/model-profile-repository";
 import { ProjectRepository } from "./repositories/project-repository";
+import { ProviderCredentialRepository } from "./repositories/provider-credential-repository";
 import { SettingsRepository } from "./repositories/settings-repository";
 import { StoryBibleRepository } from "./repositories/story-bible-repository";
+import { TaskRouteRepository } from "./repositories/task-route-repository";
 import { VolumeRepository } from "./repositories/volume-repository";
 import { createId } from "./id";
 import { nowIso } from "./repositories/types";
+import { TASK_TYPES, type ProviderId, type TaskType } from "@shared/domain/model-routing";
+import { DEFAULT_PRIVACY_SETTINGS, DEFAULT_ROUTING_SETTINGS } from "@contracts/settings";
 
 export interface RepositoryRegistry {
   projects: ProjectRepository;
@@ -28,6 +34,10 @@ export interface RepositoryRegistry {
   cost: CostRepository;
   generation: GenerationRepository;
   settings: SettingsRepository;
+  providerCredentials: ProviderCredentialRepository;
+  modelProfiles: ModelProfileRepository;
+  modelPrices: ModelPriceRepository;
+  taskRoutes: TaskRouteRepository;
 }
 
 export interface AppDatabaseService {
@@ -50,7 +60,11 @@ export function createRepositories(db: WenForgeDatabase): RepositoryRegistry {
     memory: new MemoryRepository(db),
     cost: new CostRepository(db),
     generation: new GenerationRepository(db),
-    settings: new SettingsRepository(db)
+    settings: new SettingsRepository(db),
+    providerCredentials: new ProviderCredentialRepository(db),
+    modelProfiles: new ModelProfileRepository(db),
+    modelPrices: new ModelPriceRepository(db),
+    taskRoutes: new TaskRouteRepository(db)
   };
 }
 
@@ -59,6 +73,7 @@ export function createAppDatabaseService(app: App): AppDatabaseService {
   migrateDatabase(connection.sqlite);
   const repositories = createRepositories(connection.db);
   seedDemoData(connection.db, repositories);
+  seedModelRoutingData(repositories);
   return { connection, repositories };
 }
 
@@ -162,4 +177,180 @@ export function seedDemoData(db: WenForgeDatabase, repositories: RepositoryRegis
       now,
       now
     );
+}
+
+const MODEL_SEEDS: Array<{
+  provider: ProviderId;
+  model: string;
+  displayName: string;
+  recommendedTasks: TaskType[];
+}> = [
+  {
+    provider: "openai",
+    model: "gpt-5.5",
+    displayName: "GPT-5.5",
+    recommendedTasks: ["draft_chapter", "revise_chapter"]
+  },
+  {
+    provider: "openai",
+    model: "gpt-5.4",
+    displayName: "GPT-5.4",
+    recommendedTasks: ["chapter_outline", "draft_chapter"]
+  },
+  {
+    provider: "openai",
+    model: "gpt-5.4-mini",
+    displayName: "GPT-5.4 mini",
+    recommendedTasks: ["brainstorm", "summarize_chapter"]
+  },
+  {
+    provider: "openai",
+    model: "gpt-5.4-nano",
+    displayName: "GPT-5.4 nano",
+    recommendedTasks: ["embedding_or_memory_indexing"]
+  },
+  {
+    provider: "anthropic",
+    model: "claude-opus-4.7",
+    displayName: "Claude Opus 4.7",
+    recommendedTasks: ["draft_chapter", "continuity_audit"]
+  },
+  {
+    provider: "anthropic",
+    model: "claude-sonnet-4.6",
+    displayName: "Claude Sonnet 4.6",
+    recommendedTasks: ["webnovel_style_rewrite", "revise_chapter"]
+  },
+  {
+    provider: "gemini",
+    model: "gemini-3.1-pro-preview",
+    displayName: "Gemini 3.1 Pro Preview",
+    recommendedTasks: ["volume_outline", "state_settlement"]
+  },
+  {
+    provider: "gemini",
+    model: "gemini-3.5-flash",
+    displayName: "Gemini 3.5 Flash",
+    recommendedTasks: ["brainstorm", "summarize_chapter"]
+  },
+  {
+    provider: "deepseek",
+    model: "deepseek-v4-pro",
+    displayName: "DeepSeek V4-Pro",
+    recommendedTasks: ["draft_chapter", "scene_cards"]
+  },
+  {
+    provider: "deepseek",
+    model: "deepseek-v4-flash",
+    displayName: "DeepSeek V4-Flash",
+    recommendedTasks: ["summarize_chapter"]
+  },
+  {
+    provider: "dashscope_qwen",
+    model: "qwen3-max",
+    displayName: "Qwen3-Max",
+    recommendedTasks: ["draft_chapter", "story_bible"]
+  },
+  {
+    provider: "moonshot_kimi",
+    model: "kimi-k2.6",
+    displayName: "Kimi K2.6",
+    recommendedTasks: ["story_bible", "continuity_audit"]
+  },
+  {
+    provider: "xai",
+    model: "grok-4.3",
+    displayName: "Grok 4.3",
+    recommendedTasks: ["brainstorm", "suspense_hook_audit"]
+  },
+  {
+    provider: "openrouter",
+    model: "openrouter-auto",
+    displayName: "OpenRouter generic route",
+    recommendedTasks: ["draft_chapter"]
+  },
+  {
+    provider: "generic_openai_compatible",
+    model: "custom-model",
+    displayName: "Generic OpenAI-compatible custom model",
+    recommendedTasks: ["brainstorm"]
+  }
+];
+
+export function seedModelRoutingData(repositories: RepositoryRegistry): void {
+  repositories.settings.set(
+    "privacy",
+    repositories.settings.get("privacy") ?? DEFAULT_PRIVACY_SETTINGS
+  );
+  repositories.settings.set(
+    "routing",
+    repositories.settings.get("routing") ?? DEFAULT_ROUTING_SETTINGS
+  );
+
+  for (const seed of MODEL_SEEDS) {
+    const profile = repositories.modelProfiles.upsert({
+      provider: seed.provider,
+      model: seed.model,
+      displayName: seed.displayName,
+      supportsStreaming: true,
+      supportsJson: true,
+      defaultTemperature: 0.7,
+      recommendedTasks: seed.recommendedTasks,
+      enabled: true
+    });
+    if (!repositories.modelPrices.findActive(seed.provider, seed.model)) {
+      repositories.modelPrices.upsert({
+        provider: seed.provider,
+        model: seed.model,
+        inputPricePerMillion: 0,
+        outputPricePerMillion: 0,
+        cachedInputPricePerMillion: null,
+        currency: "USD",
+        effectiveDate: "2026-05-25",
+        sourceNote:
+          "Placeholder seed price. User must verify and edit provider pricing before relying on cost estimates.",
+        enabled: true
+      });
+    }
+
+    for (const taskType of seed.recommendedTasks) {
+      const existing = repositories.taskRoutes.find(taskType, "balanced");
+      if (!existing) {
+        repositories.taskRoutes.upsert({
+          taskType,
+          qualityMode: "balanced",
+          primaryModelProfileId: profile.id,
+          temperature: 0.7,
+          maxOutputTokens: 4000,
+          enabled: true
+        });
+      }
+    }
+  }
+
+  const fallbackProfile = repositories.modelProfiles.find("openai", "gpt-5.4-mini");
+  if (fallbackProfile) {
+    for (const taskType of TASK_TYPES) {
+      if (!repositories.taskRoutes.find(taskType, "economy")) {
+        repositories.taskRoutes.upsert({
+          taskType,
+          qualityMode: "economy",
+          primaryModelProfileId: fallbackProfile.id,
+          temperature: 0.7,
+          maxOutputTokens: 3000,
+          enabled: true
+        });
+      }
+      if (!repositories.taskRoutes.find(taskType, "premium")) {
+        repositories.taskRoutes.upsert({
+          taskType,
+          qualityMode: "premium",
+          primaryModelProfileId: fallbackProfile.id,
+          temperature: 0.7,
+          maxOutputTokens: 6000,
+          enabled: true
+        });
+      }
+    }
+  }
 }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PROVIDERS, QUALITY_MODES, TASK_TYPES } from "@shared/domain/model-routing";
 
 export const themePreferenceSchema = z.enum(["dark", "light", "system"]);
 export const platformSchema = z.enum([
@@ -142,6 +143,107 @@ const memorySearchResultSchema = z.object({
   sourceId: z.string(),
   title: z.string(),
   content: z.string()
+});
+const providerSchema = z.enum(PROVIDERS);
+const taskTypeSchema = z.enum(TASK_TYPES);
+const qualityModeSchema = z.enum(QUALITY_MODES);
+const credentialDtoSchema = z.object({
+  id: z.string(),
+  provider: providerSchema,
+  displayName: z.string(),
+  baseUrl: z.string().nullable(),
+  isConfigured: z.boolean(),
+  redactedKeyLabel: z.string(),
+  lastTestedAt: z.string().nullable(),
+  lastStatus: z.enum(["unknown", "configured", "test_passed", "test_failed"]),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+const credentialStatusSchema = z.object({
+  id: z.string(),
+  provider: providerSchema,
+  isConfigured: z.boolean(),
+  lastStatus: z.enum(["unknown", "configured", "test_passed", "test_failed"]),
+  lastTestedAt: z.string().nullable(),
+  message: z.string()
+});
+const credentialTestResultSchema = z.object({
+  id: z.string(),
+  status: z.enum(["configured_but_untested", "test_passed", "test_failed", "not_configured"]),
+  message: z.string(),
+  testedAt: z.string()
+});
+const modelProfileSchema = z.object({
+  id: z.string(),
+  provider: providerSchema,
+  model: z.string(),
+  displayName: z.string(),
+  contextWindow: z.number().nullable(),
+  maxOutputTokens: z.number().nullable(),
+  supportsStreaming: z.boolean(),
+  supportsJson: z.boolean(),
+  supportsTools: z.boolean(),
+  supportsVision: z.boolean(),
+  supportsPromptCaching: z.boolean(),
+  defaultTemperature: z.number(),
+  recommendedTasksJson: z.string(),
+  enabled: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+const modelPriceSchema = z.object({
+  id: z.string(),
+  provider: providerSchema,
+  model: z.string(),
+  inputPricePerMillion: z.number(),
+  outputPricePerMillion: z.number(),
+  cachedInputPricePerMillion: z.number().nullable(),
+  currency: z.string(),
+  contextWindow: z.number().nullable(),
+  maxOutputTokens: z.number().nullable(),
+  effectiveDate: z.string(),
+  sourceNote: z.string(),
+  enabled: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+const taskRouteSchema = z.object({
+  id: z.string(),
+  taskType: taskTypeSchema,
+  qualityMode: qualityModeSchema,
+  primaryModelProfileId: z.string(),
+  fallbackModelProfileId1: z.string().nullable(),
+  fallbackModelProfileId2: z.string().nullable(),
+  temperature: z.number(),
+  maxOutputTokens: z.number(),
+  budgetCapPerCall: z.number().nullable(),
+  enabled: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+const routeResolutionSchema = z.object({
+  available: z.boolean(),
+  taskType: taskTypeSchema,
+  qualityMode: qualityModeSchema,
+  route: taskRouteSchema.nullable(),
+  modelProfile: modelProfileSchema.nullable(),
+  price: modelPriceSchema.nullable(),
+  credential: credentialDtoSchema.nullable(),
+  warnings: z.array(z.string()),
+  errors: z.array(z.string())
+});
+const privacySettingsSchema = z.object({
+  storeFullPrompts: z.boolean(),
+  storeFullResponses: z.boolean(),
+  storeManuscriptsInLogs: z.boolean(),
+  allowSendingFullRecentChapters: z.boolean(),
+  recentChapterCount: z.number().int().min(0),
+  maxContextTokenBudget: z.number().int().positive(),
+  enableDebugLogging: z.boolean()
+});
+const routingSettingsSchema = z.object({
+  priceStaleAfterDays: z.number().int().positive(),
+  missingPriceBehavior: z.enum(["warn", "block"])
 });
 
 export const IPC_CONTRACTS = {
@@ -365,6 +467,112 @@ export const IPC_CONTRACTS = {
       z.object({ bookId: z.string().min(1), query: z.string().trim().min(1) }),
       z.array(memorySearchResultSchema)
     )
+  },
+  credentials: {
+    list: createContract("credentials:list", emptyRequestSchema, z.array(credentialDtoSchema)),
+    save: createContract(
+      "credentials:save",
+      z.object({
+        provider: providerSchema,
+        displayName: z.string().trim().min(1),
+        apiKey: z.string().trim().min(1),
+        baseUrl: z.string().url().nullable().optional()
+      }),
+      credentialDtoSchema
+    ),
+    delete: createContract("credentials:delete", confirmedDeleteSchema, z.boolean()),
+    getStatus: createContract("credentials:get-status", entityIdSchema, credentialStatusSchema),
+    testConnection: createContract(
+      "credentials:test-connection",
+      entityIdSchema,
+      credentialTestResultSchema
+    ),
+    updateBaseUrl: createContract(
+      "credentials:update-base-url",
+      entityIdSchema.extend({ baseUrl: z.string().url().nullable() }),
+      credentialDtoSchema.nullable()
+    )
+  },
+  modelProfiles: {
+    list: createContract("model-profiles:list", emptyRequestSchema, z.array(modelProfileSchema)),
+    upsert: createContract(
+      "model-profiles:upsert",
+      z.object({
+        id: z.string().optional(),
+        provider: providerSchema,
+        model: z.string().trim().min(1),
+        displayName: z.string().trim().min(1),
+        contextWindow: z.number().int().positive().nullable().optional(),
+        maxOutputTokens: z.number().int().positive().nullable().optional(),
+        supportsStreaming: z.boolean().optional(),
+        supportsJson: z.boolean().optional(),
+        supportsTools: z.boolean().optional(),
+        supportsVision: z.boolean().optional(),
+        supportsPromptCaching: z.boolean().optional(),
+        defaultTemperature: z.number().min(0).max(2).optional(),
+        recommendedTasks: z.array(taskTypeSchema).optional(),
+        recommendedTasksJson: z.string().optional(),
+        enabled: z.boolean().optional()
+      }),
+      modelProfileSchema
+    )
+  },
+  modelPrices: {
+    list: createContract("model-prices:list", emptyRequestSchema, z.array(modelPriceSchema)),
+    upsert: createContract(
+      "model-prices:upsert",
+      z.object({
+        id: z.string().optional(),
+        provider: providerSchema,
+        model: z.string().trim().min(1),
+        inputPricePerMillion: z.number().min(0),
+        outputPricePerMillion: z.number().min(0),
+        cachedInputPricePerMillion: z.number().min(0).nullable().optional(),
+        currency: z.string().trim().min(1).optional(),
+        contextWindow: z.number().int().positive().nullable().optional(),
+        maxOutputTokens: z.number().int().positive().nullable().optional(),
+        effectiveDate: z.string().trim().min(1),
+        sourceNote: z.string().trim().min(1),
+        enabled: z.boolean().optional()
+      }),
+      modelPriceSchema
+    )
+  },
+  taskRoutes: {
+    list: createContract("task-routes:list", emptyRequestSchema, z.array(taskRouteSchema)),
+    upsert: createContract(
+      "task-routes:upsert",
+      z.object({
+        id: z.string().optional(),
+        taskType: taskTypeSchema,
+        qualityMode: qualityModeSchema,
+        primaryModelProfileId: z.string().min(1),
+        fallbackModelProfileId1: z.string().nullable().optional(),
+        fallbackModelProfileId2: z.string().nullable().optional(),
+        temperature: z.number().min(0).max(2),
+        maxOutputTokens: z.number().int().positive(),
+        budgetCapPerCall: z.number().min(0).nullable().optional(),
+        enabled: z.boolean().optional()
+      }),
+      taskRouteSchema
+    ),
+    resolve: createContract(
+      "task-routes:resolve",
+      z.object({ taskType: taskTypeSchema, qualityMode: qualityModeSchema }),
+      routeResolutionSchema
+    )
+  },
+  privacy: {
+    get: createContract("privacy:get", emptyRequestSchema, privacySettingsSchema),
+    update: createContract("privacy:update", privacySettingsSchema.partial(), privacySettingsSchema)
+  },
+  routingSettings: {
+    get: createContract("routing-settings:get", emptyRequestSchema, routingSettingsSchema),
+    update: createContract(
+      "routing-settings:update",
+      routingSettingsSchema.partial(),
+      routingSettingsSchema
+    )
   }
 } as const;
 
@@ -411,5 +619,22 @@ export const IPC_CONTRACT_LIST = [
   IPC_CONTRACTS.storyBible.entries.delete,
   IPC_CONTRACTS.dataSettings.get,
   IPC_CONTRACTS.dataSettings.set,
-  IPC_CONTRACTS.memory.search
+  IPC_CONTRACTS.memory.search,
+  IPC_CONTRACTS.credentials.list,
+  IPC_CONTRACTS.credentials.save,
+  IPC_CONTRACTS.credentials.delete,
+  IPC_CONTRACTS.credentials.getStatus,
+  IPC_CONTRACTS.credentials.testConnection,
+  IPC_CONTRACTS.credentials.updateBaseUrl,
+  IPC_CONTRACTS.modelProfiles.list,
+  IPC_CONTRACTS.modelProfiles.upsert,
+  IPC_CONTRACTS.modelPrices.list,
+  IPC_CONTRACTS.modelPrices.upsert,
+  IPC_CONTRACTS.taskRoutes.list,
+  IPC_CONTRACTS.taskRoutes.upsert,
+  IPC_CONTRACTS.taskRoutes.resolve,
+  IPC_CONTRACTS.privacy.get,
+  IPC_CONTRACTS.privacy.update,
+  IPC_CONTRACTS.routingSettings.get,
+  IPC_CONTRACTS.routingSettings.update
 ] as const;

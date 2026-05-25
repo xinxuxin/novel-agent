@@ -20,7 +20,20 @@ The `model_prices` table should include:
 - source_note
 - enabled
 
-Prices are editable because provider pricing changes frequently. Seed prices should include source notes and effective dates.
+Prices are editable because provider pricing changes frequently. Phase 3 seeds placeholder price rows for the initial model profile catalog with `source_note` values that explicitly mark them as user-verifiable placeholders, not authoritative price claims.
+
+## Phase 3 Registry Behavior
+
+Phase 3 implements:
+
+- DB-backed model price records in `model_prices`.
+- `ModelPriceRepository` for listing, upserting, and finding the active price for a provider/model pair.
+- `calculateModelCost` for input, output, and cached-input token estimates.
+- `isPriceStale` for stale price warnings.
+- Settings UI editing for price rows and stale-threshold policy.
+- Route warnings when a selected route has no configured price or has a stale active price.
+
+The default stale threshold is `priceStaleAfterDays: 90`. The user can change it in Settings > Advanced. Missing prices default to warning mode; they can be changed to blocking mode before real model generation is enabled.
 
 ## LLM Run Records
 
@@ -51,6 +64,8 @@ Every LLM call creates an `llm_runs` record:
 
 Do not store complete prompts or responses in `llm_runs` by default.
 
+Phase 3 creates the table and routing/cost services needed for `llm_runs`, but real provider calls and streaming reconciliation remain deferred. No prompt, manuscript, or provider response text is written to `llm_runs` in this phase.
+
 ## Estimation Flow
 
 1. Estimate input tokens from assembled prompt before request.
@@ -72,4 +87,3 @@ Do not store complete prompts or responses in `llm_runs` by default.
 ## Accuracy Notes
 
 Provider tokenizers differ. WenForge should treat local token counts as estimates unless provider usage is returned. Chinese text estimation should be calibrated against provider-reported usage over time per provider/model.
-

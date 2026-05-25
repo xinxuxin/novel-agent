@@ -32,12 +32,18 @@ describe("preload API", () => {
       "app",
       "books",
       "chapters",
+      "credentials",
       "diagnostics",
       "manuscripts",
       "memory",
+      "modelPrices",
+      "modelProfiles",
+      "privacy",
       "projects",
+      "routingSettings",
       "settings",
       "storyBible",
+      "taskRoutes",
       "volumes",
       "window"
     ]);

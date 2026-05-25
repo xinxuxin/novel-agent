@@ -1,5 +1,18 @@
 import type { ThemePreference } from "@shared/theme";
 import type {
+  CredentialStatusDto,
+  CredentialTestResult,
+  ModelPriceRecord,
+  ModelProfileRecord,
+  ModelRouteResolution,
+  ProviderCredentialDto,
+  SaveCredentialInput,
+  TaskRouteRecord
+} from "./model-routing";
+import type { PrivacySettings, RoutingSettings } from "./settings";
+import type { QualityMode, TaskType } from "@shared/domain/model-routing";
+
+import type {
   BookRecord,
   ChapterRecord,
   CreateBookInput,
@@ -104,5 +117,54 @@ export interface WenForgeApi {
   };
   memory: {
     search: (bookId: string, query: string) => Promise<MemorySearchResult[]>;
+  };
+  credentials: {
+    list: () => Promise<ProviderCredentialDto[]>;
+    save: (input: SaveCredentialInput) => Promise<ProviderCredentialDto>;
+    delete: (id: string, confirmed: boolean) => Promise<boolean>;
+    getStatus: (id: string) => Promise<CredentialStatusDto>;
+    testConnection: (id: string) => Promise<CredentialTestResult>;
+    updateBaseUrl: (id: string, baseUrl: string | null) => Promise<ProviderCredentialDto | null>;
+  };
+  modelProfiles: {
+    list: () => Promise<ModelProfileRecord[]>;
+    upsert: (
+      input: Partial<ModelProfileRecord> &
+        Pick<ModelProfileRecord, "provider" | "model" | "displayName">
+    ) => Promise<ModelProfileRecord>;
+  };
+  modelPrices: {
+    list: () => Promise<ModelPriceRecord[]>;
+    upsert: (
+      input: Partial<ModelPriceRecord> &
+        Pick<
+          ModelPriceRecord,
+          | "provider"
+          | "model"
+          | "inputPricePerMillion"
+          | "outputPricePerMillion"
+          | "effectiveDate"
+          | "sourceNote"
+        >
+    ) => Promise<ModelPriceRecord>;
+  };
+  taskRoutes: {
+    list: () => Promise<TaskRouteRecord[]>;
+    upsert: (
+      input: Partial<TaskRouteRecord> &
+        Pick<
+          TaskRouteRecord,
+          "taskType" | "qualityMode" | "primaryModelProfileId" | "temperature" | "maxOutputTokens"
+        >
+    ) => Promise<TaskRouteRecord>;
+    resolve: (taskType: TaskType, qualityMode: QualityMode) => Promise<ModelRouteResolution>;
+  };
+  privacy: {
+    get: () => Promise<PrivacySettings>;
+    update: (input: Partial<PrivacySettings>) => Promise<PrivacySettings>;
+  };
+  routingSettings: {
+    get: () => Promise<RoutingSettings>;
+    update: (input: Partial<RoutingSettings>) => Promise<RoutingSettings>;
   };
 }

@@ -69,6 +69,19 @@ Popover mode:
 - Provider settings with encrypted credential status and safe health checks.
 - Prompt/skill settings for WenForge-native templates.
 
+## Phase 3 Settings Workspace
+
+The current Settings workspace is reachable from the top command bar and uses six tabs:
+
+- Providers: encrypted credential save/list/delete/status controls, redacted key labels only.
+- Models: editable model profile catalog with enabled state and custom model entry.
+- Pricing: editable price registry, effective dates, source notes, and stale price warnings.
+- Routing: task route matrix across task types and quality modes with credential/price readiness chips.
+- Privacy: prompt, response, manuscript logging, recent chapter, context budget, and debug logging settings.
+- Advanced: stale price threshold, missing price policy, and diagnostics.
+
+The Settings workspace is part of the studio shell. It must keep the same dark graphite command-center language and must not expose decrypted credentials, encrypted secret bytes, or complete prompts/manuscripts.
+
 ## Interaction Rules
 
 - Generated text, audits, rewrites, and state updates are visibly marked as draft/proposed.
@@ -91,4 +104,3 @@ Popover mode:
 - `inkos`, `MaliangAINovalWriter`, `ai-novel-lab`, and `story-writing` may inform information architecture only.
 - OpenAI/Codex may inform broad command-center patterns only.
 - No UI source, screenshots, logos, image assets, distinctive copy, or branding may be copied in this phase.
-

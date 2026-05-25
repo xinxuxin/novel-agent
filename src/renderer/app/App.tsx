@@ -11,7 +11,10 @@ import type {
   StoryBibleEntryRecord,
   VolumeRecord
 } from "@contracts/data";
+import { SettingsPanel } from "@features/settings/SettingsPanel";
 import { useUiStore } from "@renderer/stores/ui-store";
+
+type WorkspaceView = "chapter" | "settings";
 
 export function App(): JSX.Element {
   const [version, setVersion] = useState("0.1.0");
@@ -22,6 +25,7 @@ export function App(): JSX.Element {
   const [selectedChapter, setSelectedChapter] = useState<ChapterRecord | null>(null);
   const [canonical, setCanonical] = useState<ManuscriptVersionRecord | null>(null);
   const [storyBibleEntries, setStoryBibleEntries] = useState<StoryBibleEntryRecord[]>([]);
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>("chapter");
   const commandPaletteOpen = useUiStore((state) => state.commandPaletteOpen);
   const studioMode = useUiStore((state) => state.studioMode);
   const openCommandPalette = useUiStore((state) => state.openCommandPalette);
@@ -132,6 +136,28 @@ export function App(): JSX.Element {
 
           <div className="app-no-drag flex items-center gap-2">
             <button
+              className={`rounded-md border px-3 py-1.5 text-xs transition ${
+                workspaceView === "chapter"
+                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
+                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
+              }`}
+              onClick={() => setWorkspaceView("chapter")}
+              type="button"
+            >
+              Chapter
+            </button>
+            <button
+              className={`rounded-md border px-3 py-1.5 text-xs transition ${
+                workspaceView === "settings"
+                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
+                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
+              }`}
+              onClick={() => setWorkspaceView("settings")}
+              type="button"
+            >
+              Settings
+            </button>
+            <button
               className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-forge-violet/40 hover:text-white"
               onClick={() => void toggleStudioMode()}
               type="button"
@@ -234,88 +260,94 @@ export function App(): JSX.Element {
           </aside>
 
           <section className="min-h-0 overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(117,167,255,0.12),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(178,148,255,0.1),transparent_32%)]">
-            <div className="flex h-full flex-col">
-              <div className="border-b border-white/10 px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                      Active chapter
-                    </p>
-                    <h2 className="mt-1 text-xl font-semibold text-white">
-                      {selectedChapter?.title ?? "No chapter selected"}
-                    </h2>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="rounded-full border border-forge-mint/30 bg-forge-mint/10 px-3 py-1 text-xs text-forge-mint">
-                      Idle
-                    </span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">
-                      No provider connected
-                    </span>
+            {workspaceView === "settings" ? (
+              <div className="h-full overflow-auto">
+                <SettingsPanel />
+              </div>
+            ) : (
+              <div className="flex h-full flex-col">
+                <div className="border-b border-white/10 px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                        Active chapter
+                      </p>
+                      <h2 className="mt-1 text-xl font-semibold text-white">
+                        {selectedChapter?.title ?? "No chapter selected"}
+                      </h2>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="rounded-full border border-forge-mint/30 bg-forge-mint/10 px-3 py-1 text-xs text-forge-mint">
+                        Idle
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">
+                        No provider connected
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="grid min-h-0 flex-1 grid-rows-[1fr_170px]">
-                <article className="overflow-auto px-6 py-5">
-                  <div className="mx-auto max-w-3xl space-y-5">
-                    <div className="rounded-xl border border-white/10 bg-graphite-900/60 p-5">
-                      <p className="text-sm leading-7 text-slate-300">
-                        The manuscript editor will live here in Phase 4. Phase 1 keeps this shell
-                        lightweight while Phase 2 proves local persistence. The canonical manuscript
-                        preview below is loaded from SQLite through typed IPC.
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-black/25 p-5">
-                      <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                        Canonical manuscript
-                      </p>
-                      <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-300">
-                        {canonical?.contentMarkdown ?? "No canonical manuscript saved yet."}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-black/25 p-5">
-                      <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                        Generation stream
-                      </p>
-                      <div className="mt-4 flex gap-2">
-                        {[0, 1, 2].map((item) => (
-                          <motion.span
-                            animate={{ opacity: [0.35, 1, 0.35] }}
-                            className="h-2 w-12 rounded-full bg-forge-blue/50"
-                            key={item}
-                            transition={{
-                              duration: 1.2,
-                              repeat: Infinity,
-                              delay: item * 0.16
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </article>
-
-                <section className="border-t border-white/10 bg-black/20 px-6 py-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                    Task timeline
-                  </p>
-                  <div className="mt-3 grid grid-cols-4 gap-3">
-                    {["Context", "Outline", "Draft", "Review"].map((stage, index) => (
-                      <div
-                        className="rounded-lg border border-white/10 bg-white/[0.035] p-3"
-                        key={stage}
-                      >
-                        <p className="text-sm text-slate-200">{stage}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {index === 0 ? "Ready" : "Waiting"}
+                <div className="grid min-h-0 flex-1 grid-rows-[1fr_170px]">
+                  <article className="overflow-auto px-6 py-5">
+                    <div className="mx-auto max-w-3xl space-y-5">
+                      <div className="rounded-xl border border-white/10 bg-graphite-900/60 p-5">
+                        <p className="text-sm leading-7 text-slate-300">
+                          The manuscript editor will live here in Phase 4. Phase 1 keeps this shell
+                          lightweight while Phase 2 proves local persistence. The canonical
+                          manuscript preview below is loaded from SQLite through typed IPC.
                         </p>
                       </div>
-                    ))}
-                  </div>
-                </section>
+                      <div className="rounded-xl border border-white/10 bg-black/25 p-5">
+                        <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                          Canonical manuscript
+                        </p>
+                        <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-300">
+                          {canonical?.contentMarkdown ?? "No canonical manuscript saved yet."}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-black/25 p-5">
+                        <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                          Generation stream
+                        </p>
+                        <div className="mt-4 flex gap-2">
+                          {[0, 1, 2].map((item) => (
+                            <motion.span
+                              animate={{ opacity: [0.35, 1, 0.35] }}
+                              className="h-2 w-12 rounded-full bg-forge-blue/50"
+                              key={item}
+                              transition={{
+                                duration: 1.2,
+                                repeat: Infinity,
+                                delay: item * 0.16
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+
+                  <section className="border-t border-white/10 bg-black/20 px-6 py-4">
+                    <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                      Task timeline
+                    </p>
+                    <div className="mt-3 grid grid-cols-4 gap-3">
+                      {["Context", "Outline", "Draft", "Review"].map((stage, index) => (
+                        <div
+                          className="rounded-lg border border-white/10 bg-white/[0.035] p-3"
+                          key={stage}
+                        >
+                          <p className="text-sm text-slate-200">{stage}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {index === 0 ? "Ready" : "Waiting"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
               </div>
-            </div>
+            )}
           </section>
 
           <aside className="min-h-0 overflow-auto border-l border-white/10 bg-black/18">
