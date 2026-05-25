@@ -150,8 +150,165 @@ export const characters = sqliteTable("characters", {
   name: text("name").notNull(),
   aliasesJson: text("aliases_json").notNull().default("[]"),
   role: text("role"),
+  firstAppearanceChapterId: text("first_appearance_chapter_id"),
   summary: text("summary"),
   currentState: text("current_state"),
+  goal: text("goal"),
+  motivation: text("motivation"),
+  secret: text("secret"),
+  contradiction: text("contradiction"),
+  relationshipNotes: text("relationship_notes"),
+  speakingStyle: text("speaking_style"),
+  forbiddenInconsistencies: text("forbidden_inconsistencies"),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  importance: integer("importance").notNull().default(5),
+  relatedChapterIdsJson: text("related_chapter_ids_json").notNull().default("[]"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const factions = sqliteTable("factions", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  name: text("name").notNull(),
+  summary: text("summary"),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  importance: integer("importance").notNull().default(5),
+  relatedChapterIdsJson: text("related_chapter_ids_json").notNull().default("[]"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const locations = sqliteTable("locations", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  name: text("name").notNull(),
+  summary: text("summary"),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  importance: integer("importance").notNull().default(5),
+  relatedChapterIdsJson: text("related_chapter_ids_json").notNull().default("[]"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const artifacts = sqliteTable("artifacts", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  name: text("name").notNull(),
+  summary: text("summary"),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  importance: integer("importance").notNull().default(5),
+  relatedChapterIdsJson: text("related_chapter_ids_json").notNull().default("[]"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const powerSystemRules = sqliteTable("power_system_rules", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  ruleType: text("rule_type"),
+  rankLevelName: text("rank_level_name").notNull(),
+  rankOrder: integer("rank_order").notNull().default(0),
+  advancementConditions: text("advancement_conditions"),
+  limitsCosts: text("limits_costs"),
+  knownUsersJson: text("known_users_json").notNull().default("[]"),
+  contradictionChecks: text("contradiction_checks"),
+  notes: text("notes"),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  importance: integer("importance").notNull().default(5),
+  relatedChapterIdsJson: text("related_chapter_ids_json").notNull().default("[]"),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const timelineEvents = sqliteTable("timeline_events", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  chapterId: text("chapter_id"),
+  eventIndex: integer("event_index").notNull().default(0),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  importance: integer("importance").notNull().default(5),
+  relatedChapterIdsJson: text("related_chapter_ids_json").notNull().default("[]"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const foreshadowingItems = sqliteTable("foreshadowing_items", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  chapterId: text("chapter_id"),
+  seedChapterId: text("seed_chapter_id"),
+  hintText: text("hint_text"),
+  expectedPayoffChapterId: text("expected_payoff_chapter_id"),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  status: text("status").notNull().default("seeded"),
+  relatedEntitiesJson: text("related_entities_json").notNull().default("[]"),
+  payoffNotes: text("payoff_notes"),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  importance: integer("importance").notNull().default(5),
+  relatedChapterIdsJson: text("related_chapter_ids_json").notNull().default("[]"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const unresolvedHooks = sqliteTable("unresolved_hooks", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  chapterId: text("chapter_id"),
+  sourceChapterId: text("source_chapter_id"),
+  hookText: text("hook_text"),
+  urgency: text("urgency"),
+  expectedResolutionWindow: text("expected_resolution_window"),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  status: text("status").notNull().default("open"),
+  notes: text("notes"),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  importance: integer("importance").notNull().default(5),
+  relatedChapterIdsJson: text("related_chapter_ids_json").notNull().default("[]"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const styleGuides = sqliteTable("style_guides", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  genre: text("genre"),
+  tone: text("tone"),
+  pacingRules: text("pacing_rules"),
+  forbiddenCliches: text("forbidden_cliches"),
+  preferredSentencePatterns: text("preferred_sentence_patterns"),
+  dialogueStyle: text("dialogue_style"),
+  chapterEndingPattern: text("chapter_ending_pattern"),
+  examples: text("examples"),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  importance: integer("importance").notNull().default(5),
+  relatedChapterIdsJson: text("related_chapter_ids_json").notNull().default("[]"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const readerPositioning = sqliteTable("reader_positioning", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  targetReader: text("target_reader"),
+  platformStyle: text("platform_style"),
+  genreExpectation: text("genre_expectation"),
+  emotionalPromise: text("emotional_promise"),
+  updateCadenceNotes: text("update_cadence_notes"),
+  commercialConstraints: text("commercial_constraints"),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  importance: integer("importance").notNull().default(5),
+  relatedChapterIdsJson: text("related_chapter_ids_json").notNull().default("[]"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull()
 });
@@ -245,6 +402,15 @@ export const schema = {
   generatedArtifacts,
   storyBibleEntries,
   characters,
+  factions,
+  locations,
+  artifacts,
+  powerSystemRules,
+  timelineEvents,
+  foreshadowingItems,
+  unresolvedHooks,
+  styleGuides,
+  readerPositioning,
   memoryChunks,
   generationRuns,
   llmRuns,

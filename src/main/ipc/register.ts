@@ -6,7 +6,10 @@ import { normalizeTheme } from "@shared/theme";
 import type { SettingsStore } from "@main/app/settings-store";
 import type { StudioModeController } from "@main/app/studio-mode";
 import type { AiGateway } from "@main/ai/ai-gateway";
+import type { WenForgeDatabase } from "@main/db/connection";
 import type { RepositoryRegistry } from "@main/db/service";
+import { ContextBuilder } from "@main/context/context-builder";
+import { MemoryIndexService } from "@main/memory/memory-index-service";
 import type { CredentialService } from "@main/providers/credential-service";
 import { ModelRouter } from "@main/providers/model-router";
 import { getEnvironment } from "@main/platform/environment";
@@ -19,6 +22,7 @@ interface RegisterIpcOptions {
   settingsStore: SettingsStore;
   studioModeController: StudioModeController;
   repositories?: RepositoryRegistry;
+  database?: WenForgeDatabase;
   credentialService?: CredentialService;
   aiGateway?: AiGateway;
 }
@@ -27,6 +31,7 @@ export function registerIpc({
   settingsStore,
   studioModeController,
   repositories,
+  database,
   credentialService,
   aiGateway
 }: RegisterIpcOptions): void {
@@ -64,7 +69,7 @@ export function registerIpc({
   }));
 
   if (repositories) {
-    registerDataIpc(repositories, credentialService, aiGateway);
+    registerDataIpc(repositories, credentialService, aiGateway, database);
   }
 }
 
@@ -77,7 +82,8 @@ function requireConfirmation(confirmed: boolean | undefined): void {
 function registerDataIpc(
   repositories: RepositoryRegistry,
   credentialService?: CredentialService,
-  aiGateway?: AiGateway
+  aiGateway?: AiGateway,
+  database?: WenForgeDatabase
 ): void {
   registerIpcContract(IPC_CONTRACTS.projects.list, () => repositories.projects.list());
   registerIpcContract(IPC_CONTRACTS.projects.get, (request) =>
@@ -193,6 +199,215 @@ function registerDataIpc(
     requireConfirmation(request.confirmed);
     return repositories.storyBible.delete(request.id, true);
   });
+  registerIpcContract(IPC_CONTRACTS.storyBible.characters.list, (request) =>
+    repositories.storyBible.listCharacters(
+      request as Parameters<typeof repositories.storyBible.listCharacters>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.characters.create, (request) =>
+    repositories.storyBible.createCharacter(
+      request as Parameters<typeof repositories.storyBible.createCharacter>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.characters.update, (request) =>
+    repositories.storyBible.updateCharacter(
+      request.id,
+      request as Parameters<typeof repositories.storyBible.updateCharacter>[1]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.characters.delete, (request) => {
+    requireConfirmation(request.confirmed);
+    return repositories.storyBible.deleteCharacter(request.id, true);
+  });
+
+  registerIpcContract(IPC_CONTRACTS.storyBible.factions.list, (request) =>
+    repositories.storyBible.listFactions(
+      request as Parameters<typeof repositories.storyBible.listFactions>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.factions.create, (request) =>
+    repositories.storyBible.createFaction(
+      request as Parameters<typeof repositories.storyBible.createFaction>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.factions.update, (request) =>
+    repositories.storyBible.updateFaction(
+      request.id,
+      request as Parameters<typeof repositories.storyBible.updateFaction>[1]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.factions.delete, (request) => {
+    requireConfirmation(request.confirmed);
+    return repositories.storyBible.deleteFaction(request.id, true);
+  });
+
+  registerIpcContract(IPC_CONTRACTS.storyBible.locations.list, (request) =>
+    repositories.storyBible.listLocations(
+      request as Parameters<typeof repositories.storyBible.listLocations>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.locations.create, (request) =>
+    repositories.storyBible.createLocation(
+      request as Parameters<typeof repositories.storyBible.createLocation>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.locations.update, (request) =>
+    repositories.storyBible.updateLocation(
+      request.id,
+      request as Parameters<typeof repositories.storyBible.updateLocation>[1]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.locations.delete, (request) => {
+    requireConfirmation(request.confirmed);
+    return repositories.storyBible.deleteLocation(request.id, true);
+  });
+
+  registerIpcContract(IPC_CONTRACTS.storyBible.artifacts.list, (request) =>
+    repositories.storyBible.listArtifacts(
+      request as Parameters<typeof repositories.storyBible.listArtifacts>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.artifacts.create, (request) =>
+    repositories.storyBible.createArtifact(
+      request as Parameters<typeof repositories.storyBible.createArtifact>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.artifacts.update, (request) =>
+    repositories.storyBible.updateArtifact(
+      request.id,
+      request as Parameters<typeof repositories.storyBible.updateArtifact>[1]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.artifacts.delete, (request) => {
+    requireConfirmation(request.confirmed);
+    return repositories.storyBible.deleteArtifact(request.id, true);
+  });
+
+  registerIpcContract(IPC_CONTRACTS.storyBible.powerSystem.list, (request) =>
+    repositories.storyBible.listPowerSystem(
+      request as Parameters<typeof repositories.storyBible.listPowerSystem>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.powerSystem.create, (request) =>
+    repositories.storyBible.createPowerSystemRule(
+      request as Parameters<typeof repositories.storyBible.createPowerSystemRule>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.powerSystem.update, (request) =>
+    repositories.storyBible.updatePowerSystemRule(
+      request.id,
+      request as Parameters<typeof repositories.storyBible.updatePowerSystemRule>[1]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.powerSystem.delete, (request) => {
+    requireConfirmation(request.confirmed);
+    return repositories.storyBible.deletePowerSystemRule(request.id, true);
+  });
+
+  registerIpcContract(IPC_CONTRACTS.storyBible.timeline.list, (request) =>
+    repositories.storyBible.listTimeline(
+      request as Parameters<typeof repositories.storyBible.listTimeline>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.timeline.create, (request) =>
+    repositories.storyBible.createTimelineEvent(
+      request as Parameters<typeof repositories.storyBible.createTimelineEvent>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.timeline.update, (request) =>
+    repositories.storyBible.updateTimelineEvent(
+      request.id,
+      request as Parameters<typeof repositories.storyBible.updateTimelineEvent>[1]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.timeline.delete, (request) => {
+    requireConfirmation(request.confirmed);
+    return repositories.storyBible.deleteTimelineEvent(request.id, true);
+  });
+
+  registerIpcContract(IPC_CONTRACTS.storyBible.foreshadowing.list, (request) =>
+    repositories.storyBible.listForeshadowing(
+      request as Parameters<typeof repositories.storyBible.listForeshadowing>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.foreshadowing.create, (request) =>
+    repositories.storyBible.createForeshadowing(
+      request as Parameters<typeof repositories.storyBible.createForeshadowing>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.foreshadowing.update, (request) =>
+    repositories.storyBible.updateForeshadowing(
+      request.id,
+      request as Parameters<typeof repositories.storyBible.updateForeshadowing>[1]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.foreshadowing.delete, (request) => {
+    requireConfirmation(request.confirmed);
+    return repositories.storyBible.deleteForeshadowing(request.id, true);
+  });
+
+  registerIpcContract(IPC_CONTRACTS.storyBible.hooks.list, (request) =>
+    repositories.storyBible.listHooks(
+      request as Parameters<typeof repositories.storyBible.listHooks>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.hooks.create, (request) =>
+    repositories.storyBible.createUnresolvedHook(
+      request as Parameters<typeof repositories.storyBible.createUnresolvedHook>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.hooks.update, (request) =>
+    repositories.storyBible.updateUnresolvedHook(
+      request.id,
+      request as Parameters<typeof repositories.storyBible.updateUnresolvedHook>[1]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.hooks.delete, (request) => {
+    requireConfirmation(request.confirmed);
+    return repositories.storyBible.deleteUnresolvedHook(request.id, true);
+  });
+
+  registerIpcContract(IPC_CONTRACTS.storyBible.styleGuide.list, (request) =>
+    repositories.storyBible.listStyleGuides(
+      request as Parameters<typeof repositories.storyBible.listStyleGuides>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.styleGuide.create, (request) =>
+    repositories.storyBible.createStyleGuide(
+      request as Parameters<typeof repositories.storyBible.createStyleGuide>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.styleGuide.update, (request) =>
+    repositories.storyBible.updateStyleGuide(
+      request.id,
+      request as Parameters<typeof repositories.storyBible.updateStyleGuide>[1]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.styleGuide.delete, (request) => {
+    requireConfirmation(request.confirmed);
+    return repositories.storyBible.deleteStyleGuide(request.id, true);
+  });
+
+  registerIpcContract(IPC_CONTRACTS.storyBible.readerPositioning.list, (request) =>
+    repositories.storyBible.listReaderPositioning(
+      request as Parameters<typeof repositories.storyBible.listReaderPositioning>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.readerPositioning.create, (request) =>
+    repositories.storyBible.createReaderPositioning(
+      request as Parameters<typeof repositories.storyBible.createReaderPositioning>[0]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.readerPositioning.update, (request) =>
+    repositories.storyBible.updateReaderPositioning(
+      request.id,
+      request as Parameters<typeof repositories.storyBible.updateReaderPositioning>[1]
+    )
+  );
+  registerIpcContract(IPC_CONTRACTS.storyBible.readerPositioning.delete, (request) => {
+    requireConfirmation(request.confirmed);
+    return repositories.storyBible.deleteReaderPositioning(request.id, true);
+  });
 
   registerIpcContract(IPC_CONTRACTS.dataSettings.get, (request) =>
     repositories.settings.get(request.key)
@@ -202,8 +417,26 @@ function registerDataIpc(
     return undefined;
   });
   registerIpcContract(IPC_CONTRACTS.memory.search, (request) =>
-    repositories.memory.search(request.bookId, request.query)
+    repositories.memory.searchRelevant(
+      request as Parameters<typeof repositories.memory.searchRelevant>[0]
+    )
   );
+  registerIpcContract(IPC_CONTRACTS.memory.rebuildBookIndex, (request) => {
+    if (!database) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    new MemoryIndexService(repositories).rebuildBookIndex(request.bookId);
+    return undefined;
+  });
+  registerIpcContract(IPC_CONTRACTS.context.previewForChapter, (request) => {
+    if (!database) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return new ContextBuilder(database, repositories).previewForChapter({
+      ...request,
+      privacy: request.privacy ?? getPrivacySettings(repositories)
+    } as Parameters<ContextBuilder["previewForChapter"]>[0]);
+  });
 
   if (credentialService) {
     registerIpcContract(IPC_CONTRACTS.credentials.list, () => credentialService.listCredentials());

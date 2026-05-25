@@ -87,7 +87,21 @@ Deferred from Phase 3: real provider adapters, network health checks, streaming 
 
 Deferred from Phase 5: real chapter workflow execution, accept/reject review-card persistence, state-settlement application, and provider-backed generation remain in later phases.
 
-## Phase 6: LangGraph Workflow MVP
+## Phase 6: Story Bible, Memory, And Context Builder (Complete)
+
+- [x] Add canonical story bible CRUD for characters, factions, locations, artifacts/props, power-system rules, timeline events, foreshadowing, unresolved hooks, style guides, and reader positioning.
+- [x] Keep generated facts as proposals by policy; Phase 6 story bible writes are user-saved canonical edits only.
+- [x] Add confirmed destructive deletion for story bible records through typed IPC.
+- [x] Add main-process `MemoryIndexService` with chunk upsert/delete/search and book rebuild operations.
+- [x] Index accepted story bible records, canonical manuscripts, and chapter summaries into local memory.
+- [x] Prefer SQLite FTS5 retrieval and fall back to keyword search when FTS is unavailable.
+- [x] Add `ContextBuilder` in the main process with token-budget handling, privacy-aware recent chapter inclusion, redaction, omissions, and truncation notes.
+- [x] Add a story bible workspace and chapter context preview panel to the renderer without exposing secrets or DB access.
+- [x] Add tests for story bible CRUD, memory search/fallback, context budget behavior, privacy behavior, proposal exclusion, redaction, and Chinese token estimation.
+
+Deferred from Phase 6: generated settlement proposal acceptance, workflow-created review cards, provider-backed context assembly, and vector embeddings remain later phases.
+
+## Phase 7: LangGraph Workflow MVP
 
 - Add LangGraph.js workflow runtime in the main process or a controlled worker.
 - Implement a chapter workflow skeleton with mock provider nodes first: prepare context, outline, scene cards, draft, continuity audit, rhythm audit, revise, human gate, and settlement proposal.
@@ -95,21 +109,21 @@ Deferred from Phase 5: real chapter workflow execution, accept/reject review-car
 - Add cancellation and resume from safe checkpoints.
 - Connect real provider adapters only after mock workflow tests pass.
 
-## Phase 7: WenForge Skill And Prompt Package
+## Phase 8: WenForge Skill And Prompt Package
 
 - Create original WenForge prompt templates for project discovery, outline, scene cards, drafting, audit, rewrite, and state settlement.
 - Encode progressive questioning, reader positioning, genre expectations, hook checks, and validation/repair as WenForge-native methodology.
 - Do not copy prompt text from AGPL or no-license references.
 - Add prompt assembly tests that verify required context, logging redaction, task route usage, and structured output expectations.
 
-## Phase 8: Review, Continuity, And Human Gates
+## Phase 9: Review, Continuity, And Human Gates
 
 - Add review cards for continuity, rhythm, AI-ish phrasing, cliches, and unresolved hooks.
 - Add non-destructive rewrite proposals with accept, reject, and selected-diff application.
 - Add state-settlement review for chapter summaries, timeline events, character changes, relationship changes, foreshadowing, resolved hooks, unresolved hooks, and continuity risks.
 - Require confirmation before destructive deletes, canonical manuscript overwrites, accepted memory changes, or route changes that affect active run cost.
 
-## Phase 9: Import, Export, Backup, And Packaging Prep
+## Phase 10: Import, Export, Backup, And Packaging Prep
 
 - Add Markdown/TXT import with safe path handling and no untrusted HTML injection.
 - Add project export, cost report export, backup, restore, and migration safety checks.

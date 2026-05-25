@@ -19,6 +19,7 @@ import type {
 } from "./model-routing";
 import type { PrivacySettings, RoutingSettings } from "./settings";
 import type { QualityMode, TaskType } from "@shared/domain/model-routing";
+import type { ContextPreviewPack, ContextPreviewRequest } from "./context";
 
 import type {
   BookRecord,
@@ -37,6 +38,25 @@ import type {
   UpdateStoryBibleEntryInput,
   VolumeRecord
 } from "./data";
+import type {
+  CharacterInput,
+  CharacterRecord,
+  ForeshadowingInput,
+  ForeshadowingRecord,
+  NamedEntityInput,
+  NamedStoryBibleRecord,
+  PowerSystemRuleInput,
+  PowerSystemRuleRecord,
+  ReaderPositioningInput,
+  ReaderPositioningRecord,
+  StoryBibleListQuery,
+  StyleGuideInput,
+  StyleGuideRecord,
+  TimelineEventInput,
+  TimelineEventRecord,
+  UnresolvedHookInput,
+  UnresolvedHookRecord
+} from "./story-bible";
 
 export type WenForgePlatform =
   | "aix"
@@ -143,9 +163,41 @@ export interface WenForgeApi {
       ) => Promise<StoryBibleEntryRecord | null>;
       delete: (id: string, confirmed: boolean) => Promise<boolean>;
     };
+    characters: StoryBibleCrudApi<StoryBibleListQuery, CharacterInput, CharacterRecord>;
+    factions: StoryBibleCrudApi<StoryBibleListQuery, NamedEntityInput, NamedStoryBibleRecord>;
+    locations: StoryBibleCrudApi<StoryBibleListQuery, NamedEntityInput, NamedStoryBibleRecord>;
+    artifacts: StoryBibleCrudApi<StoryBibleListQuery, NamedEntityInput, NamedStoryBibleRecord>;
+    powerSystem: StoryBibleCrudApi<
+      StoryBibleListQuery,
+      PowerSystemRuleInput,
+      PowerSystemRuleRecord
+    >;
+    timeline: StoryBibleCrudApi<StoryBibleListQuery, TimelineEventInput, TimelineEventRecord>;
+    foreshadowing: StoryBibleCrudApi<StoryBibleListQuery, ForeshadowingInput, ForeshadowingRecord>;
+    hooks: StoryBibleCrudApi<StoryBibleListQuery, UnresolvedHookInput, UnresolvedHookRecord>;
+    styleGuide: StoryBibleCrudApi<StoryBibleListQuery, StyleGuideInput, StyleGuideRecord>;
+    readerPositioning: StoryBibleCrudApi<
+      StoryBibleListQuery,
+      ReaderPositioningInput,
+      ReaderPositioningRecord
+    >;
   };
   memory: {
-    search: (bookId: string, query: string) => Promise<MemorySearchResult[]>;
+    search: (
+      bookId: string,
+      query: string,
+      options?: {
+        chapterId?: string | null;
+        sourceTypes?: string[];
+        tags?: string[];
+        minImportance?: number;
+        limit?: number;
+      }
+    ) => Promise<MemorySearchResult[]>;
+    rebuildBookIndex: (bookId: string) => Promise<void>;
+  };
+  context: {
+    previewForChapter: (request: ContextPreviewRequest) => Promise<ContextPreviewPack>;
   };
   credentials: {
     list: () => Promise<ProviderCredentialDto[]>;
@@ -210,4 +262,11 @@ export interface WenForgeApi {
       summary: (request: CostSummaryRequest) => Promise<CostSummary>;
     };
   };
+}
+
+export interface StoryBibleCrudApi<Query, CreateInput, Record> {
+  list: (query: Query) => Promise<Record[]>;
+  create: (input: CreateInput) => Promise<Record>;
+  update: (id: string, input: Partial<CreateInput>) => Promise<Record | null>;
+  delete: (id: string, confirmed: boolean) => Promise<boolean>;
 }

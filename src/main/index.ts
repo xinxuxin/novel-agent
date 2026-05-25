@@ -53,6 +53,7 @@ if (!hasSingleInstanceLock) {
           settingsStore,
           studioModeController,
           repositories: databaseService.repositories,
+          database: databaseService.connection.db,
           credentialService,
           aiGateway
         });

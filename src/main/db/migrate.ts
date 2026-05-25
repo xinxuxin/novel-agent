@@ -509,6 +509,105 @@ function ensureColumns(sqlite: SqliteDatabase): void {
   ensureColumn(sqlite, "provider_credentials", "last_tested_at", "text");
   ensureColumn(sqlite, "provider_credentials", "last_status", "text not null default 'unknown'");
 
+  ensureColumn(sqlite, "characters", "first_appearance_chapter_id", "text");
+  ensureColumn(sqlite, "characters", "goal", "text");
+  ensureColumn(sqlite, "characters", "motivation", "text");
+  ensureColumn(sqlite, "characters", "secret", "text");
+  ensureColumn(sqlite, "characters", "contradiction", "text");
+  ensureColumn(sqlite, "characters", "relationship_notes", "text");
+  ensureColumn(sqlite, "characters", "speaking_style", "text");
+  ensureColumn(sqlite, "characters", "forbidden_inconsistencies", "text");
+  ensureColumn(sqlite, "characters", "tags_json", "text not null default '[]'");
+  ensureColumn(sqlite, "characters", "importance", "integer not null default 5");
+  ensureColumn(sqlite, "characters", "related_chapter_ids_json", "text not null default '[]'");
+
+  for (const tableName of ["factions", "locations", "artifacts"]) {
+    ensureColumn(sqlite, tableName, "tags_json", "text not null default '[]'");
+    ensureColumn(sqlite, tableName, "importance", "integer not null default 5");
+    ensureColumn(sqlite, tableName, "related_chapter_ids_json", "text not null default '[]'");
+  }
+
+  ensureColumn(sqlite, "power_system_rules", "rule_type", "text");
+  ensureColumn(sqlite, "power_system_rules", "rank_level_name", "text");
+  ensureColumn(sqlite, "power_system_rules", "rank_order", "integer not null default 0");
+  ensureColumn(sqlite, "power_system_rules", "advancement_conditions", "text");
+  ensureColumn(sqlite, "power_system_rules", "limits_costs", "text");
+  ensureColumn(sqlite, "power_system_rules", "known_users_json", "text not null default '[]'");
+  ensureColumn(sqlite, "power_system_rules", "contradiction_checks", "text");
+  ensureColumn(sqlite, "power_system_rules", "notes", "text");
+  ensureColumn(sqlite, "power_system_rules", "tags_json", "text not null default '[]'");
+  ensureColumn(sqlite, "power_system_rules", "importance", "integer not null default 5");
+  ensureColumn(
+    sqlite,
+    "power_system_rules",
+    "related_chapter_ids_json",
+    "text not null default '[]'"
+  );
+
+  ensureColumn(sqlite, "timeline_events", "tags_json", "text not null default '[]'");
+  ensureColumn(sqlite, "timeline_events", "importance", "integer not null default 5");
+  ensureColumn(sqlite, "timeline_events", "related_chapter_ids_json", "text not null default '[]'");
+
+  ensureColumn(sqlite, "foreshadowing_items", "seed_chapter_id", "text");
+  ensureColumn(sqlite, "foreshadowing_items", "hint_text", "text");
+  ensureColumn(sqlite, "foreshadowing_items", "expected_payoff_chapter_id", "text");
+  ensureColumn(
+    sqlite,
+    "foreshadowing_items",
+    "related_entities_json",
+    "text not null default '[]'"
+  );
+  ensureColumn(sqlite, "foreshadowing_items", "payoff_notes", "text");
+  ensureColumn(sqlite, "foreshadowing_items", "tags_json", "text not null default '[]'");
+  ensureColumn(sqlite, "foreshadowing_items", "importance", "integer not null default 5");
+  ensureColumn(
+    sqlite,
+    "foreshadowing_items",
+    "related_chapter_ids_json",
+    "text not null default '[]'"
+  );
+
+  ensureColumn(sqlite, "unresolved_hooks", "source_chapter_id", "text");
+  ensureColumn(sqlite, "unresolved_hooks", "hook_text", "text");
+  ensureColumn(sqlite, "unresolved_hooks", "urgency", "text");
+  ensureColumn(sqlite, "unresolved_hooks", "expected_resolution_window", "text");
+  ensureColumn(sqlite, "unresolved_hooks", "notes", "text");
+  ensureColumn(sqlite, "unresolved_hooks", "tags_json", "text not null default '[]'");
+  ensureColumn(sqlite, "unresolved_hooks", "importance", "integer not null default 5");
+  ensureColumn(
+    sqlite,
+    "unresolved_hooks",
+    "related_chapter_ids_json",
+    "text not null default '[]'"
+  );
+
+  ensureColumn(sqlite, "style_guides", "genre", "text");
+  ensureColumn(sqlite, "style_guides", "tone", "text");
+  ensureColumn(sqlite, "style_guides", "pacing_rules", "text");
+  ensureColumn(sqlite, "style_guides", "forbidden_cliches", "text");
+  ensureColumn(sqlite, "style_guides", "preferred_sentence_patterns", "text");
+  ensureColumn(sqlite, "style_guides", "dialogue_style", "text");
+  ensureColumn(sqlite, "style_guides", "chapter_ending_pattern", "text");
+  ensureColumn(sqlite, "style_guides", "examples", "text");
+  ensureColumn(sqlite, "style_guides", "tags_json", "text not null default '[]'");
+  ensureColumn(sqlite, "style_guides", "importance", "integer not null default 5");
+  ensureColumn(sqlite, "style_guides", "related_chapter_ids_json", "text not null default '[]'");
+
+  ensureColumn(sqlite, "reader_positioning", "target_reader", "text");
+  ensureColumn(sqlite, "reader_positioning", "platform_style", "text");
+  ensureColumn(sqlite, "reader_positioning", "genre_expectation", "text");
+  ensureColumn(sqlite, "reader_positioning", "emotional_promise", "text");
+  ensureColumn(sqlite, "reader_positioning", "update_cadence_notes", "text");
+  ensureColumn(sqlite, "reader_positioning", "commercial_constraints", "text");
+  ensureColumn(sqlite, "reader_positioning", "tags_json", "text not null default '[]'");
+  ensureColumn(sqlite, "reader_positioning", "importance", "integer not null default 5");
+  ensureColumn(
+    sqlite,
+    "reader_positioning",
+    "related_chapter_ids_json",
+    "text not null default '[]'"
+  );
+
   ensureColumn(sqlite, "model_profiles", "context_window", "integer");
   ensureColumn(sqlite, "model_profiles", "max_output_tokens", "integer");
   ensureColumn(sqlite, "model_profiles", "supports_streaming", "integer not null default 1");

@@ -55,3 +55,23 @@ export type {
 } from "./model-routing";
 export { DEFAULT_PRIVACY_SETTINGS, DEFAULT_ROUTING_SETTINGS } from "./settings";
 export type { PrivacySettings, RoutingSettings } from "./settings";
+export type { ContextPreviewPack, ContextPreviewRequest } from "./context";
+export type {
+  CharacterInput,
+  CharacterRecord,
+  ForeshadowingInput,
+  ForeshadowingRecord,
+  NamedEntityInput,
+  NamedStoryBibleRecord,
+  PowerSystemRuleInput,
+  PowerSystemRuleRecord,
+  ReaderPositioningInput,
+  ReaderPositioningRecord,
+  StoryBibleListQuery,
+  StyleGuideInput,
+  StyleGuideRecord,
+  TimelineEventInput,
+  TimelineEventRecord,
+  UnresolvedHookInput,
+  UnresolvedHookRecord
+} from "./story-bible";

@@ -12,10 +12,15 @@ The chapter workflow runs through these graph nodes:
 
 1. Prepare Context
    - load project, book, volume, chapter, active manuscript version, style guide, reader positioning, task routes, and cost settings
+   - build the context pack in the main process rather than in the renderer
+   - apply privacy settings before including full recent chapter excerpts
+   - record omitted or truncated context sections explicitly
    - estimate planned workflow cost ranges when route data is available
 
 2. Retrieve Memory
    - query SQLite FTS over story bible records, chapter summaries, timeline events, unresolved hooks, and approved memory chunks
+   - fall back to keyword search if FTS is unavailable
+   - exclude rejected settlement proposals and raw generated artifacts from canonical memory
    - include recent chapter lineage and selected branch context
 
 3. Chapter Outline
@@ -62,6 +67,9 @@ The chapter workflow runs through these graph nodes:
 - Generated facts are proposals with source run, source chapter, evidence summary, and confidence.
 - Conflicts create warnings instead of silent replacements.
 - Accepted settlement updates keep provenance.
+- Phase 6 supports canonical CRUD for characters, factions, locations, artifacts, power-system rules, timeline events, foreshadowing, unresolved hooks, style guides, and reader positioning.
+- Memory indexing can rebuild from accepted story bible records, canonical manuscripts, and chapter summaries.
+- Context preview shows estimated tokens, included memory, omissions, truncation notes, and privacy warnings before generation.
 
 ## WenForge Skill Package
 
@@ -110,4 +118,3 @@ Require explicit confirmation for:
 - credential deletion
 - route changes that affect an active run
 - retrying a failed run when the estimated cost changes materially
-

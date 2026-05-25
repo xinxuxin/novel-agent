@@ -26,6 +26,7 @@ The renderer must never directly call model providers, read decrypted secrets, o
 - Model router: DB-backed task routes for brainstorm, outline, drafting, audits, revision, settlement, summary, and memory indexing.
 - Workflows: LangGraph.js chapter generation graphs with checkpoints and human gates.
 - Memory: SQLite FTS retrieval over approved summaries, story bible records, and memory chunks.
+- Context: main-process context pack assembly with privacy enforcement, redaction, token-budget truncation, and explicit omission notes.
 - Skill package: original WenForge writing methodology and prompt templates.
 - Renderer features: project tree, editor, generation stream, review cards, story bible, cost meter, settings, and route management.
 
@@ -37,7 +38,20 @@ IPC is narrow, versioned, and Zod-validated. Future endpoint families should be 
 - `books.*`
 - `chapters.*`
 - `manuscripts.*`
-- `storyBible.*`
+- `storyBible.entries.*`
+- `storyBible.characters.*`
+- `storyBible.factions.*`
+- `storyBible.locations.*`
+- `storyBible.artifacts.*`
+- `storyBible.powerSystem.*`
+- `storyBible.timeline.*`
+- `storyBible.foreshadowing.*`
+- `storyBible.hooks.*`
+- `storyBible.styleGuide.*`
+- `storyBible.readerPositioning.*`
+- `memory.search`
+- `memory.rebuildBookIndex`
+- `context.previewForChapter`
 - `generation.*`
 - `credentials.*`
 - `modelRoutes.*`
@@ -59,9 +73,11 @@ Core records:
 - story memory: story bible entries, characters, factions, locations, artifacts, power-system rules, timeline events, foreshadowing, unresolved hooks, style guides, reader positioning, memory chunks
 - app configuration: provider credentials, logging settings, route defaults, UI preferences
 
-Generated outputs are drafts until accepted. Canonical manuscript and story bible updates are versioned.
+Generated outputs are drafts or proposals until accepted. Canonical manuscript writes use manuscript versions. Canonical story bible writes currently come from user-saved edits; generated facts are intentionally kept out of canonical memory until a later settlement approval path applies them.
 
 Phase 2 implements main-process repositories for projects, books, volumes, chapters, manuscripts, story bible entries, memory search, generation artifacts, cost placeholders, and settings. Phase 3 adds repositories for provider credentials, model profiles, model prices, and task routes. The renderer receives data through typed IPC only and does not import database modules.
+
+Phase 6 extends the local data layer with structured story bible repositories for characters, factions, locations, artifacts, power-system rules, timeline events, foreshadowing, unresolved hooks, style guides, and reader positioning. `MemoryIndexService` rebuilds searchable memory from accepted story bible records, canonical manuscripts, and chapter summaries, using SQLite FTS5 first and keyword fallback when FTS is unavailable.
 
 ## Workflow Runtime
 
@@ -79,6 +95,8 @@ LangGraph.js orchestrates durable local workflows:
 10. propose state settlement
 
 Workflow nodes call the provider layer through the cost wrapper. Human gates pause before canonical writes or accepted memory changes. Resume, cancellation, and partial artifact recovery are required workflow behaviors.
+
+The Phase 6 context builder implements the prepare-context input shape before LangGraph workflow execution exists. It runs in the main process, reads only local repositories, redacts key-like strings, respects privacy settings for full recent chapters, and returns explicit omissions/truncation notes to the renderer preview.
 
 ## Provider And Cost Layers
 

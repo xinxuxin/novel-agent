@@ -19,14 +19,16 @@ import { createSimpleDiff, manuscriptStats } from "@features/editor/manuscript-u
 import { ModelRouteCard } from "@features/model-router/ModelRouteCard";
 import { ProjectSidebar } from "@features/projects/ProjectSidebar";
 import { SettingsPanel } from "@features/settings/SettingsPanel";
+import { ContextPreviewPanel } from "@features/story-bible/ContextPreviewPanel";
 import { StoryBiblePanel } from "@features/story-bible/StoryBiblePanel";
+import { StoryBibleWorkspace } from "@features/story-bible/StoryBibleWorkspace";
 import { TaskTimeline } from "@features/workflows/TaskTimeline";
 import type { StudioCommandId } from "@features/workflows/command-registry";
 import { runDestructiveAction } from "@features/workflows/confirmation";
 import type { ModelRouteResolution } from "@contracts/model-routing";
 import { useUiStore } from "@renderer/stores/ui-store";
 
-type WorkspaceView = "chapter" | "settings";
+type WorkspaceView = "chapter" | "storyBible" | "settings";
 type WorkspaceTab = "manuscript" | "generate" | "review" | "timeline" | "versions";
 
 const CHAPTER_STATUSES = [
@@ -605,6 +607,17 @@ export function App(): JSX.Element {
             </button>
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
+                workspaceView === "storyBible"
+                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
+                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
+              }`}
+              onClick={() => setWorkspaceView("storyBible")}
+              type="button"
+            >
+              Bible
+            </button>
+            <button
+              className={`rounded-md border px-3 py-1.5 text-xs transition ${
                 workspaceView === "settings"
                   ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
                   : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
@@ -686,6 +699,8 @@ export function App(): JSX.Element {
               <div className="h-full overflow-auto">
                 <SettingsPanel />
               </div>
+            ) : workspaceView === "storyBible" ? (
+              <StoryBibleWorkspace bookId={activeBook?.id ?? null} />
             ) : (
               <ChapterWorkspace
                 activeChapter={activeChapter}
@@ -732,6 +747,12 @@ export function App(): JSX.Element {
                   summary={costSummary}
                 />
                 <ModelRouteCard routeResolution={routeResolution} />
+                <ContextPreviewPanel
+                  book={activeBook}
+                  chapter={activeChapter}
+                  project={activeProject}
+                  volume={volumes.find((item) => item.id === activeChapter?.volumeId) ?? null}
+                />
                 <section className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
                   <h3 className="text-sm font-semibold text-white">Settlement proposals</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-500">

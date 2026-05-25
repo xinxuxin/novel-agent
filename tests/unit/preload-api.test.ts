@@ -33,6 +33,7 @@ describe("preload API", () => {
       "app",
       "books",
       "chapters",
+      "context",
       "credentials",
       "diagnostics",
       "manuscripts",

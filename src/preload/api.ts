@@ -20,6 +20,26 @@ import type {
   TaskRouteRecord
 } from "@contracts/model-routing";
 import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
+import type { ContextPreviewPack, ContextPreviewRequest } from "@contracts/context";
+import type {
+  CharacterInput,
+  CharacterRecord,
+  ForeshadowingInput,
+  ForeshadowingRecord,
+  NamedEntityInput,
+  NamedStoryBibleRecord,
+  PowerSystemRuleInput,
+  PowerSystemRuleRecord,
+  ReaderPositioningInput,
+  ReaderPositioningRecord,
+  StoryBibleListQuery,
+  StyleGuideInput,
+  StyleGuideRecord,
+  TimelineEventInput,
+  TimelineEventRecord,
+  UnresolvedHookInput,
+  UnresolvedHookRecord
+} from "@contracts/story-bible";
 import type { QualityMode, TaskType } from "@shared/domain/model-routing";
 import { IPC_CONTRACTS, ipcEnvelopeSchema } from "@shared/ipc/contracts";
 import { normalizeTheme } from "@shared/theme";
@@ -55,6 +75,50 @@ async function invokeContract<T>(
   }
 
   return responseSchema.parse(envelope.data);
+}
+
+function createStoryBibleEntityApi<RecordType, InputType>(
+  invoke: IpcInvoker,
+  contracts: {
+    list: { channel: string; response: z.ZodType };
+    create: { channel: string; response: z.ZodType };
+    update: { channel: string; response: z.ZodType };
+    delete: { channel: string; response: z.ZodType };
+  }
+) {
+  return {
+    list: (query: StoryBibleListQuery) =>
+      invokeContract<RecordType[]>(
+        invoke,
+        contracts.list.channel,
+        contracts.list.response as z.ZodType<RecordType[]>,
+        query
+      ),
+    create: (input: InputType) =>
+      invokeContract<RecordType>(
+        invoke,
+        contracts.create.channel,
+        contracts.create.response as z.ZodType<RecordType>,
+        input
+      ),
+    update: (id: string, input: Partial<InputType>) =>
+      invokeContract<RecordType | null>(
+        invoke,
+        contracts.update.channel,
+        contracts.update.response as z.ZodType<RecordType | null>,
+        { id, ...input }
+      ),
+    delete: (id: string, confirmed: boolean) =>
+      invokeContract<boolean>(
+        invoke,
+        contracts.delete.channel,
+        contracts.delete.response as z.ZodType<boolean>,
+        {
+          id,
+          confirmed
+        }
+      )
+  };
 }
 
 export function createPreloadApi(
@@ -360,15 +424,72 @@ export function createPreloadApi(
             IPC_CONTRACTS.storyBible.entries.delete.response,
             { id, confirmed }
           )
-      }
+      },
+      characters: createStoryBibleEntityApi<CharacterRecord, CharacterInput>(
+        invoke,
+        IPC_CONTRACTS.storyBible.characters
+      ),
+      factions: createStoryBibleEntityApi<NamedStoryBibleRecord, NamedEntityInput>(
+        invoke,
+        IPC_CONTRACTS.storyBible.factions
+      ),
+      locations: createStoryBibleEntityApi<NamedStoryBibleRecord, NamedEntityInput>(
+        invoke,
+        IPC_CONTRACTS.storyBible.locations
+      ),
+      artifacts: createStoryBibleEntityApi<NamedStoryBibleRecord, NamedEntityInput>(
+        invoke,
+        IPC_CONTRACTS.storyBible.artifacts
+      ),
+      powerSystem: createStoryBibleEntityApi<PowerSystemRuleRecord, PowerSystemRuleInput>(
+        invoke,
+        IPC_CONTRACTS.storyBible.powerSystem
+      ),
+      timeline: createStoryBibleEntityApi<TimelineEventRecord, TimelineEventInput>(
+        invoke,
+        IPC_CONTRACTS.storyBible.timeline
+      ),
+      foreshadowing: createStoryBibleEntityApi<ForeshadowingRecord, ForeshadowingInput>(
+        invoke,
+        IPC_CONTRACTS.storyBible.foreshadowing
+      ),
+      hooks: createStoryBibleEntityApi<UnresolvedHookRecord, UnresolvedHookInput>(
+        invoke,
+        IPC_CONTRACTS.storyBible.hooks
+      ),
+      styleGuide: createStoryBibleEntityApi<StyleGuideRecord, StyleGuideInput>(
+        invoke,
+        IPC_CONTRACTS.storyBible.styleGuide
+      ),
+      readerPositioning: createStoryBibleEntityApi<ReaderPositioningRecord, ReaderPositioningInput>(
+        invoke,
+        IPC_CONTRACTS.storyBible.readerPositioning
+      )
     },
     memory: {
-      search: (bookId, query) =>
+      search: (bookId, query, options = {}) =>
         invokeContract<MemorySearchResult[]>(
           invoke,
           IPC_CONTRACTS.memory.search.channel,
           IPC_CONTRACTS.memory.search.response,
-          { bookId, query }
+          { bookId, query, ...options }
+        ),
+      rebuildBookIndex: async (bookId) => {
+        await invokeContract<void>(
+          invoke,
+          IPC_CONTRACTS.memory.rebuildBookIndex.channel,
+          IPC_CONTRACTS.memory.rebuildBookIndex.response,
+          { bookId }
+        );
+      }
+    },
+    context: {
+      previewForChapter: (request: ContextPreviewRequest) =>
+        invokeContract<ContextPreviewPack>(
+          invoke,
+          IPC_CONTRACTS.context.previewForChapter.channel,
+          IPC_CONTRACTS.context.previewForChapter.response,
+          request
         )
     },
     credentials: {

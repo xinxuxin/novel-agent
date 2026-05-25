@@ -83,6 +83,10 @@ export interface MemorySearchResult {
   sourceId: string;
   title: string;
   content: string;
+  summary?: string | null | undefined;
+  tags?: string[] | undefined;
+  importance?: number | undefined;
+  score?: number | undefined;
 }
 
 export interface CreateProjectInput {

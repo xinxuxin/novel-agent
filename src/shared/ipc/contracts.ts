@@ -145,15 +145,209 @@ const storyBibleEntrySchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string()
 });
+const providerSchema = z.enum(PROVIDERS);
+const taskTypeSchema = z.enum(TASK_TYPES);
+const qualityModeSchema = z.enum(QUALITY_MODES);
+const privacySettingsSchema = z.object({
+  storeFullPrompts: z.boolean(),
+  storeFullResponses: z.boolean(),
+  storeManuscriptsInLogs: z.boolean(),
+  allowSendingFullRecentChapters: z.boolean(),
+  recentChapterCount: z.number().int().min(0),
+  maxContextTokenBudget: z.number().int().positive(),
+  enableDebugLogging: z.boolean()
+});
+const routingSettingsSchema = z.object({
+  priceStaleAfterDays: z.number().int().positive(),
+  missingPriceBehavior: z.enum(["warn", "block"])
+});
+const storyBibleQuerySchema = z.object({
+  bookId: z.string().min(1),
+  query: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  chapterId: z.string().nullable().optional()
+});
+const storyBibleRecordSchema: z.ZodType<{ id: string }> = z
+  .object({ id: z.string() })
+  .passthrough();
+const namedStoryBibleRecordSchema = storyBibleRecordSchema;
+const namedStoryBibleInputSchema = z.object({
+  bookId: z.string().min(1),
+  name: z.string().trim().min(1),
+  summary: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  importance: z.number().int().min(0).max(10).optional(),
+  relatedChapterIds: z.array(z.string()).optional()
+});
+const namedStoryBibleUpdateSchema = namedStoryBibleInputSchema.partial().extend({
+  id: z.string().min(1)
+});
+const characterRecordSchema = storyBibleRecordSchema;
+const characterInputSchema = namedStoryBibleInputSchema.extend({
+  aliases: z.array(z.string()).optional(),
+  role: z.string().nullable().optional(),
+  firstAppearanceChapterId: z.string().nullable().optional(),
+  currentState: z.string().nullable().optional(),
+  goal: z.string().nullable().optional(),
+  motivation: z.string().nullable().optional(),
+  secret: z.string().nullable().optional(),
+  contradiction: z.string().nullable().optional(),
+  relationshipNotes: z.string().nullable().optional(),
+  speakingStyle: z.string().nullable().optional(),
+  forbiddenInconsistencies: z.string().nullable().optional()
+});
+const characterUpdateSchema = characterInputSchema.partial().extend({ id: z.string().min(1) });
+const powerSystemRecordSchema = storyBibleRecordSchema;
+const powerSystemInputSchema = z.object({
+  bookId: z.string().min(1),
+  ruleType: z.string().nullable().optional(),
+  rankLevelName: z.string().trim().min(1),
+  rankOrder: z.number().int().optional(),
+  advancementConditions: z.string().nullable().optional(),
+  limitsCosts: z.string().nullable().optional(),
+  knownUsers: z.array(z.string()).optional(),
+  contradictionChecks: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  importance: z.number().int().min(0).max(10).optional(),
+  relatedChapterIds: z.array(z.string()).optional()
+});
+const powerSystemUpdateSchema = powerSystemInputSchema.partial().extend({ id: z.string().min(1) });
+const timelineRecordSchema = storyBibleRecordSchema;
+const timelineInputSchema = z.object({
+  bookId: z.string().min(1),
+  chapterId: z.string().nullable().optional(),
+  eventIndex: z.number().int().optional(),
+  title: z.string().trim().min(1),
+  content: z.string().min(1),
+  tags: z.array(z.string()).optional(),
+  importance: z.number().int().min(0).max(10).optional(),
+  relatedChapterIds: z.array(z.string()).optional()
+});
+const timelineUpdateSchema = timelineInputSchema.partial().extend({ id: z.string().min(1) });
+const foreshadowingStatusSchema = z.enum(["seeded", "developing", "paid_off", "abandoned"]);
+const foreshadowingRecordSchema = storyBibleRecordSchema;
+const foreshadowingInputSchema = z.object({
+  bookId: z.string().min(1),
+  seedChapterId: z.string().nullable().optional(),
+  hintText: z.string().trim().min(1),
+  expectedPayoffChapterId: z.string().nullable().optional(),
+  status: foreshadowingStatusSchema.optional(),
+  relatedEntities: z.array(z.string()).optional(),
+  payoffNotes: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  importance: z.number().int().min(0).max(10).optional(),
+  relatedChapterIds: z.array(z.string()).optional()
+});
+const foreshadowingUpdateSchema = foreshadowingInputSchema.partial().extend({
+  id: z.string().min(1)
+});
+const hookRecordSchema = storyBibleRecordSchema;
+const hookInputSchema = z.object({
+  bookId: z.string().min(1),
+  sourceChapterId: z.string().nullable().optional(),
+  hookText: z.string().trim().min(1),
+  urgency: z.string().nullable().optional(),
+  expectedResolutionWindow: z.string().nullable().optional(),
+  status: z.string().optional(),
+  notes: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  importance: z.number().int().min(0).max(10).optional(),
+  relatedChapterIds: z.array(z.string()).optional()
+});
+const hookUpdateSchema = hookInputSchema.partial().extend({ id: z.string().min(1) });
+const styleGuideRecordSchema = storyBibleRecordSchema;
+const styleGuideInputSchema = z.object({
+  bookId: z.string().min(1),
+  title: z.string().optional(),
+  content: z.string().optional(),
+  genre: z.string().nullable().optional(),
+  tone: z.string().nullable().optional(),
+  pacingRules: z.string().nullable().optional(),
+  forbiddenCliches: z.string().nullable().optional(),
+  preferredSentencePatterns: z.string().nullable().optional(),
+  dialogueStyle: z.string().nullable().optional(),
+  chapterEndingPattern: z.string().nullable().optional(),
+  examples: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  importance: z.number().int().min(0).max(10).optional(),
+  relatedChapterIds: z.array(z.string()).optional()
+});
+const styleGuideUpdateSchema = styleGuideInputSchema.partial().extend({ id: z.string().min(1) });
+const readerPositioningRecordSchema = storyBibleRecordSchema;
+const readerPositioningInputSchema = z.object({
+  bookId: z.string().min(1),
+  title: z.string().optional(),
+  content: z.string().optional(),
+  targetReader: z.string().nullable().optional(),
+  platformStyle: z.string().nullable().optional(),
+  genreExpectation: z.string().nullable().optional(),
+  emotionalPromise: z.string().nullable().optional(),
+  updateCadenceNotes: z.string().nullable().optional(),
+  commercialConstraints: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  importance: z.number().int().min(0).max(10).optional(),
+  relatedChapterIds: z.array(z.string()).optional()
+});
+const readerPositioningUpdateSchema = readerPositioningInputSchema.partial().extend({
+  id: z.string().min(1)
+});
 const memorySearchResultSchema = z.object({
   sourceType: z.string(),
   sourceId: z.string(),
   title: z.string(),
-  content: z.string()
+  content: z.string(),
+  summary: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  importance: z.number().optional(),
+  score: z.number().optional()
 });
-const providerSchema = z.enum(PROVIDERS);
-const taskTypeSchema = z.enum(TASK_TYPES);
-const qualityModeSchema = z.enum(QUALITY_MODES);
+const contextPreviewRequestSchema = z.object({
+  projectId: z.string().min(1),
+  bookId: z.string().min(1),
+  volumeId: z.string().nullable().optional(),
+  chapterId: z.string().min(1),
+  taskType: taskTypeSchema,
+  userInstruction: z.string().nullable().optional(),
+  qualityMode: qualityModeSchema,
+  targetTokenBudget: z.number().int().positive(),
+  includeRecentChapters: z.number().int().min(0),
+  includeFullRecentChapters: z.boolean(),
+  privacy: privacySettingsSchema.optional()
+});
+const contextPreviewPackSchema = z.object({
+  projectBrief: z.string(),
+  bookPremise: z.string(),
+  volumeGoal: z.string().nullable(),
+  currentChapterMetadata: z.string(),
+  currentChapterOutline: z.unknown().nullable(),
+  sceneCards: z.array(z.unknown()),
+  readerPositioning: z.string(),
+  styleGuide: z.string(),
+  relevantCharacters: z.array(z.string()),
+  relevantFactions: z.array(z.string()),
+  relevantLocations: z.array(z.string()),
+  relevantArtifacts: z.array(z.string()),
+  powerSystemDigest: z.string(),
+  timelineDigest: z.string(),
+  foreshadowingDigest: z.string(),
+  unresolvedHooks: z.array(z.string()),
+  recentChapterSummaries: z.array(z.string()),
+  recentChapterExcerpts: z.array(z.string()),
+  retrievedMemoryChunks: z.array(
+    z.object({
+      sourceType: z.string(),
+      sourceId: z.string(),
+      title: z.string(),
+      content: z.string(),
+      score: z.number()
+    })
+  ),
+  continuityWarnings: z.array(z.string()),
+  omissions: z.array(z.string()),
+  truncationNotes: z.array(z.string()),
+  estimatedTokens: z.number()
+});
 const credentialDtoSchema = z.object({
   id: z.string(),
   provider: providerSchema,
@@ -239,20 +433,6 @@ const routeResolutionSchema = z.object({
   warnings: z.array(z.string()),
   errors: z.array(z.string())
 });
-const privacySettingsSchema = z.object({
-  storeFullPrompts: z.boolean(),
-  storeFullResponses: z.boolean(),
-  storeManuscriptsInLogs: z.boolean(),
-  allowSendingFullRecentChapters: z.boolean(),
-  recentChapterCount: z.number().int().min(0),
-  maxContextTokenBudget: z.number().int().positive(),
-  enableDebugLogging: z.boolean()
-});
-const routingSettingsSchema = z.object({
-  priceStaleAfterDays: z.number().int().positive(),
-  missingPriceBehavior: z.enum(["warn", "block"])
-});
-
 export const IPC_CONTRACTS = {
   app: {
     getVersion: createContract("app:get-version", emptyRequestSchema, z.string()),
@@ -478,6 +658,186 @@ export const IPC_CONTRACTS = {
         storyBibleEntrySchema.nullable()
       ),
       delete: createContract("story-bible:entries:delete", confirmedDeleteSchema, z.boolean())
+    },
+    characters: {
+      list: createContract(
+        "story-bible:characters:list",
+        storyBibleQuerySchema,
+        z.array(characterRecordSchema)
+      ),
+      create: createContract(
+        "story-bible:characters:create",
+        characterInputSchema,
+        characterRecordSchema
+      ),
+      update: createContract(
+        "story-bible:characters:update",
+        characterUpdateSchema,
+        characterRecordSchema.nullable()
+      ),
+      delete: createContract("story-bible:characters:delete", confirmedDeleteSchema, z.boolean())
+    },
+    factions: {
+      list: createContract(
+        "story-bible:factions:list",
+        storyBibleQuerySchema,
+        z.array(namedStoryBibleRecordSchema)
+      ),
+      create: createContract(
+        "story-bible:factions:create",
+        namedStoryBibleInputSchema,
+        namedStoryBibleRecordSchema
+      ),
+      update: createContract(
+        "story-bible:factions:update",
+        namedStoryBibleUpdateSchema,
+        namedStoryBibleRecordSchema.nullable()
+      ),
+      delete: createContract("story-bible:factions:delete", confirmedDeleteSchema, z.boolean())
+    },
+    locations: {
+      list: createContract(
+        "story-bible:locations:list",
+        storyBibleQuerySchema,
+        z.array(namedStoryBibleRecordSchema)
+      ),
+      create: createContract(
+        "story-bible:locations:create",
+        namedStoryBibleInputSchema,
+        namedStoryBibleRecordSchema
+      ),
+      update: createContract(
+        "story-bible:locations:update",
+        namedStoryBibleUpdateSchema,
+        namedStoryBibleRecordSchema.nullable()
+      ),
+      delete: createContract("story-bible:locations:delete", confirmedDeleteSchema, z.boolean())
+    },
+    artifacts: {
+      list: createContract(
+        "story-bible:artifacts:list",
+        storyBibleQuerySchema,
+        z.array(namedStoryBibleRecordSchema)
+      ),
+      create: createContract(
+        "story-bible:artifacts:create",
+        namedStoryBibleInputSchema,
+        namedStoryBibleRecordSchema
+      ),
+      update: createContract(
+        "story-bible:artifacts:update",
+        namedStoryBibleUpdateSchema,
+        namedStoryBibleRecordSchema.nullable()
+      ),
+      delete: createContract("story-bible:artifacts:delete", confirmedDeleteSchema, z.boolean())
+    },
+    powerSystem: {
+      list: createContract(
+        "story-bible:power-system:list",
+        storyBibleQuerySchema,
+        z.array(powerSystemRecordSchema)
+      ),
+      create: createContract(
+        "story-bible:power-system:create",
+        powerSystemInputSchema,
+        powerSystemRecordSchema
+      ),
+      update: createContract(
+        "story-bible:power-system:update",
+        powerSystemUpdateSchema,
+        powerSystemRecordSchema.nullable()
+      ),
+      delete: createContract("story-bible:power-system:delete", confirmedDeleteSchema, z.boolean())
+    },
+    timeline: {
+      list: createContract(
+        "story-bible:timeline:list",
+        storyBibleQuerySchema,
+        z.array(timelineRecordSchema)
+      ),
+      create: createContract(
+        "story-bible:timeline:create",
+        timelineInputSchema,
+        timelineRecordSchema
+      ),
+      update: createContract(
+        "story-bible:timeline:update",
+        timelineUpdateSchema,
+        timelineRecordSchema.nullable()
+      ),
+      delete: createContract("story-bible:timeline:delete", confirmedDeleteSchema, z.boolean())
+    },
+    foreshadowing: {
+      list: createContract(
+        "story-bible:foreshadowing:list",
+        storyBibleQuerySchema,
+        z.array(foreshadowingRecordSchema)
+      ),
+      create: createContract(
+        "story-bible:foreshadowing:create",
+        foreshadowingInputSchema,
+        foreshadowingRecordSchema
+      ),
+      update: createContract(
+        "story-bible:foreshadowing:update",
+        foreshadowingUpdateSchema,
+        foreshadowingRecordSchema.nullable()
+      ),
+      delete: createContract("story-bible:foreshadowing:delete", confirmedDeleteSchema, z.boolean())
+    },
+    hooks: {
+      list: createContract(
+        "story-bible:hooks:list",
+        storyBibleQuerySchema,
+        z.array(hookRecordSchema)
+      ),
+      create: createContract("story-bible:hooks:create", hookInputSchema, hookRecordSchema),
+      update: createContract(
+        "story-bible:hooks:update",
+        hookUpdateSchema,
+        hookRecordSchema.nullable()
+      ),
+      delete: createContract("story-bible:hooks:delete", confirmedDeleteSchema, z.boolean())
+    },
+    styleGuide: {
+      list: createContract(
+        "story-bible:style-guide:list",
+        storyBibleQuerySchema,
+        z.array(styleGuideRecordSchema)
+      ),
+      create: createContract(
+        "story-bible:style-guide:create",
+        styleGuideInputSchema,
+        styleGuideRecordSchema
+      ),
+      update: createContract(
+        "story-bible:style-guide:update",
+        styleGuideUpdateSchema,
+        styleGuideRecordSchema.nullable()
+      ),
+      delete: createContract("story-bible:style-guide:delete", confirmedDeleteSchema, z.boolean())
+    },
+    readerPositioning: {
+      list: createContract(
+        "story-bible:reader-positioning:list",
+        storyBibleQuerySchema,
+        z.array(readerPositioningRecordSchema)
+      ),
+      create: createContract(
+        "story-bible:reader-positioning:create",
+        readerPositioningInputSchema,
+        readerPositioningRecordSchema
+      ),
+      update: createContract(
+        "story-bible:reader-positioning:update",
+        readerPositioningUpdateSchema,
+        readerPositioningRecordSchema.nullable()
+      ),
+      delete: createContract(
+        "story-bible:reader-positioning:delete",
+        confirmedDeleteSchema,
+        z.boolean()
+      )
     }
   },
   dataSettings: {
@@ -495,8 +855,28 @@ export const IPC_CONTRACTS = {
   memory: {
     search: createContract(
       "memory:search",
-      z.object({ bookId: z.string().min(1), query: z.string().trim().min(1) }),
+      z.object({
+        bookId: z.string().min(1),
+        query: z.string().trim().min(1),
+        chapterId: z.string().nullable().optional(),
+        sourceTypes: z.array(z.string()).optional(),
+        tags: z.array(z.string()).optional(),
+        minImportance: z.number().optional(),
+        limit: z.number().int().positive().optional()
+      }),
       z.array(memorySearchResultSchema)
+    ),
+    rebuildBookIndex: createContract(
+      "memory:rebuild-book-index",
+      z.object({ bookId: z.string().min(1) }),
+      z.undefined()
+    )
+  },
+  context: {
+    previewForChapter: createContract(
+      "context:preview-for-chapter",
+      contextPreviewRequestSchema,
+      contextPreviewPackSchema
     )
   },
   credentials: {
@@ -626,9 +1006,9 @@ export const IPC_CONTRACTS = {
       summary: createContract("ai:costs:summary", costSummaryRequestSchema, costSummarySchema)
     }
   }
-} as const;
+};
 
-export const IPC_CONTRACT_LIST = [
+export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.app.getVersion,
   IPC_CONTRACTS.app.getPlatform,
   IPC_CONTRACTS.app.getEnvironment,
@@ -669,9 +1049,51 @@ export const IPC_CONTRACT_LIST = [
   IPC_CONTRACTS.storyBible.entries.create,
   IPC_CONTRACTS.storyBible.entries.update,
   IPC_CONTRACTS.storyBible.entries.delete,
+  IPC_CONTRACTS.storyBible.characters.list,
+  IPC_CONTRACTS.storyBible.characters.create,
+  IPC_CONTRACTS.storyBible.characters.update,
+  IPC_CONTRACTS.storyBible.characters.delete,
+  IPC_CONTRACTS.storyBible.factions.list,
+  IPC_CONTRACTS.storyBible.factions.create,
+  IPC_CONTRACTS.storyBible.factions.update,
+  IPC_CONTRACTS.storyBible.factions.delete,
+  IPC_CONTRACTS.storyBible.locations.list,
+  IPC_CONTRACTS.storyBible.locations.create,
+  IPC_CONTRACTS.storyBible.locations.update,
+  IPC_CONTRACTS.storyBible.locations.delete,
+  IPC_CONTRACTS.storyBible.artifacts.list,
+  IPC_CONTRACTS.storyBible.artifacts.create,
+  IPC_CONTRACTS.storyBible.artifacts.update,
+  IPC_CONTRACTS.storyBible.artifacts.delete,
+  IPC_CONTRACTS.storyBible.powerSystem.list,
+  IPC_CONTRACTS.storyBible.powerSystem.create,
+  IPC_CONTRACTS.storyBible.powerSystem.update,
+  IPC_CONTRACTS.storyBible.powerSystem.delete,
+  IPC_CONTRACTS.storyBible.timeline.list,
+  IPC_CONTRACTS.storyBible.timeline.create,
+  IPC_CONTRACTS.storyBible.timeline.update,
+  IPC_CONTRACTS.storyBible.timeline.delete,
+  IPC_CONTRACTS.storyBible.foreshadowing.list,
+  IPC_CONTRACTS.storyBible.foreshadowing.create,
+  IPC_CONTRACTS.storyBible.foreshadowing.update,
+  IPC_CONTRACTS.storyBible.foreshadowing.delete,
+  IPC_CONTRACTS.storyBible.hooks.list,
+  IPC_CONTRACTS.storyBible.hooks.create,
+  IPC_CONTRACTS.storyBible.hooks.update,
+  IPC_CONTRACTS.storyBible.hooks.delete,
+  IPC_CONTRACTS.storyBible.styleGuide.list,
+  IPC_CONTRACTS.storyBible.styleGuide.create,
+  IPC_CONTRACTS.storyBible.styleGuide.update,
+  IPC_CONTRACTS.storyBible.styleGuide.delete,
+  IPC_CONTRACTS.storyBible.readerPositioning.list,
+  IPC_CONTRACTS.storyBible.readerPositioning.create,
+  IPC_CONTRACTS.storyBible.readerPositioning.update,
+  IPC_CONTRACTS.storyBible.readerPositioning.delete,
   IPC_CONTRACTS.dataSettings.get,
   IPC_CONTRACTS.dataSettings.set,
   IPC_CONTRACTS.memory.search,
+  IPC_CONTRACTS.memory.rebuildBookIndex,
+  IPC_CONTRACTS.context.previewForChapter,
   IPC_CONTRACTS.credentials.list,
   IPC_CONTRACTS.credentials.save,
   IPC_CONTRACTS.credentials.delete,
@@ -694,4 +1116,4 @@ export const IPC_CONTRACT_LIST = [
   IPC_CONTRACTS.ai.runs.get,
   IPC_CONTRACTS.ai.runs.listByChapter,
   IPC_CONTRACTS.ai.costs.summary
-] as const;
+];
