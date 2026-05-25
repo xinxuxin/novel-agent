@@ -4,7 +4,10 @@ import type { JSX } from "react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
-  filterCommands,
+  COMMAND_CATEGORIES,
+  resolveCommandPalette,
+  type CommandPaletteContext,
+  type CommandPaletteItem,
   type StudioCommand,
   type StudioCommandId
 } from "@features/workflows/command-registry";
@@ -13,6 +16,8 @@ interface CommandPaletteProps {
   open: boolean;
   onClose: () => void;
   onRunCommand: (commandId: StudioCommandId) => void;
+  context?: CommandPaletteContext;
+  recentCommandIds?: StudioCommandId[];
 }
 
 function nextIndex(current: number, delta: number, length: number): number {
@@ -20,11 +25,25 @@ function nextIndex(current: number, delta: number, length: number): number {
   return (current + delta + length) % length;
 }
 
-export function CommandPalette({ open, onClose, onRunCommand }: CommandPaletteProps): JSX.Element {
+export function CommandPalette({
+  open,
+  onClose,
+  onRunCommand,
+  context,
+  recentCommandIds = []
+}: CommandPaletteProps): JSX.Element {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const reduceMotion = useReducedMotion();
-  const commands = useMemo(() => filterCommands(query), [query]);
+  const items = useMemo(
+    () =>
+      resolveCommandPalette({
+        query,
+        recentCommandIds,
+        ...(context ? { context } : {})
+      }),
+    [context, query, recentCommandIds]
+  );
 
   const closePalette = useCallback((): void => {
     setQuery("");
@@ -43,17 +62,17 @@ export function CommandPalette({ open, onClose, onRunCommand }: CommandPalettePr
       }
       if (event.key === "ArrowDown") {
         event.preventDefault();
-        setActiveIndex((current) => nextIndex(current, 1, commands.length));
+        setActiveIndex((current) => nextIndex(current, 1, items.length));
       }
       if (event.key === "ArrowUp") {
         event.preventDefault();
-        setActiveIndex((current) => nextIndex(current, -1, commands.length));
+        setActiveIndex((current) => nextIndex(current, -1, items.length));
       }
       if (event.key === "Enter") {
-        const command = commands[activeIndex];
-        if (command) {
+        const item = items[activeIndex];
+        if (item && !item.disabledReason) {
           event.preventDefault();
-          onRunCommand(command.id);
+          onRunCommand(item.command.id);
           closePalette();
         }
       }
@@ -61,10 +80,11 @@ export function CommandPalette({ open, onClose, onRunCommand }: CommandPalettePr
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeIndex, commands, closePalette, onRunCommand, open]);
+  }, [activeIndex, items, closePalette, onRunCommand, open]);
 
-  const runCommand = (command: StudioCommand): void => {
-    onRunCommand(command.id);
+  const runCommand = (item: CommandPaletteItem): void => {
+    if (item.disabledReason) return;
+    onRunCommand(item.command.id);
     closePalette();
   };
 
@@ -102,29 +122,34 @@ export function CommandPalette({ open, onClose, onRunCommand }: CommandPalettePr
                     value={query}
                   />
                 </div>
-                <div className="p-2">
-                  {commands.map((command, index) => (
-                    <button
-                      aria-current={index === activeIndex}
-                      className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${
-                        index === activeIndex
-                          ? "bg-forge-blue/12 text-white"
-                          : "text-slate-200 hover:bg-white/8"
-                      }`}
-                      key={command.id}
-                      onClick={() => runCommand(command)}
-                      type="button"
-                    >
-                      <span>
-                        <span className="block">{command.label}</span>
-                        <span className="block text-xs text-slate-500">{command.description}</span>
-                      </span>
-                      <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-xs text-slate-500">
-                        {command.placeholder ? "Soon" : command.section}
-                      </span>
-                    </button>
-                  ))}
-                  {commands.length === 0 ? (
+                <div className="max-h-[60vh] overflow-auto p-2">
+                  {COMMAND_CATEGORIES.map((category) => {
+                    const categoryItems = items.filter(
+                      (item) => item.command.category === category
+                    );
+                    if (categoryItems.length === 0) return null;
+                    return (
+                      <section className="py-1" key={category}>
+                        <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                          {category}
+                        </p>
+                        {categoryItems.map((item) => {
+                          const index = items.findIndex(
+                            (candidate) => candidate.command.id === item.command.id
+                          );
+                          return (
+                            <CommandButton
+                              active={index === activeIndex}
+                              item={item}
+                              key={item.command.id}
+                              onRun={runCommand}
+                            />
+                          );
+                        })}
+                      </section>
+                    );
+                  })}
+                  {items.length === 0 ? (
                     <p className="px-3 py-6 text-center text-sm text-slate-500">
                       No matching commands.
                     </p>
@@ -136,5 +161,45 @@ export function CommandPalette({ open, onClose, onRunCommand }: CommandPalettePr
         ) : null}
       </AnimatePresence>
     </Dialog.Root>
+  );
+}
+
+function CommandButton({
+  active,
+  item,
+  onRun
+}: {
+  active: boolean;
+  item: CommandPaletteItem;
+  onRun: (item: CommandPaletteItem) => void;
+}): JSX.Element {
+  const command: StudioCommand = item.command;
+  return (
+    <button
+      aria-current={active}
+      aria-disabled={Boolean(item.disabledReason)}
+      className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${
+        active ? "bg-forge-blue/12 text-white" : "text-slate-200 hover:bg-white/8"
+      } ${item.disabledReason ? "cursor-not-allowed opacity-45" : ""}`}
+      onClick={() => onRun(item)}
+      type="button"
+    >
+      <span className="min-w-0">
+        <span className="block truncate">{command.label}</span>
+        <span className="block truncate text-xs text-slate-500">
+          {item.disabledReason ?? command.description}
+        </span>
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        {item.recent ? (
+          <span className="rounded-full border border-forge-cyan/20 px-2 py-0.5 text-xs text-forge-cyan">
+            Recent
+          </span>
+        ) : null}
+        <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-slate-500">
+          {command.requiresConfirmation ? "Confirm" : command.category}
+        </span>
+      </span>
+    </button>
   );
 }

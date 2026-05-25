@@ -191,10 +191,24 @@ Deferred from Phase 11: provider-backed eval execution, full daily/project spend
 
 Deferred from Phase 12: native file picker save/open flows, EPUB export, automatic backup scheduling hooks, first-run onboarding, and electron-builder packaging configuration.
 
-## Phase 13: Onboarding, File Picker Polish, And Packaging Prep
+## Phase 13: Onboarding, Command Palette, And Popover UX (Complete)
 
-- Add first-run onboarding for provider setup, route defaults, and manuscript logging settings.
+- [x] Add first-launch onboarding for Simplified Chinese default language, project setup, mock/provider choice, quality mode, privacy defaults, and demo/blank book creation.
+- [x] Keep onboarding privacy defaults conservative: full prompt logging, full response logging, manuscript logging, and full recent chapters stay off.
+- [x] Add typed command registry categories for Project, Chapter, Generation, Review, Story Bible, Cost, and Settings.
+- [x] Add fuzzy command search, recent actions, scoped disabled states, and keyboard-friendly palette behavior.
+- [x] Polish compact popover mode with active run status, session cost, recent projects/chapters, quick actions, and full-studio expansion while preserving selection.
+- [x] Add quality-state panels for empty project, missing provider, missing/stale price, no canonical manuscript, generated draft pending, and settlement proposal pending states.
+- [x] Add reduced-motion helpers, progress mini-bars, review-card expansion, and budget warning animation with reduced-motion support.
+- [x] Add tests for command registry behavior, onboarding state, reduced motion helpers, setup-state routing, component smoke checks, and secret-safe rendering.
+- [x] Document onboarding and update the UI spec.
+
+Deferred from Phase 13: native file picker save/open flows, automatic backup scheduling hooks, optional EPUB export, and electron-builder packaging configuration.
+
+## Phase 14: File Picker Polish And Packaging Prep
+
 - Add safe native file picker flows for saving exports and opening import packages.
 - Add automatic backup triggers for daily, app-close, and before-destructive-operation settings.
 - Add optional EPUB export if dependency and formatting risk stay low.
+- Add first-run migration for moving onboarding completion from renderer storage into main-process settings if needed.
 - Add electron-builder configuration after local development commands remain stable.

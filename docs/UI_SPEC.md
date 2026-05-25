@@ -141,6 +141,20 @@ Implemented surfaces:
 
 Eval outputs are visually and behaviorally separate from manuscript canon.
 
+## Phase 13 Onboarding, Palette, And Popover Polish
+
+Implemented surfaces:
+
+- First-launch onboarding panel for Simplified Chinese default language, project setup, mock/provider choice, quality mode, privacy defaults, and demo/blank book creation.
+- Command palette registry with typed command IDs, fuzzy matching, recent actions, scoped disabled states, and categories for Project, Chapter, Generation, Review, Story Bible, Cost, and Settings.
+- Compact popover launcher with active project/book/chapter context, recent projects, recent chapters, active run status, session cost, quick actions, and full-studio expansion.
+- Quality-state panels for empty project, missing provider, missing/stale price, no canonical manuscript, generated draft pending, and settlement proposal pending states.
+- Reduced-motion helpers for panels and progress mini-bars.
+- Subtle budget-warning pulse on the cost meter with `motion-reduce` support.
+- Review cards use expandable details so audit cards stay calm until the writer wants evidence and raw score details.
+
+The Phase 13 UI keeps graphite surfaces, thin borders, blue/violet/cyan accents, and conservative motion. It does not copy reference UI assets, screenshots, logos, or distinctive copy.
+
 ## Interaction Rules
 
 - Generated text, audits, rewrites, and state updates are visibly marked as draft/proposed.

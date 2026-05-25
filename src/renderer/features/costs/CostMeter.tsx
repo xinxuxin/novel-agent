@@ -21,6 +21,7 @@ export function CostMeter({
   recentRuns
 }: CostMeterProps): JSX.Element {
   const total = summary?.finalCost ?? sessionCost;
+  const warningActive = !["prices local", "ready", ""].includes(costWarning.toLowerCase());
 
   return (
     <section className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
@@ -43,7 +44,13 @@ export function CostMeter({
           <p className="mt-1 text-sm text-slate-100">${total.toFixed(6)}</p>
         </div>
       </div>
-      <p className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-400">
+      <p
+        className={`mt-3 rounded-lg border px-3 py-2 text-xs ${
+          warningActive
+            ? "animate-pulse border-forge-amber/30 bg-forge-amber/10 text-forge-amber motion-reduce:animate-none"
+            : "border-white/10 bg-black/20 text-slate-400"
+        }`}
+      >
         {costWarning}
       </p>
       <div className="mt-4 space-y-2">

@@ -3,7 +3,9 @@ import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 
 import { StatusBadge } from "@components/StatusBadge";
+import { QualityStatePanel } from "@components/QualityStatePanel";
 import { credentialDisplayFields } from "@features/settings/credential-display";
+import { OnboardingPanel } from "@features/onboarding/OnboardingPanel";
 
 describe("renderer component smoke tests", () => {
   it("renders status badges with visible text labels", () => {
@@ -30,5 +32,29 @@ describe("renderer component smoke tests", () => {
     expect(JSON.stringify(fields)).not.toContain("apiKey");
     expect(JSON.stringify(fields)).not.toContain("encrypted");
     expect(fields.keyLabel).toBe("sk-...1234");
+  });
+
+  it("renders onboarding and setup state panels as smoke checks", () => {
+    const onboarding = renderToStaticMarkup(
+      createElement(OnboardingPanel, {
+        hasProject: false,
+        hasProvider: false,
+        onCreateBook: async () => undefined,
+        onCreateOrUseProject: async () => undefined,
+        onFinish: async () => undefined,
+        onOpenSettings: () => undefined
+      })
+    );
+    const statePanel = renderToStaticMarkup(
+      createElement(QualityStatePanel, {
+        state: "missing_price",
+        detail: "api_key=sk-secret-1234567890",
+        onPrimaryAction: () => undefined
+      })
+    );
+
+    expect(onboarding).toContain("Set up WenForge Studio");
+    expect(statePanel).toContain("Missing price");
+    expect(statePanel).not.toContain("sk-secret");
   });
 });

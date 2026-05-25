@@ -3,10 +3,8 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
-import * as schema from "./schema";
-
 export type SqliteDatabase = Database.Database;
-export type DrizzleDatabase = ReturnType<typeof drizzle<typeof schema>>;
+export type DrizzleDatabase = ReturnType<typeof drizzle>;
 
 export interface WenForgeDatabase {
   orm: DrizzleDatabase;
@@ -27,7 +25,7 @@ export function createDatabaseConnection(filePath: string): DatabaseConnection {
   return {
     sqlite,
     db: {
-      orm: drizzle(sqlite, { schema }),
+      orm: drizzle(sqlite),
       sqlite
     }
   };

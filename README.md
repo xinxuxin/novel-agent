@@ -6,7 +6,7 @@ The product direction is a dark command-center writing studio with a popover lau
 
 ## Current Status
 
-Phases 1-12 are implemented through the local-first studio shell, SQLite data foundation, secure credential metadata, AI gateway, story bible memory, WenForge-native skill package, mock/provider workflow runtime, review and settlement flows, cost/eval dashboards, and safe import/export/backup tooling. Packaging and first-run onboarding remain planned follow-up work.
+Phases 1-13 are implemented through the local-first studio shell, SQLite data foundation, secure credential metadata, AI gateway, story bible memory, WenForge-native skill package, mock/provider workflow runtime, review and settlement flows, cost/eval dashboards, safe import/export/backup tooling, and first-launch onboarding/palette/popover polish. Packaging remains planned follow-up work.
 
 ## Planned Stack
 
@@ -52,6 +52,7 @@ pnpm db:studio
 - [Database](docs/DATABASE.md)
 - [Import And Export](docs/IMPORT_EXPORT.md)
 - [Backup And Restore](docs/BACKUP_RESTORE.md)
+- [Onboarding](docs/ONBOARDING.md)
 - [UI Spec](docs/UI_SPEC.md)
 - [Reference Repos](docs/REFERENCE_REPOS.md)
 - [Fusion Plan](docs/FUSION_PLAN.md)

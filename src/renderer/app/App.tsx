@@ -3,7 +3,10 @@ import type { JSX } from "react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CommandPalette } from "@components/CommandPalette";
+import { QualityStatePanel } from "@components/QualityStatePanel";
 import { StatusBadge } from "@components/StatusBadge";
+import { progressMotionProps } from "@components/motion-utils";
+import type { QualityState, QualityStateTargetView } from "@components/quality-state-model";
 import type { AIStreamEvent, CostSummary, LLMRunRecord } from "@contracts/ai";
 import type {
   BookRecord,
@@ -20,6 +23,11 @@ import { ManuscriptEditor } from "@features/editor/ManuscriptEditor";
 import { EvalDashboard } from "@features/evaluation/EvalDashboard";
 import { createSimpleDiff, manuscriptStats } from "@features/editor/manuscript-utils";
 import { ModelRouteCard } from "@features/model-router/ModelRouteCard";
+import { OnboardingPanel } from "@features/onboarding/OnboardingPanel";
+import type {
+  OnboardingBookMode,
+  OnboardingSettingsPatch
+} from "@features/onboarding/onboarding-state";
 import { ProjectSidebar } from "@features/projects/ProjectSidebar";
 import { SettingsPanel } from "@features/settings/SettingsPanel";
 import { ContextPreviewPanel } from "@features/story-bible/ContextPreviewPanel";
@@ -50,6 +58,7 @@ const CHAPTER_STATUSES = [
   "approved",
   "published"
 ] as const;
+const ONBOARDING_STORAGE_KEY = "wenforge:onboarding:v1";
 
 function draftStorageKey(chapterId: string): string {
   return `wenforge:draft:${chapterId}`;
@@ -92,11 +101,18 @@ export function App(): JSX.Element {
   const [activeRunCost, setActiveRunCost] = useState(0);
   const [sessionCost, setSessionCost] = useState(0);
   const [costWarning, setCostWarning] = useState("prices local");
+  const [providerConfigured, setProviderConfigured] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "complete";
+  });
 
   const commandPaletteOpen = useUiStore((state) => state.commandPaletteOpen);
+  const recentCommandIds = useUiStore((state) => state.recentCommandIds);
   const studioMode = useUiStore((state) => state.studioMode);
   const openCommandPalette = useUiStore((state) => state.openCommandPalette);
   const closeCommandPalette = useUiStore((state) => state.closeCommandPalette);
+  const recordCommand = useUiStore((state) => state.recordCommand);
   const setStudioMode = useUiStore((state) => state.setStudioMode);
   const reduceMotion = useReducedMotion();
   const compact = studioMode === "popover";
@@ -129,9 +145,41 @@ export function App(): JSX.Element {
     () => createSimpleDiff(compareA?.contentMarkdown ?? "", compareB?.contentMarkdown ?? ""),
     [compareA, compareB]
   );
+  const commandContext = useMemo(
+    () => ({
+      hasProject: Boolean(activeProject),
+      hasBook: Boolean(activeBook),
+      hasChapter: Boolean(activeChapter),
+      hasGeneratedDraft: versions.some((version) => version.sourceType === "generated"),
+      hasSettlementProposal: false
+    }),
+    [activeBook, activeChapter, activeProject, versions]
+  );
+  const setupQualityState = useMemo<QualityState | null>(() => {
+    if (projects.length === 0) return "empty_project";
+    const routeText = [...(routeResolution?.errors ?? []), ...(routeResolution?.warnings ?? [])]
+      .join(" ")
+      .toLowerCase();
+    if (routeResolution && !routeResolution.available) {
+      if (routeText.includes("price"))
+        return routeText.includes("stale") ? "stale_price" : "missing_price";
+      return providerConfigured ? "missing_price" : "no_provider_configured";
+    }
+    if (activeChapter && !canonical) return "no_canonical_manuscript";
+    return null;
+  }, [activeChapter, canonical, projects.length, providerConfigured, routeResolution]);
 
   useEffect(() => {
     void window.wenforge.app.getVersion().then(setVersion);
+  }, []);
+
+  useEffect(() => {
+    void window.wenforge.credentials
+      .list()
+      .then((credentials) =>
+        setProviderConfigured(credentials.some((credential) => credential.isConfigured))
+      )
+      .catch(() => setProviderConfigured(false));
   }, []);
 
   useEffect(() => {
@@ -531,15 +579,99 @@ export function App(): JSX.Element {
     setStoryBibleEntries(await window.wenforge.storyBible.entries.list(selectedBookId));
   };
 
+  const createOrUseOnboardingProject = async (): Promise<void> => {
+    if (activeProject) return;
+    const project = await window.wenforge.projects.create({
+      name: "演示：都市异能爽文",
+      description: "WenForge first-launch starter project.",
+      genre: "都市异能",
+      targetReader: "喜欢快节奏升级、悬念钩子和情绪爽点的读者"
+    });
+    await refreshProjectsAfterCreate(project);
+  };
+
+  const createOnboardingBook = async (mode: OnboardingBookMode): Promise<void> => {
+    let projectId = selectedProjectId;
+    if (!projectId) {
+      const project = await window.wenforge.projects.create({
+        name: mode === "demo" ? "演示：都市异能爽文" : "我的新项目",
+        description:
+          mode === "demo" ? "WenForge first-launch demo project." : "Blank local project."
+      });
+      projectId = project.id;
+      await refreshProjectsAfterCreate(project);
+    }
+
+    const book = await window.wenforge.books.create({
+      projectId,
+      title: mode === "demo" ? "觉醒之后" : "未命名新书",
+      ...(mode === "demo"
+        ? {
+            logline: "灵气复苏前夜，普通青年在雨夜觉醒异常感知。",
+            genre: "都市异能"
+          }
+        : {})
+    });
+    setSelectedBookId(book.id);
+    setBooks(await window.wenforge.books.listByProject(projectId));
+
+    const volume = await window.wenforge.volumes.create({
+      bookId: book.id,
+      title: mode === "demo" ? "灵气复苏前夜" : "第一卷",
+      volumeIndex: 1
+    });
+    const chapterTitles = mode === "demo" ? ["雨夜异响", "地下诊所", "第一枚灵印"] : ["第一章"];
+    const createdChapters = await Promise.all(
+      chapterTitles.map((title, index) =>
+        window.wenforge.chapters.create({
+          bookId: book.id,
+          volumeId: volume.id,
+          chapterIndex: index + 1,
+          title,
+          targetWords: 3000
+        })
+      )
+    );
+    setVolumes([volume]);
+    setChapters(sortChapters(createdChapters));
+    setSelectedChapterId(createdChapters[0]?.id ?? null);
+    setWorkspaceView("chapter");
+  };
+
+  const finishOnboarding = async (settings: OnboardingSettingsPatch): Promise<void> => {
+    await window.wenforge.privacy.update(settings.privacy);
+    window.localStorage.setItem(ONBOARDING_STORAGE_KEY, "complete");
+    window.localStorage.setItem("wenforge:onboarding:settings", JSON.stringify(settings));
+    setOnboardingOpen(false);
+  };
+
+  const handleQualityStateAction = (targetView: QualityStateTargetView): void => {
+    if (targetView === "settings") setWorkspaceView("settings");
+    if (targetView === "costs") setWorkspaceView("costs");
+    if (targetView === "storyBible") setWorkspaceView("storyBible");
+    if (targetView === "review") {
+      setWorkspaceView("chapter");
+      setActiveTab("review");
+    }
+    if (targetView === "chapter") {
+      if (setupQualityState === "empty_project") void createProject();
+      else void saveManualVersion(false);
+    }
+  };
+
   const runCommand = (commandId: StudioCommandId): void => {
+    recordCommand(commandId);
     const actions: Record<StudioCommandId, () => void> = {
       "new-project": () => void createProject(),
       "new-book": () => void createBook(),
       "new-volume": () => void createVolume(),
       "new-chapter": () => void createChapter(null),
+      "rename-chapter": () => activeChapter && void renameChapter(activeChapter),
       "save-manuscript-version": () => void saveManualVersion(false),
       "set-canonical": () => void saveManualVersion(true),
       "open-settings": () => setWorkspaceView("settings"),
+      "open-story-bible": () => setWorkspaceView("storyBible"),
+      "open-data-workspace": () => setWorkspaceView("data"),
       "generate-outline": () => {
         setWorkspaceView("chapter");
         setActiveTab("generate");
@@ -554,6 +686,14 @@ export function App(): JSX.Element {
       },
       "show-cost-dashboard": () => {
         setWorkspaceView("costs");
+      },
+      "show-review": () => {
+        setWorkspaceView("chapter");
+        setActiveTab("review");
+      },
+      "apply-settlement": () => {
+        setWorkspaceView("chapter");
+        setActiveTab("review");
       }
     };
     actions[commandId]();
@@ -736,7 +876,9 @@ export function App(): JSX.Element {
           <section className="min-h-0 overflow-hidden bg-[linear-gradient(140deg,rgba(117,167,255,0.08),transparent_35%),linear-gradient(320deg,rgba(178,148,255,0.08),transparent_38%)]">
             {compact ? (
               <CompactLauncher
+                activeBook={activeBook}
                 activeChapter={activeChapter}
+                activeProject={activeProject}
                 activeRunLabel={activeRunLabel}
                 chapters={chapters}
                 onCreateChapter={() => void createChapter(null)}
@@ -747,6 +889,10 @@ export function App(): JSX.Element {
                   setActiveTab("generate");
                   setWorkspaceView("chapter");
                 }}
+                onOpenProject={selectProject}
+                projects={projects}
+                reducedMotion={Boolean(reduceMotion)}
+                sessionCost={sessionCost}
               />
             ) : workspaceView === "settings" ? (
               <div className="h-full overflow-auto">
@@ -804,6 +950,8 @@ export function App(): JSX.Element {
                   setViewingVersionId(item.id);
                   void refreshChapterVersions(item.chapterId);
                 }}
+                qualityState={setupQualityState}
+                onQualityStateAction={handleQualityStateAction}
                 stats={stats}
                 versions={versions}
               />
@@ -855,10 +1003,22 @@ export function App(): JSX.Element {
       </motion.section>
 
       <CommandPalette
+        context={commandContext}
+        recentCommandIds={recentCommandIds}
         onClose={closeCommandPalette}
         onRunCommand={runCommand}
         open={commandPaletteOpen}
       />
+      {onboardingOpen ? (
+        <OnboardingPanel
+          hasProject={Boolean(activeProject)}
+          hasProvider={providerConfigured}
+          onCreateBook={createOnboardingBook}
+          onCreateOrUseProject={createOrUseOnboardingProject}
+          onFinish={finishOnboarding}
+          onOpenSettings={() => setWorkspaceView("settings")}
+        />
+      ) : null}
     </main>
   );
 }
@@ -886,16 +1046,24 @@ function StatusPill({
 }
 
 function CompactLauncher({
+  activeBook,
   activeChapter,
+  activeProject,
   activeRunLabel,
   chapters,
   onCreateChapter,
   onExpand,
   onOpenChapter,
   onOpenCommandPalette,
-  onOpenGenerate
+  onOpenGenerate,
+  onOpenProject,
+  projects,
+  reducedMotion,
+  sessionCost
 }: {
+  activeBook: BookRecord | null;
   activeChapter: ChapterRecord | null;
+  activeProject: ProjectRecord | null;
   activeRunLabel: string;
   chapters: ChapterRecord[];
   onCreateChapter: () => void;
@@ -903,7 +1071,15 @@ function CompactLauncher({
   onOpenChapter: (chapter: ChapterRecord) => void;
   onOpenCommandPalette: () => void;
   onOpenGenerate: () => void;
+  onOpenProject: (projectId: string) => void;
+  projects: ProjectRecord[];
+  reducedMotion: boolean;
+  sessionCost: number;
 }): JSX.Element {
+  const runProgress = progressMotionProps(
+    reducedMotion,
+    activeRunLabel === "No active run" ? 12 : 68
+  );
   return (
     <div className="flex h-full items-center justify-center p-6">
       <section className="w-full max-w-2xl rounded-xl border border-white/10 bg-graphite-900/70 p-5 shadow-soft-glow">
@@ -915,7 +1091,9 @@ function CompactLauncher({
             <h2 className="mt-2 text-2xl font-semibold text-white">
               {activeChapter?.title ?? "Choose a chapter"}
             </h2>
-            <p className="mt-2 text-sm text-slate-500">{activeRunLabel}</p>
+            <p className="mt-2 text-sm text-slate-500">
+              {activeProject?.name ?? "No project"} / {activeBook?.title ?? "No book"}
+            </p>
           </div>
           <button
             className="rounded-lg border border-forge-blue/35 bg-forge-blue/10 px-3 py-2 text-sm text-forge-blue"
@@ -924,6 +1102,25 @@ function CompactLauncher({
           >
             Expand Studio
           </button>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+            <p className="text-xs text-slate-500">Active run</p>
+            <p className="mt-1 truncate text-sm text-slate-200">{activeRunLabel}</p>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <motion.div
+                animate={runProgress.animate}
+                className="h-full rounded-full bg-forge-cyan"
+                initial={runProgress.initial}
+                transition={{ duration: runProgress.transition.duration }}
+              />
+            </div>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+            <p className="text-xs text-slate-500">Session cost</p>
+            <p className="mt-1 font-mono text-sm text-forge-mint">${sessionCost.toFixed(6)}</p>
+            <p className="mt-2 text-xs text-slate-500">Estimated local session spend</p>
+          </div>
         </div>
         <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
           <button
@@ -955,6 +1152,29 @@ function CompactLauncher({
             Run Audit
           </button>
         </div>
+        {projects.length > 0 ? (
+          <div className="mt-5 space-y-2">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+              Recent projects
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {projects.slice(0, 4).map((project) => (
+                <button
+                  className={`rounded-full border px-3 py-1.5 text-xs ${
+                    project.id === activeProject?.id
+                      ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
+                      : "border-white/10 text-slate-300 hover:border-forge-blue/35"
+                  }`}
+                  key={project.id}
+                  onClick={() => onOpenProject(project.id)}
+                  type="button"
+                >
+                  {project.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <div className="mt-5 space-y-2">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
             Recent chapters
@@ -1004,6 +1224,8 @@ function ChapterWorkspace({
   onWorkflowCanonicalChanged,
   onWorkflowCostChange,
   onWorkflowVersionCreated,
+  qualityState,
+  onQualityStateAction,
   stats,
   versions
 }: {
@@ -1034,6 +1256,8 @@ function ChapterWorkspace({
   onWorkflowCanonicalChanged: (version: ManuscriptVersionRecord) => void;
   onWorkflowCostChange: (label: string, cost: number, warning: string) => void;
   onWorkflowVersionCreated: (version: ManuscriptVersionRecord) => void;
+  qualityState: QualityState | null;
+  onQualityStateAction: (targetView: QualityStateTargetView) => void;
   stats: ReturnType<typeof manuscriptStats>;
   versions: ManuscriptVersionRecord[];
 }): JSX.Element {
@@ -1126,6 +1350,11 @@ function ChapterWorkspace({
             </button>
           ))}
         </div>
+        {qualityState ? (
+          <div className="mt-4">
+            <QualityStatePanel state={qualityState} onPrimaryAction={onQualityStateAction} />
+          </div>
+        ) : null}
       </div>
 
       <AnimatePresence mode="wait">
@@ -1671,14 +1900,18 @@ function ReviewCard({
           ))}
         </div>
       </div>
-      <p className="mt-3 text-sm leading-6 text-slate-300">{card.issue}</p>
-      {card.evidence ? (
-        <p className="mt-2 text-xs text-slate-500">Evidence: {card.evidence}</p>
-      ) : null}
-      {card.suggestedFix ? (
-        <p className="mt-2 text-xs text-forge-mint">Suggested fix: {card.suggestedFix}</p>
-      ) : null}
-      {raw ? <ReviewRawDetails raw={raw} /> : null}
+      <details className="mt-3 group" open={card.severity === "blocking"}>
+        <summary className="cursor-pointer text-sm leading-6 text-slate-300 focus:outline-none focus-visible:text-forge-blue">
+          {card.issue}
+        </summary>
+        {card.evidence ? (
+          <p className="mt-2 text-xs text-slate-500">Evidence: {card.evidence}</p>
+        ) : null}
+        {card.suggestedFix ? (
+          <p className="mt-2 text-xs text-forge-mint">Suggested fix: {card.suggestedFix}</p>
+        ) : null}
+        {raw ? <ReviewRawDetails raw={raw} /> : null}
+      </details>
     </article>
   );
 }

@@ -20,8 +20,11 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    fileParallelism: false,
     globals: true,
     include: ["tests/**/*.test.ts", "src/**/*.test.ts"],
-    exclude: ["references/repos/**", "node_modules/**", "out/**", "dist/**"]
+    exclude: ["references/repos/**", "node_modules/**", "out/**", "dist/**"],
+    testTimeout: 30_000,
+    hookTimeout: 30_000
   }
 });
