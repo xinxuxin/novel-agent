@@ -46,11 +46,26 @@ The chapter workflow runs through these graph nodes:
 
 9. Human Gate
    - user can accept, reject, request another revision, or apply selected diffs
-   - accepting creates a new canonical manuscript version
+   - accepting a generated artifact creates a non-canonical manuscript version
+   - setting that version canonical requires a separate confirmation
 
 10. State Settlement Proposal
     - propose chapter summary, timeline updates, character state changes, relationship changes, new facts, new foreshadowing, resolved foreshadowing, unresolved hooks, and continuity risks
-    - accepted proposals update canonical story memory
+    - accepted proposals update canonical story memory in a later confirmed settlement step
+
+## Phase 8 Mock Runtime
+
+Phase 8 implements `chapter_generation_v1` in the main process with LangGraph.js segment execution and deterministic mock model calls. It persists checkpoints, workflow events, generated artifacts, review cards, settlement proposals, and fake-provider `llm_runs`.
+
+The runtime pauses at `human_gate`. From that point the user can:
+
+- approve the workflow and continue into settlement proposal generation
+- save the latest revision as a non-canonical manuscript version
+- explicitly set an accepted version canonical
+- request another revision
+- cancel the workflow while preserving artifacts
+
+The renderer only talks to the graph through typed `generation.*` IPC endpoints.
 
 ## Review And Rewrite Workflow
 

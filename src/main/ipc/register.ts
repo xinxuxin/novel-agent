@@ -12,6 +12,7 @@ import { ContextBuilder } from "@main/context/context-builder";
 import { MemoryIndexService } from "@main/memory/memory-index-service";
 import type { CredentialService } from "@main/providers/credential-service";
 import { ModelRouter } from "@main/providers/model-router";
+import { ChapterWorkflowRuntime } from "@main/workflows/chapter-workflow-runtime";
 import { getEnvironment } from "@main/platform/environment";
 import { SafeIpcError } from "./typed-ipc";
 import { registerIpcContract } from "./typed-ipc";
@@ -85,6 +86,14 @@ function registerDataIpc(
   aiGateway?: AiGateway,
   database?: WenForgeDatabase
 ): void {
+  const workflowRuntime = database
+    ? new ChapterWorkflowRuntime({
+        database,
+        repositories,
+        privacy: getPrivacySettings(repositories)
+      })
+    : null;
+
   registerIpcContract(IPC_CONTRACTS.projects.list, () => repositories.projects.list());
   registerIpcContract(IPC_CONTRACTS.projects.get, (request) =>
     repositories.projects.get(request.id)
@@ -524,6 +533,67 @@ function registerDataIpc(
   registerIpcContract(IPC_CONTRACTS.ai.costs.summary, (request) =>
     repositories.cost.summarizeRuns(request)
   );
+
+  registerIpcContract(IPC_CONTRACTS.generation.chapter.start, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return workflowRuntime.startChapterWorkflow(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.generation.getRun, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return workflowRuntime.getRun(request.runId);
+  });
+  registerIpcContract(IPC_CONTRACTS.generation.listRunsByChapter, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return workflowRuntime.listRunsByChapter(request.chapterId);
+  });
+  registerIpcContract(IPC_CONTRACTS.generation.streamEvents, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return workflowRuntime.streamEvents(request.runId, request.sinceEventId);
+  });
+  registerIpcContract(IPC_CONTRACTS.generation.abort, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return workflowRuntime.abort(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.generation.resume, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return workflowRuntime.resume(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.generation.requestRevision, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return workflowRuntime.requestRevision(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.generation.acceptArtifactAsVersion, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return workflowRuntime.acceptArtifactAsVersion(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.generation.setAcceptedVersionCanonical, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return workflowRuntime.setAcceptedVersionCanonical(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.generation.cancel, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return workflowRuntime.cancel(request);
+  });
 }
 
 function withoutUndefined<T extends Record<string, unknown>>(value: T): Partial<T> {

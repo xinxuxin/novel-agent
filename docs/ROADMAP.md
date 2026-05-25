@@ -113,13 +113,18 @@ Deferred from Phase 6: generated settlement proposal acceptance, workflow-create
 
 Deferred from Phase 7: workflow node execution, provider-backed generation, schema validation of model responses, prompt editing UI, and storing prompt metadata on generated artifacts.
 
-## Phase 8: LangGraph Workflow MVP
+## Phase 8: LangGraph Workflow MVP (Complete)
 
-- Add LangGraph.js workflow runtime in the main process or a controlled worker.
-- Implement a chapter workflow skeleton with mock provider nodes first: prepare context, outline, scene cards, draft, continuity audit, rhythm audit, revise, human gate, and settlement proposal.
-- Persist workflow checkpoints, generated artifacts, streamed chunks, and status events.
-- Add cancellation and resume from safe checkpoints.
-- Connect real provider adapters only after mock workflow tests pass.
+- [x] Add `@langchain/langgraph` as a normal dependency and use it for persisted main-process workflow segments.
+- [x] Implement `chapter_generation_v1` with mock nodes for prepare context, memory retrieval, outline, scene cards, draft, continuity audit, rhythm audit, revision, human gate, settlement proposal, persistence, and finalization.
+- [x] Persist workflow checkpoints, events, generated artifacts, review cards, settlement proposals, settlement proposal items, and fake-provider `llm_runs`.
+- [x] Keep generated output non-canonical until the user accepts an artifact as a manuscript version.
+- [x] Require separate confirmation before setting an accepted generated version as canonical.
+- [x] Add workflow IPC and preload APIs without exposing DB, provider, or secret access to the renderer.
+- [x] Replace the Generate placeholder with a workflow UI for run actions, timeline, artifacts, cost summary, and human-gate controls.
+- [x] Add tests for deterministic mock workflow execution, checkpoint persistence, human-gate pause/resume, revision loop, cancellation, non-canonical artifact acceptance, explicit canonical confirmation, fake `llm_runs`, and typed payload validation.
+
+Deferred from Phase 8: real provider-backed workflow nodes, live token streaming per graph node, selected-diff application, settlement proposal approval/application, and long-running worker isolation.
 
 ## Phase 9: Review, Continuity, And Human Gates
 

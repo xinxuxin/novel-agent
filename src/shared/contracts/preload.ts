@@ -8,6 +8,16 @@ import type {
   StreamStartResult
 } from "./ai";
 import type {
+  ChapterGenerationStartRequest,
+  ChapterWorkflowDetail,
+  GenerationAcceptArtifactAsVersion,
+  GenerationRequestRevision,
+  GenerationResumeRequest,
+  GenerationSetAcceptedVersionCanonical,
+  WorkflowEventRecord,
+  WorkflowRunRecord
+} from "./workflow";
+import type {
   CredentialStatusDto,
   CredentialTestResult,
   ModelPriceRecord,
@@ -261,6 +271,24 @@ export interface WenForgeApi {
     costs: {
       summary: (request: CostSummaryRequest) => Promise<CostSummary>;
     };
+  };
+  generation: {
+    chapter: {
+      start: (request: ChapterGenerationStartRequest) => Promise<WorkflowRunRecord>;
+    };
+    getRun: (runId: string) => Promise<ChapterWorkflowDetail | null>;
+    listRunsByChapter: (chapterId: string) => Promise<WorkflowRunRecord[]>;
+    streamEvents: (runId: string, sinceEventId?: string) => Promise<WorkflowEventRecord[]>;
+    abort: (runId: string) => Promise<WorkflowRunRecord | null>;
+    resume: (request: GenerationResumeRequest) => Promise<WorkflowRunRecord>;
+    requestRevision: (request: GenerationRequestRevision) => Promise<WorkflowRunRecord>;
+    acceptArtifactAsVersion: (
+      request: GenerationAcceptArtifactAsVersion
+    ) => Promise<ManuscriptVersionRecord>;
+    setAcceptedVersionCanonical: (
+      request: GenerationSetAcceptedVersionCanonical
+    ) => Promise<ManuscriptVersionRecord | null>;
+    cancel: (runId: string, confirmed: boolean) => Promise<WorkflowRunRecord | null>;
   };
 }
 

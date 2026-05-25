@@ -22,6 +22,11 @@ import type {
 import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
 import type { ContextPreviewPack, ContextPreviewRequest } from "@contracts/context";
 import type {
+  ChapterWorkflowDetail,
+  WorkflowEventRecord,
+  WorkflowRunRecord
+} from "@contracts/workflow";
+import type {
   CharacterInput,
   CharacterRecord,
   ForeshadowingInput,
@@ -663,6 +668,80 @@ export function createPreloadApi(
             request
           )
       }
+    },
+    generation: {
+      chapter: {
+        start: (request) =>
+          invokeContract<WorkflowRunRecord>(
+            invoke,
+            IPC_CONTRACTS.generation.chapter.start.channel,
+            IPC_CONTRACTS.generation.chapter.start.response,
+            request
+          )
+      },
+      getRun: (runId) =>
+        invokeContract<ChapterWorkflowDetail | null>(
+          invoke,
+          IPC_CONTRACTS.generation.getRun.channel,
+          IPC_CONTRACTS.generation.getRun.response,
+          { runId }
+        ),
+      listRunsByChapter: (chapterId) =>
+        invokeContract<WorkflowRunRecord[]>(
+          invoke,
+          IPC_CONTRACTS.generation.listRunsByChapter.channel,
+          IPC_CONTRACTS.generation.listRunsByChapter.response,
+          { chapterId }
+        ),
+      streamEvents: (runId, sinceEventId) =>
+        invokeContract<WorkflowEventRecord[]>(
+          invoke,
+          IPC_CONTRACTS.generation.streamEvents.channel,
+          IPC_CONTRACTS.generation.streamEvents.response,
+          { runId, sinceEventId }
+        ),
+      abort: (runId) =>
+        invokeContract<WorkflowRunRecord | null>(
+          invoke,
+          IPC_CONTRACTS.generation.abort.channel,
+          IPC_CONTRACTS.generation.abort.response,
+          { runId }
+        ),
+      resume: (request) =>
+        invokeContract<WorkflowRunRecord>(
+          invoke,
+          IPC_CONTRACTS.generation.resume.channel,
+          IPC_CONTRACTS.generation.resume.response,
+          request
+        ),
+      requestRevision: (request) =>
+        invokeContract<WorkflowRunRecord>(
+          invoke,
+          IPC_CONTRACTS.generation.requestRevision.channel,
+          IPC_CONTRACTS.generation.requestRevision.response,
+          request
+        ),
+      acceptArtifactAsVersion: (request) =>
+        invokeContract<ManuscriptVersionRecord>(
+          invoke,
+          IPC_CONTRACTS.generation.acceptArtifactAsVersion.channel,
+          IPC_CONTRACTS.generation.acceptArtifactAsVersion.response,
+          request
+        ),
+      setAcceptedVersionCanonical: (request) =>
+        invokeContract<ManuscriptVersionRecord | null>(
+          invoke,
+          IPC_CONTRACTS.generation.setAcceptedVersionCanonical.channel,
+          IPC_CONTRACTS.generation.setAcceptedVersionCanonical.response,
+          request
+        ),
+      cancel: (runId, confirmed) =>
+        invokeContract<WorkflowRunRecord | null>(
+          invoke,
+          IPC_CONTRACTS.generation.cancel.channel,
+          IPC_CONTRACTS.generation.cancel.response,
+          { runId, confirmed }
+        )
     }
   };
 }

@@ -340,6 +340,67 @@ export const generationRuns = sqliteTable("generation_runs", {
   updatedAt: text("updated_at").notNull()
 });
 
+export const workflowCheckpoints = sqliteTable("workflow_checkpoints", {
+  id: text("id").primaryKey(),
+  generationRunId: text("generation_run_id").notNull(),
+  nodeName: text("node_name").notNull(),
+  stateJson: text("state_json").notNull(),
+  createdAt: text("created_at").notNull()
+});
+
+export const workflowEvents = sqliteTable("workflow_events", {
+  id: text("id").primaryKey(),
+  generationRunId: text("generation_run_id").notNull(),
+  eventType: text("event_type").notNull(),
+  payloadJson: text("payload_json").notNull(),
+  createdAt: text("created_at").notNull()
+});
+
+export const reviewCards = sqliteTable("review_cards", {
+  id: text("id").primaryKey(),
+  generationRunId: text("generation_run_id").notNull(),
+  chapterId: text("chapter_id").notNull(),
+  reviewType: text("review_type").notNull(),
+  severity: text("severity").notNull(),
+  title: text("title").notNull(),
+  issue: text("issue").notNull(),
+  evidence: text("evidence"),
+  affectedEntityType: text("affected_entity_type"),
+  affectedEntityId: text("affected_entity_id"),
+  suggestedFix: text("suggested_fix"),
+  requiresHumanJudgment: integer("requires_human_judgment", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  status: text("status").notNull().default("open"),
+  rawJson: text("raw_json"),
+  createdAt: text("created_at").notNull()
+});
+
+export const settlementProposals = sqliteTable("settlement_proposals", {
+  id: text("id").primaryKey(),
+  generationRunId: text("generation_run_id").notNull(),
+  chapterId: text("chapter_id").notNull(),
+  status: text("status").notNull().default("proposed"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const settlementProposalItems = sqliteTable("settlement_proposal_items", {
+  id: text("id").primaryKey(),
+  proposalId: text("proposal_id").notNull(),
+  itemType: text("item_type").notNull(),
+  targetEntityType: text("target_entity_type"),
+  targetEntityId: text("target_entity_id"),
+  actionType: text("action_type").notNull(),
+  evidenceSummary: text("evidence_summary").notNull(),
+  confidence: real("confidence").notNull().default(0),
+  beforeJson: text("before_json"),
+  afterJson: text("after_json").notNull(),
+  status: text("status").notNull().default("proposed"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
 export const llmRuns = sqliteTable("llm_runs", {
   id: text("id").primaryKey(),
   generationRunId: text("generation_run_id"),
@@ -413,6 +474,11 @@ export const schema = {
   readerPositioning,
   memoryChunks,
   generationRuns,
+  workflowCheckpoints,
+  workflowEvents,
+  reviewCards,
+  settlementProposals,
+  settlementProposalItems,
   llmRuns,
   modelPrices,
   appSettings

@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { JSX } from "react";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CommandPalette } from "@components/CommandPalette";
 import { StatusBadge } from "@components/StatusBadge";
@@ -23,6 +23,7 @@ import { ContextPreviewPanel } from "@features/story-bible/ContextPreviewPanel";
 import { StoryBiblePanel } from "@features/story-bible/StoryBiblePanel";
 import { StoryBibleWorkspace } from "@features/story-bible/StoryBibleWorkspace";
 import { TaskTimeline } from "@features/workflows/TaskTimeline";
+import { WorkflowGeneratePanel } from "@features/workflows/WorkflowGeneratePanel";
 import type { StudioCommandId } from "@features/workflows/command-registry";
 import { runDestructiveAction } from "@features/workflows/confirmation";
 import type { ModelRouteResolution } from "@contracts/model-routing";
@@ -102,6 +103,10 @@ export function App(): JSX.Element {
   const activeChapter = useMemo(
     () => chapters.find((chapter) => chapter.id === selectedChapterId) ?? null,
     [chapters, selectedChapterId]
+  );
+  const activeVolume = useMemo(
+    () => volumes.find((volume) => volume.id === activeChapter?.volumeId) ?? null,
+    [activeChapter?.volumeId, volumes]
   );
   const activeVersion = useMemo(
     () => versions.find((item) => item.id === viewingVersionId) ?? null,
@@ -336,6 +341,13 @@ export function App(): JSX.Element {
       return next;
     });
   };
+
+  const updateWorkflowCost = useCallback((label: string, cost: number, warning: string): void => {
+    setActiveRunLabel(label);
+    setActiveRunCost(cost);
+    setCostWarning(warning);
+    setSessionCost((current) => Math.max(current, cost));
+  }, []);
 
   const createProject = async (): Promise<void> => {
     const name = promptText("Project name");
@@ -703,9 +715,12 @@ export function App(): JSX.Element {
               <StoryBibleWorkspace bookId={activeBook?.id ?? null} />
             ) : (
               <ChapterWorkspace
+                activeBook={activeBook}
                 activeChapter={activeChapter}
+                activeProject={activeProject}
                 activeTab={activeTab}
                 activeVersion={activeVersion}
+                activeVolume={activeVolume}
                 canonical={canonical}
                 compareA={compareA}
                 compareAId={compareAId}
@@ -724,6 +739,17 @@ export function App(): JSX.Element {
                 onSetCanonical={() => void saveManualVersion(true)}
                 onSetTab={setActiveTab}
                 onSetVersionCanonical={(item) => void setVersionCanonical(item)}
+                onWorkflowCanonicalChanged={(item) => {
+                  setCanonical(item);
+                  setDraft(item.contentMarkdown);
+                  setViewingVersionId(item.id);
+                  void refreshChapterVersions(item.chapterId);
+                }}
+                onWorkflowCostChange={updateWorkflowCost}
+                onWorkflowVersionCreated={(item) => {
+                  setViewingVersionId(item.id);
+                  void refreshChapterVersions(item.chapterId);
+                }}
                 stats={stats}
                 versions={versions}
               />
@@ -751,7 +777,7 @@ export function App(): JSX.Element {
                   book={activeBook}
                   chapter={activeChapter}
                   project={activeProject}
-                  volume={volumes.find((item) => item.id === activeChapter?.volumeId) ?? null}
+                  volume={activeVolume}
                 />
                 <section className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
                   <h3 className="text-sm font-semibold text-white">Settlement proposals</h3>
@@ -897,9 +923,12 @@ function CompactLauncher({
 }
 
 function ChapterWorkspace({
+  activeBook,
   activeChapter,
+  activeProject,
   activeTab,
   activeVersion,
+  activeVolume,
   canonical,
   compareA,
   compareAId,
@@ -918,12 +947,18 @@ function ChapterWorkspace({
   onSetCanonical,
   onSetTab,
   onSetVersionCanonical,
+  onWorkflowCanonicalChanged,
+  onWorkflowCostChange,
+  onWorkflowVersionCreated,
   stats,
   versions
 }: {
+  activeBook: BookRecord | null;
   activeChapter: ChapterRecord | null;
+  activeProject: ProjectRecord | null;
   activeTab: WorkspaceTab;
   activeVersion: ManuscriptVersionRecord | null;
+  activeVolume: VolumeRecord | null;
   canonical: ManuscriptVersionRecord | null;
   compareA: ManuscriptVersionRecord | null;
   compareAId: string | null;
@@ -942,6 +977,9 @@ function ChapterWorkspace({
   onSetCanonical: () => void;
   onSetTab: (tab: WorkspaceTab) => void;
   onSetVersionCanonical: (version: ManuscriptVersionRecord) => void;
+  onWorkflowCanonicalChanged: (version: ManuscriptVersionRecord) => void;
+  onWorkflowCostChange: (label: string, cost: number, warning: string) => void;
+  onWorkflowVersionCreated: (version: ManuscriptVersionRecord) => void;
   stats: ReturnType<typeof manuscriptStats>;
   versions: ManuscriptVersionRecord[];
 }): JSX.Element {
@@ -1051,7 +1089,17 @@ function ChapterWorkspace({
             </div>
           ) : null}
 
-          {activeTab === "generate" ? <GeneratePlaceholder /> : null}
+          {activeTab === "generate" ? (
+            <WorkflowGeneratePanel
+              activeBook={activeBook}
+              activeChapter={activeChapter}
+              activeProject={activeProject}
+              activeVolume={activeVolume}
+              onCanonicalChanged={onWorkflowCanonicalChanged}
+              onVersionCreated={onWorkflowVersionCreated}
+              onWorkflowCostChange={onWorkflowCostChange}
+            />
+          ) : null}
           {activeTab === "review" ? (
             <ReviewWorkspace
               canonical={canonical}
@@ -1078,49 +1126,6 @@ function ChapterWorkspace({
       </AnimatePresence>
 
       <TaskTimeline activeTab={activeTab} />
-    </div>
-  );
-}
-
-function GeneratePlaceholder(): JSX.Element {
-  return (
-    <div className="h-full overflow-auto px-6 py-5">
-      <div className="grid gap-4 xl:grid-cols-[1fr_280px]">
-        <section className="rounded-lg border border-white/10 bg-black/25 p-5">
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-            Generation stream
-          </p>
-          <div className="mt-5 min-h-[260px] rounded-lg border border-dashed border-white/10 bg-white/[0.025] p-5">
-            <p className="max-w-2xl text-sm leading-7 text-slate-400">
-              The live drafting stream will appear here once chapter workflows are connected. Until
-              then, generated text is visually separated from canon and cannot overwrite the
-              manuscript without confirmation.
-            </p>
-            <div className="mt-6 flex gap-2">
-              {[0, 1, 2].map((item) => (
-                <motion.span
-                  animate={{ opacity: [0.35, 1, 0.35] }}
-                  className="h-2 w-12 rounded-full bg-forge-blue/50"
-                  key={item}
-                  transition={{ duration: 1.2, repeat: Infinity, delay: item * 0.16 }}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-        <section className="space-y-3">
-          {["Generate Outline", "Draft Chapter", "Run Audit"].map((label) => (
-            <button
-              className="w-full rounded-lg border border-white/10 bg-graphite-900/60 px-4 py-3 text-left text-sm text-slate-200 hover:border-forge-blue/35"
-              key={label}
-              type="button"
-            >
-              {label}
-              <span className="mt-1 block text-xs text-slate-500">Workflow placeholder</span>
-            </button>
-          ))}
-        </section>
-      </div>
     </div>
   );
 }

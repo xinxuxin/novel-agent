@@ -7,6 +7,22 @@ import {
   streamRequestSchema,
   streamStartResultSchema
 } from "@contracts/ai";
+import {
+  chapterGenerationStartRequestSchema,
+  chapterWorkflowDetailSchema,
+  generationAbortRequestSchema,
+  generationAcceptArtifactAsVersionSchema,
+  generationCancelRequestSchema,
+  generationGetRunRequestSchema,
+  generationListRunsByChapterRequestSchema,
+  generationRequestRevisionSchema,
+  generationResumeRequestSchema,
+  generationSetAcceptedVersionCanonicalSchema,
+  generationStreamEventsRequestSchema,
+  manuscriptVersionWorkflowResponseSchema,
+  workflowEventRecordSchema,
+  workflowRunRecordSchema
+} from "@contracts/workflow";
 
 export const themePreferenceSchema = z.enum(["dark", "light", "system"]);
 export const platformSchema = z.enum([
@@ -1006,6 +1022,60 @@ export const IPC_CONTRACTS = {
     costs: {
       summary: createContract("ai:costs:summary", costSummaryRequestSchema, costSummarySchema)
     }
+  },
+  generation: {
+    chapter: {
+      start: createContract(
+        "generation:chapter:start",
+        chapterGenerationStartRequestSchema,
+        workflowRunRecordSchema
+      )
+    },
+    getRun: createContract(
+      "generation:get-run",
+      generationGetRunRequestSchema,
+      chapterWorkflowDetailSchema.nullable()
+    ),
+    listRunsByChapter: createContract(
+      "generation:list-runs-by-chapter",
+      generationListRunsByChapterRequestSchema,
+      z.array(workflowRunRecordSchema)
+    ),
+    streamEvents: createContract(
+      "generation:stream-events",
+      generationStreamEventsRequestSchema,
+      z.array(workflowEventRecordSchema)
+    ),
+    abort: createContract(
+      "generation:abort",
+      generationAbortRequestSchema,
+      workflowRunRecordSchema.nullable()
+    ),
+    resume: createContract(
+      "generation:resume",
+      generationResumeRequestSchema,
+      workflowRunRecordSchema
+    ),
+    requestRevision: createContract(
+      "generation:request-revision",
+      generationRequestRevisionSchema,
+      workflowRunRecordSchema
+    ),
+    acceptArtifactAsVersion: createContract(
+      "generation:accept-artifact-as-version",
+      generationAcceptArtifactAsVersionSchema,
+      manuscriptVersionWorkflowResponseSchema
+    ),
+    setAcceptedVersionCanonical: createContract(
+      "generation:set-accepted-version-canonical",
+      generationSetAcceptedVersionCanonicalSchema,
+      manuscriptVersionWorkflowResponseSchema.nullable()
+    ),
+    cancel: createContract(
+      "generation:cancel",
+      generationCancelRequestSchema,
+      workflowRunRecordSchema.nullable()
+    )
   }
 };
 
@@ -1116,5 +1186,15 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.ai.stream.abort,
   IPC_CONTRACTS.ai.runs.get,
   IPC_CONTRACTS.ai.runs.listByChapter,
-  IPC_CONTRACTS.ai.costs.summary
+  IPC_CONTRACTS.ai.costs.summary,
+  IPC_CONTRACTS.generation.chapter.start,
+  IPC_CONTRACTS.generation.getRun,
+  IPC_CONTRACTS.generation.listRunsByChapter,
+  IPC_CONTRACTS.generation.streamEvents,
+  IPC_CONTRACTS.generation.abort,
+  IPC_CONTRACTS.generation.resume,
+  IPC_CONTRACTS.generation.requestRevision,
+  IPC_CONTRACTS.generation.acceptArtifactAsVersion,
+  IPC_CONTRACTS.generation.setAcceptedVersionCanonical,
+  IPC_CONTRACTS.generation.cancel
 ];

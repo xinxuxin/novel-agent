@@ -36,6 +36,7 @@ describe("preload API", () => {
       "context",
       "credentials",
       "diagnostics",
+      "generation",
       "manuscripts",
       "memory",
       "modelPrices",

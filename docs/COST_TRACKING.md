@@ -66,6 +66,8 @@ Do not store complete prompts or responses in `llm_runs` by default.
 
 Phase 3 creates the table and routing/cost services needed for `llm_runs`. Phase 4 creates and updates `llm_runs` through the main-process AI gateway.
 
+Phase 8 also creates `llm_runs` for mock workflow nodes. These rows use `provider = fake`, `model = wenforge-mock-chapter-v1`, hash-only prompt/response storage, estimated usage, and local placeholder pricing so workflow cost accumulation can be tested without real provider calls.
+
 ## Estimation Flow
 
 1. Estimate input tokens from assembled prompt before request.
@@ -91,6 +93,18 @@ Phase 4 implements:
 - `ai.costs.summary` for filtered run totals.
 
 The gateway stores prompt and response hashes, not full content, unless future privacy settings explicitly opt into more verbose local logging.
+
+## Phase 8 Workflow Costs
+
+The chapter workflow aggregates costs from all node-level `llm_runs` linked to a `generation_run_id`. The Generate tab shows the latest run cost and session status during mock workflow execution.
+
+Current Phase 8 behavior:
+
+- preflight uses a conservative mock range
+- each mock model node records estimated input and output tokens
+- final mock costs are marked `usage_source = estimated`
+- workflow cancellation preserves partial run records
+- settlement proposal generation is costed as its own fake model node
 
 ## UI Surfaces
 
