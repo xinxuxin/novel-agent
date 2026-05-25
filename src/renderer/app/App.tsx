@@ -15,6 +15,7 @@ import type {
 } from "@contracts/data";
 import { CostMeter } from "@features/costs/CostMeter";
 import { CostDashboard } from "@features/costs/CostDashboard";
+import { DataPortabilityPanel } from "@features/data-portability/DataPortabilityPanel";
 import { ManuscriptEditor } from "@features/editor/ManuscriptEditor";
 import { EvalDashboard } from "@features/evaluation/EvalDashboard";
 import { createSimpleDiff, manuscriptStats } from "@features/editor/manuscript-utils";
@@ -37,7 +38,7 @@ import type {
 } from "@contracts/workflow";
 import { useUiStore } from "@renderer/stores/ui-store";
 
-type WorkspaceView = "chapter" | "storyBible" | "costs" | "eval" | "settings";
+type WorkspaceView = "chapter" | "storyBible" | "costs" | "eval" | "data" | "settings";
 type WorkspaceTab = "manuscript" | "generate" | "review" | "timeline" | "versions";
 
 const CHAPTER_STATUSES = [
@@ -659,6 +660,17 @@ export function App(): JSX.Element {
             </button>
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
+                workspaceView === "data"
+                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
+                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
+              }`}
+              onClick={() => setWorkspaceView("data")}
+              type="button"
+            >
+              Data
+            </button>
+            <button
+              className={`rounded-md border px-3 py-1.5 text-xs transition ${
                 workspaceView === "settings"
                   ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
                   : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
@@ -753,6 +765,8 @@ export function App(): JSX.Element {
               />
             ) : workspaceView === "eval" ? (
               <EvalDashboard bookId={activeBook?.id ?? null} />
+            ) : workspaceView === "data" ? (
+              <DataPortabilityPanel book={activeBook} project={activeProject} />
             ) : (
               <ChapterWorkspace
                 activeBook={activeBook}

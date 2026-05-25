@@ -31,6 +31,7 @@ describe("preload API", () => {
     expect(Object.keys(api).sort()).toEqual([
       "ai",
       "app",
+      "backup",
       "books",
       "budgets",
       "chapters",
@@ -39,7 +40,9 @@ describe("preload API", () => {
       "credentials",
       "diagnostics",
       "eval",
+      "export",
       "generation",
+      "import",
       "manuscript",
       "manuscripts",
       "memory",

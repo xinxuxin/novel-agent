@@ -116,3 +116,18 @@ Phase 4 adds a main-process-only AI gateway:
 - Anthropic and Gemini remain explicit `not_implemented` stubs until reliable provider-specific adapters are added.
 
 The Developer Test Generation panel can use the fake local provider without credentials. Real provider runs still require configured encrypted credentials.
+
+## Phase 12 Import, Export, Backup, And Restore
+
+Phase 12 keeps file portability in the main process:
+
+- Import/export/backup services are exposed only through typed IPC contracts.
+- Renderer code does not receive arbitrary filesystem read/write APIs.
+- Project JSON and WenForge package imports are validated with Zod before records are created.
+- Relative package paths are checked for traversal before import.
+- Imported Markdown is sanitized before it becomes an imported manuscript version.
+- Exports and backups exclude decrypted API keys, encrypted credential payloads, provider credential rows, and Authorization headers.
+- Cost CSV and project cost payloads redact key-like strings before reaching the renderer.
+- Restore requires explicit confirmation and creates a pre-restore backup before clearing local project data.
+
+Backup files may contain manuscript text and story bible facts, so they should be protected like user documents even though they do not contain provider secrets.

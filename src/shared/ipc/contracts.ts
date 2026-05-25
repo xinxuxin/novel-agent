@@ -27,6 +27,28 @@ import {
   evalSuiteSchema
 } from "@contracts/evaluation";
 import {
+  backupCreateRequestSchema,
+  backupRecordSchema,
+  backupRestoreRequestSchema,
+  backupRestoreResultSchema,
+  backupSettingsSchema,
+  backupSettingsUpdateSchema,
+  exportBookMarkdownRequestSchema,
+  exportBookTxtRequestSchema,
+  exportCostCsvRequestSchema,
+  exportFilesResultSchema,
+  exportPackageResultSchema,
+  exportProjectJsonRequestSchema,
+  exportProjectPackageRequestSchema,
+  exportTextResultSchema,
+  importMarkdownRequestSchema,
+  importProjectJsonRequestSchema,
+  importProjectPackageRequestSchema,
+  importResultSchema,
+  importTxtRequestSchema,
+  projectJsonPackageSchema
+} from "@contracts/import-export";
+import {
   chapterGenerationStartRequestSchema,
   chapterWorkflowDetailSchema,
   generationAbortRequestSchema,
@@ -1161,6 +1183,54 @@ export const IPC_CONTRACTS = {
     ),
     exportCsv: createContract("costs:export-csv", costScopeRequestSchema, csvExportResultSchema)
   },
+  export: {
+    bookMarkdown: createContract(
+      "export:book-markdown",
+      exportBookMarkdownRequestSchema,
+      exportFilesResultSchema
+    ),
+    bookTxt: createContract("export:book-txt", exportBookTxtRequestSchema, exportTextResultSchema),
+    projectJson: createContract(
+      "export:project-json",
+      exportProjectJsonRequestSchema,
+      projectJsonPackageSchema
+    ),
+    projectPackage: createContract(
+      "export:project-package",
+      exportProjectPackageRequestSchema,
+      exportPackageResultSchema
+    ),
+    costCsv: createContract("export:cost-csv", exportCostCsvRequestSchema, exportTextResultSchema)
+  },
+  import: {
+    markdown: createContract("import:markdown", importMarkdownRequestSchema, importResultSchema),
+    txt: createContract("import:txt", importTxtRequestSchema, importResultSchema),
+    projectJson: createContract(
+      "import:project-json",
+      importProjectJsonRequestSchema,
+      importResultSchema
+    ),
+    projectPackage: createContract(
+      "import:project-package",
+      importProjectPackageRequestSchema,
+      importResultSchema
+    )
+  },
+  backup: {
+    create: createContract("backup:create", backupCreateRequestSchema, backupRecordSchema),
+    list: createContract("backup:list", emptyRequestSchema, z.array(backupRecordSchema)),
+    restore: createContract(
+      "backup:restore",
+      backupRestoreRequestSchema,
+      backupRestoreResultSchema
+    ),
+    updateSettings: createContract(
+      "backup:update-settings",
+      backupSettingsUpdateSchema,
+      backupSettingsSchema
+    ),
+    getSettings: createContract("backup:get-settings", emptyRequestSchema, backupSettingsSchema)
+  },
   pricing: {
     importJson: createContract(
       "pricing:import-json",
@@ -1577,6 +1647,20 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.costs.getByRun,
   IPC_CONTRACTS.costs.getByModel,
   IPC_CONTRACTS.costs.exportCsv,
+  IPC_CONTRACTS.export.bookMarkdown,
+  IPC_CONTRACTS.export.bookTxt,
+  IPC_CONTRACTS.export.projectJson,
+  IPC_CONTRACTS.export.projectPackage,
+  IPC_CONTRACTS.export.costCsv,
+  IPC_CONTRACTS.import.markdown,
+  IPC_CONTRACTS.import.txt,
+  IPC_CONTRACTS.import.projectJson,
+  IPC_CONTRACTS.import.projectPackage,
+  IPC_CONTRACTS.backup.create,
+  IPC_CONTRACTS.backup.list,
+  IPC_CONTRACTS.backup.restore,
+  IPC_CONTRACTS.backup.updateSettings,
+  IPC_CONTRACTS.backup.getSettings,
   IPC_CONTRACTS.pricing.importJson,
   IPC_CONTRACTS.pricing.exportJson,
   IPC_CONTRACTS.pricing.markStale,

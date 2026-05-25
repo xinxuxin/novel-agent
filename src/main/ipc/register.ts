@@ -10,6 +10,8 @@ import { CostDashboardService, PricingRegistryService } from "@main/costs/cost-d
 import type { WenForgeDatabase } from "@main/db/connection";
 import type { RepositoryRegistry } from "@main/db/service";
 import { EvaluationService } from "@main/eval/evaluation-service";
+import { BackupService } from "@main/files/backup-service";
+import { ImportExportService } from "@main/files/import-export-service";
 import { ContextBuilder } from "@main/context/context-builder";
 import { MemoryIndexService } from "@main/memory/memory-index-service";
 import type { CredentialService } from "@main/providers/credential-service";
@@ -22,6 +24,7 @@ import { registerIpcContract } from "./typed-ipc";
 import { DEFAULT_PRIVACY_SETTINGS, DEFAULT_ROUTING_SETTINGS } from "@contracts/settings";
 import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
 import type { UpdateBudgetPolicyInput } from "@contracts/budgets";
+import type { BackupSettings } from "@contracts/import-export";
 import type { RoutePreviewContext } from "@contracts/model-routing";
 
 interface RegisterIpcOptions {
@@ -114,6 +117,20 @@ function registerDataIpc(
     ? new PricingRegistryService({ database, repositories })
     : null;
   const evaluationService = database ? new EvaluationService({ database, repositories }) : null;
+  const importExportService = database
+    ? new ImportExportService({
+        database,
+        repositories,
+        userDataDir: app.getPath("userData")
+      })
+    : null;
+  const backupService = database
+    ? new BackupService({
+        database,
+        repositories,
+        userDataDir: app.getPath("userData")
+      })
+    : null;
   evaluationService?.ensureBuiltInSuite();
 
   registerIpcContract(IPC_CONTRACTS.projects.list, () => repositories.projects.list());
@@ -582,6 +599,90 @@ function registerDataIpc(
       throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
     }
     return costDashboardService.exportCsv(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.export.bookMarkdown, (request) => {
+    if (!importExportService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return importExportService.exportBookMarkdown(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.export.bookTxt, (request) => {
+    if (!importExportService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return importExportService.exportBookTxt(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.export.projectJson, (request) => {
+    if (!importExportService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return importExportService.exportProjectJson(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.export.projectPackage, (request) => {
+    if (!importExportService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return importExportService.exportProjectPackage(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.export.costCsv, (request) => {
+    if (!importExportService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return importExportService.exportCostCsv(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.import.markdown, (request) => {
+    if (!importExportService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return importExportService.importMarkdown(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.import.txt, (request) => {
+    if (!importExportService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return importExportService.importTxt(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.import.projectJson, (request) => {
+    if (!importExportService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return importExportService.importProjectJson(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.import.projectPackage, (request) => {
+    if (!importExportService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return importExportService.importProjectPackage(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.backup.create, (request) => {
+    if (!backupService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return backupService.create(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.backup.list, () => {
+    if (!backupService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return backupService.list();
+  });
+  registerIpcContract(IPC_CONTRACTS.backup.restore, (request) => {
+    if (!backupService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return backupService.restore(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.backup.updateSettings, (request) => {
+    if (!backupService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return backupService.updateSettings(withoutUndefined(request) as Partial<BackupSettings>);
+  });
+  registerIpcContract(IPC_CONTRACTS.backup.getSettings, () => {
+    if (!backupService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return backupService.getSettings();
   });
   registerIpcContract(IPC_CONTRACTS.pricing.importJson, (request) => {
     if (!pricingRegistryService) {

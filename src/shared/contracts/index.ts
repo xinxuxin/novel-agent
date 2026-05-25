@@ -84,6 +84,30 @@ export type {
 } from "./evaluation";
 export { EVAL_DIMENSIONS } from "./evaluation";
 export type {
+  BackupCreateRequest,
+  BackupRecord,
+  BackupRestoreRequest,
+  BackupRestoreResult,
+  BackupSettings,
+  BackupSettingsUpdate,
+  ConflictStrategy,
+  ExportBookMarkdownRequest,
+  ExportBookTxtRequest,
+  ExportCostCsvRequest,
+  ExportFile,
+  ExportFilesResult,
+  ExportPackageResult,
+  ExportProjectJsonRequest,
+  ExportProjectPackageRequest,
+  ExportTextResult,
+  ImportMarkdownRequest,
+  ImportProjectJsonRequest,
+  ImportProjectPackageRequest,
+  ImportResult,
+  ImportTxtRequest,
+  ProjectJsonPackage
+} from "./import-export";
+export type {
   ApplySettlementResult,
   DiffLineType,
   ManuscriptDiff,

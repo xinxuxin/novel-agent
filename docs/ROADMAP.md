@@ -177,9 +177,24 @@ Deferred from Phase 10: selected hunk application inside diffs, true provider-ba
 
 Deferred from Phase 11: provider-backed eval execution, full daily/project spend-window enforcement in runtime, richer charting dependencies, project backup/restore, import/export, first-run onboarding, and packaging prep.
 
-## Phase 12: Import, Export, Backup, And Packaging Prep
+## Phase 12: Import, Export, Backup, And Restore (Complete)
 
-- Add Markdown/TXT import with safe path handling and no untrusted HTML injection.
-- Add project export, cost report export, backup, restore, and migration safety checks.
+- [x] Add main-process `ImportExportService` for book Markdown, book TXT, project JSON, WenForge package, and redacted cost CSV exports.
+- [x] Validate relative import paths, reject traversal, sanitize imported Markdown, and validate JSON/WenForge package payloads with Zod.
+- [x] Import Markdown/TXT chapters as versioned imported manuscript records without bypassing canonical manuscript history.
+- [x] Export project packages without decrypted API keys, encrypted credential blobs, provider credential rows, or Authorization headers.
+- [x] Add main-process `BackupService` with manual backups, settings persistence, retention handling, confirmed restore, and pre-restore backup creation.
+- [x] Wire typed IPC and preload APIs for `export.*`, `import.*`, and `backup.*` without adding generic privileged renderer access.
+- [x] Add a Data workspace with export wizard, import wizard, backup settings, restore confirmation, progress/status copy, and secret-exclusion warnings.
+- [x] Add tests for secret-free exports, chapter ordering, import validation, path traversal rejection, Markdown sanitization, conflict skipping, cost redaction, and backup/restore roundtrip.
+- [x] Document import/export and backup/restore behavior.
+
+Deferred from Phase 12: native file picker save/open flows, EPUB export, automatic backup scheduling hooks, first-run onboarding, and electron-builder packaging configuration.
+
+## Phase 13: Onboarding, File Picker Polish, And Packaging Prep
+
 - Add first-run onboarding for provider setup, route defaults, and manuscript logging settings.
-- Add electron-builder configuration only after local development commands are stable.
+- Add safe native file picker flows for saving exports and opening import packages.
+- Add automatic backup triggers for daily, app-close, and before-destructive-operation settings.
+- Add optional EPUB export if dependency and formatting risk stay low.
+- Add electron-builder configuration after local development commands remain stable.

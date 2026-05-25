@@ -81,6 +81,28 @@ import type {
   RoutePriceWarning
 } from "./cost-dashboard";
 import type {
+  BackupCreateRequest,
+  BackupRecord,
+  BackupRestoreRequest,
+  BackupRestoreResult,
+  BackupSettings,
+  BackupSettingsUpdate,
+  ExportBookMarkdownRequest,
+  ExportBookTxtRequest,
+  ExportCostCsvRequest,
+  ExportFilesResult,
+  ExportPackageResult,
+  ExportProjectJsonRequest,
+  ExportProjectPackageRequest,
+  ExportTextResult,
+  ImportMarkdownRequest,
+  ImportProjectJsonRequest,
+  ImportProjectPackageRequest,
+  ImportResult,
+  ImportTxtRequest,
+  ProjectJsonPackage
+} from "./import-export";
+import type {
   EvalCaseRecord,
   EvalHumanScoreRequest,
   EvalLeaderboardEntry,
@@ -339,6 +361,26 @@ export interface WenForgeApi {
     getByRun: (request?: CostScopeRequest) => Promise<CostGroup[]>;
     getByModel: (request?: CostScopeRequest) => Promise<CostGroup[]>;
     exportCsv: (request?: CostScopeRequest) => Promise<CsvExportResult>;
+  };
+  export: {
+    bookMarkdown: (request: ExportBookMarkdownRequest) => Promise<ExportFilesResult>;
+    bookTxt: (request: ExportBookTxtRequest) => Promise<ExportTextResult>;
+    projectJson: (request: ExportProjectJsonRequest) => Promise<ProjectJsonPackage>;
+    projectPackage: (request: ExportProjectPackageRequest) => Promise<ExportPackageResult>;
+    costCsv: (request?: ExportCostCsvRequest) => Promise<ExportTextResult>;
+  };
+  import: {
+    markdown: (request: ImportMarkdownRequest) => Promise<ImportResult>;
+    txt: (request: ImportTxtRequest) => Promise<ImportResult>;
+    projectJson: (request: ImportProjectJsonRequest) => Promise<ImportResult>;
+    projectPackage: (request: ImportProjectPackageRequest) => Promise<ImportResult>;
+  };
+  backup: {
+    create: (request?: BackupCreateRequest) => Promise<BackupRecord>;
+    list: () => Promise<BackupRecord[]>;
+    restore: (request: BackupRestoreRequest) => Promise<BackupRestoreResult>;
+    getSettings: () => Promise<BackupSettings>;
+    updateSettings: (request: BackupSettingsUpdate) => Promise<BackupSettings>;
   };
   pricing: {
     importJson: (json: string) => Promise<PriceImportResult>;

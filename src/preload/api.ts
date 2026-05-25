@@ -30,6 +30,16 @@ import type {
   RoutePriceWarning
 } from "@contracts/cost-dashboard";
 import type {
+  BackupRecord,
+  BackupRestoreResult,
+  BackupSettings,
+  ExportFilesResult,
+  ExportPackageResult,
+  ExportTextResult,
+  ImportResult,
+  ProjectJsonPackage
+} from "@contracts/import-export";
+import type {
   EvalCaseRecord,
   EvalLeaderboardEntry,
   EvalOutputRecord,
@@ -784,6 +794,108 @@ export function createPreloadApi(
           invoke,
           IPC_CONTRACTS.costs.exportCsv.channel,
           IPC_CONTRACTS.costs.exportCsv.response,
+          request
+        )
+    },
+    export: {
+      bookMarkdown: (request) =>
+        invokeContract<ExportFilesResult>(
+          invoke,
+          IPC_CONTRACTS.export.bookMarkdown.channel,
+          IPC_CONTRACTS.export.bookMarkdown.response,
+          request
+        ),
+      bookTxt: (request) =>
+        invokeContract<ExportTextResult>(
+          invoke,
+          IPC_CONTRACTS.export.bookTxt.channel,
+          IPC_CONTRACTS.export.bookTxt.response,
+          request
+        ),
+      projectJson: (request) =>
+        invokeContract<ProjectJsonPackage>(
+          invoke,
+          IPC_CONTRACTS.export.projectJson.channel,
+          IPC_CONTRACTS.export.projectJson.response,
+          request
+        ),
+      projectPackage: (request) =>
+        invokeContract<ExportPackageResult>(
+          invoke,
+          IPC_CONTRACTS.export.projectPackage.channel,
+          IPC_CONTRACTS.export.projectPackage.response,
+          request
+        ),
+      costCsv: (request = {}) =>
+        invokeContract<ExportTextResult>(
+          invoke,
+          IPC_CONTRACTS.export.costCsv.channel,
+          IPC_CONTRACTS.export.costCsv.response,
+          request
+        )
+    },
+    import: {
+      markdown: (request) =>
+        invokeContract<ImportResult>(
+          invoke,
+          IPC_CONTRACTS.import.markdown.channel,
+          IPC_CONTRACTS.import.markdown.response,
+          request
+        ),
+      txt: (request) =>
+        invokeContract<ImportResult>(
+          invoke,
+          IPC_CONTRACTS.import.txt.channel,
+          IPC_CONTRACTS.import.txt.response,
+          request
+        ),
+      projectJson: (request) =>
+        invokeContract<ImportResult>(
+          invoke,
+          IPC_CONTRACTS.import.projectJson.channel,
+          IPC_CONTRACTS.import.projectJson.response,
+          request
+        ),
+      projectPackage: (request) =>
+        invokeContract<ImportResult>(
+          invoke,
+          IPC_CONTRACTS.import.projectPackage.channel,
+          IPC_CONTRACTS.import.projectPackage.response,
+          request
+        )
+    },
+    backup: {
+      create: (request = {}) =>
+        invokeContract<BackupRecord>(
+          invoke,
+          IPC_CONTRACTS.backup.create.channel,
+          IPC_CONTRACTS.backup.create.response,
+          request
+        ),
+      list: () =>
+        invokeContract<BackupRecord[]>(
+          invoke,
+          IPC_CONTRACTS.backup.list.channel,
+          IPC_CONTRACTS.backup.list.response
+        ),
+      restore: (request) =>
+        invokeContract<BackupRestoreResult>(
+          invoke,
+          IPC_CONTRACTS.backup.restore.channel,
+          IPC_CONTRACTS.backup.restore.response,
+          request
+        ),
+      getSettings: () =>
+        invokeContract<BackupSettings>(
+          invoke,
+          IPC_CONTRACTS.backup.getSettings.channel,
+          IPC_CONTRACTS.backup.getSettings.response
+        ),
+      updateSettings: (request) =>
+        invokeContract<BackupSettings>(
+          invoke,
+          IPC_CONTRACTS.backup.updateSettings.channel,
+          IPC_CONTRACTS.backup.updateSettings.response,
           request
         )
     },

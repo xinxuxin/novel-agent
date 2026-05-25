@@ -6,7 +6,7 @@ The product direction is a dark command-center writing studio with a popover lau
 
 ## Current Status
 
-Phase 1 is implemented: a secure Electron + React + TypeScript desktop shell with Tailwind styling, a narrow preload bridge, strict TypeScript, unit tests, and an Electron smoke test. AI provider logic, persistence, credentials, and agent workflows are intentionally not implemented yet.
+Phases 1-12 are implemented through the local-first studio shell, SQLite data foundation, secure credential metadata, AI gateway, story bible memory, WenForge-native skill package, mock/provider workflow runtime, review and settlement flows, cost/eval dashboards, and safe import/export/backup tooling. Packaging and first-run onboarding remain planned follow-up work.
 
 ## Planned Stack
 
@@ -50,6 +50,8 @@ pnpm db:studio
 - [Security](docs/SECURITY.md)
 - [Cost Tracking](docs/COST_TRACKING.md)
 - [Database](docs/DATABASE.md)
+- [Import And Export](docs/IMPORT_EXPORT.md)
+- [Backup And Restore](docs/BACKUP_RESTORE.md)
 - [UI Spec](docs/UI_SPEC.md)
 - [Reference Repos](docs/REFERENCE_REPOS.md)
 - [Fusion Plan](docs/FUSION_PLAN.md)
