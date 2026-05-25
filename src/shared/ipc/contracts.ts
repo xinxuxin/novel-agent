@@ -445,10 +445,75 @@ const routeResolutionSchema = z.object({
   qualityMode: qualityModeSchema,
   route: taskRouteSchema.nullable(),
   modelProfile: modelProfileSchema.nullable(),
+  fallbackModels: z.array(modelProfileSchema),
   price: modelPriceSchema.nullable(),
   credential: credentialDtoSchema.nullable(),
+  providerHealth: z
+    .object({
+      id: z.string(),
+      provider: providerSchema,
+      model: z.string().nullable(),
+      status: z.enum(["unknown", "healthy", "degraded", "down"]),
+      checkedAt: z.string(),
+      errorCode: z.string().nullable(),
+      errorMessage: z.string().nullable()
+    })
+    .nullable(),
+  estimatedCostRange: z.object({
+    minCost: z.number().min(0),
+    maxCost: z.number().min(0),
+    currency: z.string()
+  }),
   warnings: z.array(z.string()),
   errors: z.array(z.string())
+});
+const routePreviewRequestSchema = z.object({
+  taskType: taskTypeSchema,
+  qualityMode: qualityModeSchema,
+  chapterImportance: z.enum(["normal", "opening", "key_chapter", "climax", "finale"]).optional(),
+  budgetMode: z.enum(["strict", "flexible"]).optional(),
+  expectedTokens: z
+    .object({
+      inputTokens: z.number().int().min(0),
+      outputTokens: z.number().int().min(0)
+    })
+    .optional(),
+  userOverrideModelProfileId: z.string().min(1).nullable().optional()
+});
+const budgetPolicySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  perCallBudgetCap: z.number().nullable(),
+  perWorkflowBudgetCap: z.number().nullable(),
+  dailyBudgetCap: z.number().nullable(),
+  projectBudgetCap: z.number().nullable(),
+  warningThresholdPercent: z.number(),
+  onBudgetExceeded: z.enum(["warn", "pause", "abort"]),
+  currency: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+const budgetPolicyUpdateSchema = budgetPolicySchema
+  .pick({
+    id: true,
+    name: true,
+    perCallBudgetCap: true,
+    perWorkflowBudgetCap: true,
+    dailyBudgetCap: true,
+    projectBudgetCap: true,
+    warningThresholdPercent: true,
+    onBudgetExceeded: true,
+    currency: true
+  })
+  .partial();
+const providerHealthSchema = z.object({
+  id: z.string(),
+  provider: providerSchema,
+  model: z.string().nullable(),
+  status: z.enum(["unknown", "healthy", "degraded", "down"]),
+  checkedAt: z.string(),
+  errorCode: z.string().nullable(),
+  errorMessage: z.string().nullable()
 });
 export const IPC_CONTRACTS = {
   app: {
@@ -990,6 +1055,29 @@ export const IPC_CONTRACTS = {
       routeResolutionSchema
     )
   },
+  modelRoutes: {
+    resolvePreview: createContract(
+      "model-routes:resolve-preview",
+      routePreviewRequestSchema,
+      routeResolutionSchema
+    )
+  },
+  budgets: {
+    getPolicies: createContract("budgets:get-policies", emptyRequestSchema, budgetPolicySchema),
+    updatePolicies: createContract(
+      "budgets:update-policies",
+      budgetPolicyUpdateSchema,
+      budgetPolicySchema
+    )
+  },
+  providerHealth: {
+    list: createContract("provider-health:list", emptyRequestSchema, z.array(providerHealthSchema)),
+    reset: createContract(
+      "provider-health:reset",
+      z.object({ provider: providerSchema.optional() }).optional(),
+      z.undefined()
+    )
+  },
   privacy: {
     get: createContract("privacy:get", emptyRequestSchema, privacySettingsSchema),
     update: createContract("privacy:update", privacySettingsSchema.partial(), privacySettingsSchema)
@@ -1055,6 +1143,11 @@ export const IPC_CONTRACTS = {
       "generation:resume",
       generationResumeRequestSchema,
       workflowRunRecordSchema
+    ),
+    resumeAfterBudgetWarning: createContract(
+      "generation:resume-after-budget-warning",
+      z.object({ runId: z.string().min(1), confirmed: z.boolean().optional() }),
+      workflowRunRecordSchema.nullable()
     ),
     requestRevision: createContract(
       "generation:request-revision",
@@ -1178,6 +1271,11 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.taskRoutes.list,
   IPC_CONTRACTS.taskRoutes.upsert,
   IPC_CONTRACTS.taskRoutes.resolve,
+  IPC_CONTRACTS.modelRoutes.resolvePreview,
+  IPC_CONTRACTS.budgets.getPolicies,
+  IPC_CONTRACTS.budgets.updatePolicies,
+  IPC_CONTRACTS.providerHealth.list,
+  IPC_CONTRACTS.providerHealth.reset,
   IPC_CONTRACTS.privacy.get,
   IPC_CONTRACTS.privacy.update,
   IPC_CONTRACTS.routingSettings.get,
@@ -1193,6 +1291,7 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.generation.streamEvents,
   IPC_CONTRACTS.generation.abort,
   IPC_CONTRACTS.generation.resume,
+  IPC_CONTRACTS.generation.resumeAfterBudgetWarning,
   IPC_CONTRACTS.generation.requestRevision,
   IPC_CONTRACTS.generation.acceptArtifactAsVersion,
   IPC_CONTRACTS.generation.setAcceptedVersionCanonical,

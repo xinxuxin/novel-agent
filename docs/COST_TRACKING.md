@@ -106,6 +106,28 @@ Current Phase 8 behavior:
 - workflow cancellation preserves partial run records
 - settlement proposal generation is costed as its own fake model node
 
+## Phase 9 Provider Workflow Costs
+
+Phase 9 routes workflow model nodes through the main-process AI gateway. Each attempt creates its own `llm_runs` row before the provider adapter is called. Fallback attempts and JSON-repair attempts are visible as separate run records linked to the same `generation_run_id`.
+
+Provider workflow preflight:
+
+- resolves all chapter workflow task routes
+- estimates input and output tokens per node
+- computes per-node and total cost ranges from active `model_prices`
+- blocks missing credentials and blocking missing-price policies
+- surfaces stale price warnings
+- enforces `per_workflow_budget_cap` before creating a workflow run
+
+Live budget behavior:
+
+- per-call caps are checked before the provider request
+- final call cost is compared against preflight max plus `warning_threshold_percent`
+- the configured action is returned as `warn`, `pause`, or `abort`
+- provider errors are normalized and redacted before being written to `llm_runs`
+
+The Settings budget panel edits the default budget policy. Daily and project caps are stored now and reserved for full spend-window enforcement in a later analytics pass.
+
 ## UI Surfaces
 
 - Live run meter in the generation stream.
@@ -113,6 +135,8 @@ Current Phase 8 behavior:
 - Session total in the command bar or task timeline.
 - Project monthly total in analytics.
 - Route editor warnings when a selected model has no active price record.
+- Provider workflow preflight modal showing selected models and estimated max cost.
+- Settings budget panel for caps, threshold, action, and provider health.
 
 ## Accuracy Notes
 

@@ -19,13 +19,19 @@ import { CHAPTER_GENERATION_WORKFLOW_ID } from "@contracts/workflow";
 import { ContextBuilder } from "@main/context/context-builder";
 import type { WenForgeDatabase } from "@main/db/connection";
 import type { RepositoryRegistry } from "@main/db/service";
+import type { AiGateway } from "@main/ai/ai-gateway";
 import { CostCalculator } from "@main/ai/cost-calculator";
 import { hashMessages, sha256Hex } from "@main/ai/hash";
 import { TokenEstimator } from "@main/ai/token-estimator";
+import type { CredentialService } from "@main/providers/credential-service";
+import { ModelRouter } from "@main/providers/model-router";
 import { PromptAssemblyService } from "@main/prompts/prompt-assembly-service";
 import { PromptTemplateService } from "@main/prompts/prompt-template-service";
 import { SkillLoader } from "@main/prompts/skill-loader";
 import { runLangGraphSegment } from "./langgraph-runner";
+import { WorkflowModelExecutor } from "./workflow-model-executor";
+import { DEFAULT_ROUTING_SETTINGS } from "@contracts/settings";
+import type { RoutingSettings } from "@contracts/settings";
 
 type ChapterWorkflowAction = "start" | "resume" | "revision";
 
@@ -36,6 +42,10 @@ interface ChapterWorkflowState extends Record<string, unknown> {
   volumeId: string | null;
   chapterId: string;
   qualityMode: "economy" | "balanced" | "premium";
+  executionMode: "provider" | "mock";
+  routeOverrideModelProfileId: string | null;
+  chapterImportance: "normal" | "opening" | "key_chapter" | "climax" | "finale";
+  budgetMode: "strict" | "flexible";
   userInstruction: string | null;
   contextPack: ContextPreviewPack | null;
   routePlan: Array<{ node: ChapterWorkflowNode; taskType: LLMTaskType; model: string }>;
@@ -60,6 +70,8 @@ interface ChapterWorkflowState extends Record<string, unknown> {
 interface RuntimeOptions {
   database: WenForgeDatabase;
   repositories: RepositoryRegistry;
+  aiGateway?: AiGateway | undefined;
+  credentialService?: CredentialService | undefined;
   privacy?: PrivacySettings;
 }
 
@@ -126,7 +138,14 @@ export class ChapterWorkflowRuntime {
     if (!chapter || chapter.bookId !== input.bookId) {
       throw new Error("Chapter not found for workflow");
     }
-    const costEstimate = this.createCostEstimate();
+    const executionMode = input.executionMode ?? "provider";
+    if (executionMode === "provider" && !this.options.aiGateway) {
+      throw new Error("Provider workflow requires the main-process AI gateway");
+    }
+    const costEstimate = this.createCostEstimate({
+      executionMode,
+      qualityMode: input.qualityMode
+    });
     if (
       typeof input.costWarningThreshold === "number" &&
       costEstimate.maxCost > input.costWarningThreshold &&
@@ -148,9 +167,13 @@ export class ChapterWorkflowRuntime {
       volumeId: input.volumeId ?? chapter.volumeId ?? null,
       chapterId: input.chapterId,
       qualityMode: input.qualityMode,
+      executionMode,
+      routeOverrideModelProfileId: input.routeOverrideModelProfileId ?? null,
+      chapterImportance: input.chapterImportance ?? "normal",
+      budgetMode: input.budgetMode ?? "strict",
       userInstruction: input.userInstruction ?? null,
       contextPack: null,
-      routePlan: this.createRoutePlan(),
+      routePlan: this.createRoutePlan(executionMode, input.qualityMode),
       costEstimate,
       chapterOutline: null,
       sceneCards: [],
@@ -346,22 +369,22 @@ export class ChapterWorkflowRuntime {
         nextState = this.retrieveMemory(runningState);
         break;
       case "generate_chapter_outline":
-        nextState = this.generateChapterOutline(runningState);
+        nextState = await this.generateChapterOutline(runningState);
         break;
       case "generate_scene_cards":
-        nextState = this.generateSceneCards(runningState);
+        nextState = await this.generateSceneCards(runningState);
         break;
       case "draft_chapter":
-        nextState = this.draftChapter(runningState);
+        nextState = await this.draftChapter(runningState);
         break;
       case "continuity_audit":
-        nextState = this.continuityAudit(runningState);
+        nextState = await this.continuityAudit(runningState);
         break;
       case "webnovel_rhythm_audit":
-        nextState = this.webnovelRhythmAudit(runningState);
+        nextState = await this.webnovelRhythmAudit(runningState);
         break;
       case "revise_draft":
-        nextState = this.reviseDraft(runningState);
+        nextState = await this.reviseDraft(runningState);
         break;
       case "human_gate":
         nextState = {
@@ -372,7 +395,7 @@ export class ChapterWorkflowRuntime {
         };
         break;
       case "state_settlement_proposal":
-        nextState = this.stateSettlementProposal(runningState);
+        nextState = await this.stateSettlementProposal(runningState);
         break;
       case "persist_results":
         nextState = runningState;
@@ -396,8 +419,11 @@ export class ChapterWorkflowRuntime {
     }
     return {
       ...state,
-      routePlan: this.createRoutePlan(),
-      costEstimate: this.createCostEstimate()
+      routePlan: this.createRoutePlan(state.executionMode, state.qualityMode),
+      costEstimate: this.createCostEstimate({
+        executionMode: state.executionMode,
+        qualityMode: state.qualityMode
+      })
     };
   }
 
@@ -421,7 +447,7 @@ export class ChapterWorkflowRuntime {
     return { ...state, contextPack };
   }
 
-  private generateChapterOutline(state: ChapterWorkflowState): ChapterWorkflowState {
+  private async generateChapterOutline(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
     const chapter = this.options.repositories.chapters.get(state.chapterId);
     const outline = {
       chapter_promise: `${chapter?.title ?? "本章"}揭开一个具体威胁。`,
@@ -447,7 +473,7 @@ export class ChapterWorkflowRuntime {
     });
   }
 
-  private generateSceneCards(state: ChapterWorkflowState): ChapterWorkflowState {
+  private async generateSceneCards(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
     const sceneCards = [
       {
         scene_index: 1,
@@ -488,7 +514,7 @@ export class ChapterWorkflowRuntime {
     });
   }
 
-  private draftChapter(state: ChapterWorkflowState): ChapterWorkflowState {
+  private async draftChapter(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
     const draft = [
       "雨从钟楼背面的檐角连成线，落在沈照肩上时，像一只只冰冷的手。",
       "",
@@ -512,7 +538,7 @@ export class ChapterWorkflowRuntime {
     });
   }
 
-  private continuityAudit(state: ChapterWorkflowState): ChapterWorkflowState {
+  private async continuityAudit(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
     const finding = {
       findings: [
         {
@@ -548,7 +574,7 @@ export class ChapterWorkflowRuntime {
     });
   }
 
-  private webnovelRhythmAudit(state: ChapterWorkflowState): ChapterWorkflowState {
+  private async webnovelRhythmAudit(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
     const rhythm = {
       opening_hook_score: 8,
       conflict_density_score: 8,
@@ -584,7 +610,7 @@ export class ChapterWorkflowRuntime {
     });
   }
 
-  private reviseDraft(state: ChapterWorkflowState): ChapterWorkflowState {
+  private async reviseDraft(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
     const instructionLine = state.userInstruction
       ? `\n\n【修订指令已吸收：${state.userInstruction}】`
       : "";
@@ -607,7 +633,9 @@ export class ChapterWorkflowRuntime {
     });
   }
 
-  private stateSettlementProposal(state: ChapterWorkflowState): ChapterWorkflowState {
+  private async stateSettlementProposal(
+    state: ChapterWorkflowState
+  ): Promise<ChapterWorkflowState> {
     const settlement = {
       proposals: [
         {
@@ -668,7 +696,7 @@ export class ChapterWorkflowRuntime {
     });
   }
 
-  private withLlmArtifact(
+  private async withLlmArtifact(
     state: ChapterWorkflowState,
     input: {
       node: ChapterWorkflowNode;
@@ -679,23 +707,109 @@ export class ChapterWorkflowRuntime {
       contentJson?: string;
       extraState: Partial<ChapterWorkflowState>;
     }
-  ): ChapterWorkflowState {
+  ): Promise<ChapterWorkflowState> {
     const messages = this.assembleMessages(input.taskType, state, input.contentText);
-    const llmRun = this.recordFakeLlmRun(state, input.taskType, messages, input.contentText);
+    const llmResult =
+      state.executionMode === "provider"
+        ? await this.runProviderLlmNode(state, input, messages)
+        : {
+            text: input.contentText,
+            contentJson: input.contentJson ?? null,
+            extraState: input.extraState,
+            llmRunId: this.recordFakeLlmRun(state, input.taskType, messages, input.contentText).id,
+            attempts: [],
+            budgetAction: "none" as const
+          };
     const artifact = this.options.repositories.generation.createArtifact({
       generationRunId: state.runId,
       chapterId: state.chapterId,
       artifactType: input.artifactType,
       title: input.title,
-      contentText: input.contentText,
-      contentJson: input.contentJson ?? null,
+      contentText: llmResult.text,
+      contentJson: llmResult.contentJson,
       sourceNode: input.node
     });
+    if (llmResult.attempts.length > 0 || llmResult.budgetAction !== "none") {
+      this.options.repositories.generation.addEvent({
+        generationRunId: state.runId,
+        eventType: "model_route_completed",
+        nodeName: input.node,
+        message: `${input.node} model route completed`,
+        payload: {
+          attempts: llmResult.attempts,
+          budgetAction: llmResult.budgetAction
+        }
+      });
+    }
+    if (llmResult.budgetAction === "pause" || llmResult.budgetAction === "abort") {
+      this.options.repositories.generation.addEvent({
+        generationRunId: state.runId,
+        eventType: `budget_${llmResult.budgetAction}`,
+        nodeName: input.node,
+        message: `Budget policy requested ${llmResult.budgetAction}`,
+        payload: { budgetAction: llmResult.budgetAction }
+      });
+      if (llmResult.budgetAction === "abort") {
+        throw new Error("Budget policy aborted workflow");
+      }
+    }
     return {
       ...state,
-      ...input.extraState,
-      llmRunIds: [...state.llmRunIds, llmRun.id],
+      ...llmResult.extraState,
+      llmRunIds: [...state.llmRunIds, llmResult.llmRunId],
       generatedArtifactIds: [...state.generatedArtifactIds, artifact.id]
+    };
+  }
+
+  private async runProviderLlmNode(
+    state: ChapterWorkflowState,
+    input: {
+      node: ChapterWorkflowNode;
+      taskType: LLMTaskType;
+      artifactType: string;
+      contentJson?: string;
+      extraState: Partial<ChapterWorkflowState>;
+    },
+    messages: ChatMessage[]
+  ): Promise<{
+    text: string;
+    contentJson: string | null;
+    extraState: Partial<ChapterWorkflowState>;
+    llmRunId: string;
+    attempts: Array<Record<string, unknown>>;
+    budgetAction: "none" | "warn" | "pause" | "abort";
+  }> {
+    if (!this.options.aiGateway) {
+      throw new Error("Provider workflow requires the main-process AI gateway");
+    }
+    const result = await new WorkflowModelExecutor({
+      aiGateway: this.options.aiGateway,
+      repositories: this.options.repositories,
+      credentialService: this.options.credentialService,
+      retryDelayMs: 250
+    }).runNode({
+      generationRunId: state.runId,
+      taskType: input.taskType,
+      qualityMode: state.qualityMode,
+      projectId: state.projectId,
+      bookId: state.bookId,
+      chapterId: state.chapterId,
+      messages,
+      expectedOutputTokens: outputTokenBudgetForTask(input.taskType),
+      requireJson: Boolean(input.contentJson),
+      preflightMaxCost: state.costEstimate.maxCost,
+      userOverrideModelProfileId: state.routeOverrideModelProfileId
+    });
+    const parsedExtraState = input.contentJson
+      ? createProviderJsonState(input.artifactType, result.text, input.extraState)
+      : updateTextState(input.artifactType, result.text, input.extraState);
+    return {
+      text: result.text,
+      contentJson: input.contentJson ? result.text : null,
+      extraState: parsedExtraState,
+      llmRunId: result.llmRunId,
+      attempts: result.attempts as unknown as Array<Record<string, unknown>>,
+      budgetAction: result.budgetAction
     };
   }
 
@@ -778,22 +892,92 @@ export class ChapterWorkflowRuntime {
     );
   }
 
-  private createRoutePlan(): ChapterWorkflowState["routePlan"] {
-    return Object.entries(TASK_BY_NODE).map(([node, taskType]) => ({
-      node: node as ChapterWorkflowNode,
-      taskType,
-      model: "wenforge-mock-chapter-v1"
-    }));
+  private createRoutePlan(
+    executionMode: ChapterWorkflowState["executionMode"],
+    qualityMode: ChapterWorkflowState["qualityMode"]
+  ): ChapterWorkflowState["routePlan"] {
+    if (executionMode === "mock") {
+      return Object.entries(TASK_BY_NODE).map(([node, taskType]) => ({
+        node: node as ChapterWorkflowNode,
+        taskType,
+        model: "wenforge-mock-chapter-v1"
+      }));
+    }
+    const router = this.createModelRouter();
+    return Object.entries(TASK_BY_NODE).map(([node, taskType]) => {
+      const model = router.getPrimaryModel(taskType, qualityMode);
+      return {
+        node: node as ChapterWorkflowNode,
+        taskType,
+        model: model ? `${model.provider}/${model.model}` : "unavailable"
+      };
+    });
   }
 
-  private createCostEstimate(): WorkflowCostEstimate {
-    return {
-      minCost: 0.0001,
-      maxCost: 0.01,
-      currency: "USD",
+  private createCostEstimate(input: {
+    executionMode: ChapterWorkflowState["executionMode"];
+    qualityMode: ChapterWorkflowState["qualityMode"];
+  }): WorkflowCostEstimate {
+    if (input.executionMode === "mock") {
+      return {
+        minCost: 0.0001,
+        maxCost: 0.01,
+        currency: "USD",
+        nodeCount: Object.keys(TASK_BY_NODE).length,
+        notes: ["Mock provider estimate; no external provider call will be made."]
+      };
+    }
+
+    const router = this.createModelRouter();
+    const notes: string[] = [];
+    let minCost = 0;
+    let maxCost = 0;
+    let currency = "USD";
+    for (const taskType of Object.values(TASK_BY_NODE)) {
+      const resolution = router.resolveRoute(taskType, input.qualityMode, {
+        expectedTokens: {
+          inputTokens: 4_000,
+          outputTokens: outputTokenBudgetForTask(taskType)
+        }
+      });
+      if (!resolution.available) {
+        throw new Error(
+          `Provider route unavailable for ${taskType}: ${resolution.errors.join(", ")}`
+        );
+      }
+      minCost += resolution.estimatedCostRange.minCost;
+      maxCost += resolution.estimatedCostRange.maxCost;
+      currency = resolution.estimatedCostRange.currency;
+      for (const warning of resolution.warnings) {
+        notes.push(`${taskType}: ${warning}`);
+      }
+    }
+    const estimate = {
+      minCost: roundSummary(minCost),
+      maxCost: roundSummary(maxCost),
+      currency,
       nodeCount: Object.keys(TASK_BY_NODE).length,
-      notes: ["Mock provider estimate; real routes will use the model price registry."]
+      notes
     };
+    const policy = this.options.repositories.budgetPolicies.getDefault();
+    if (policy.perWorkflowBudgetCap !== null && estimate.maxCost > policy.perWorkflowBudgetCap) {
+      throw new Error("Workflow budget cap exceeded");
+    }
+    return estimate;
+  }
+
+  private createModelRouter(): ModelRouter {
+    const routingSettings =
+      this.options.repositories.settings.get<RoutingSettings>("routing") ??
+      DEFAULT_ROUTING_SETTINGS;
+    return new ModelRouter({
+      credentials: this.options.repositories.providerCredentials,
+      modelProfiles: this.options.repositories.modelProfiles,
+      prices: this.options.repositories.modelPrices,
+      routes: this.options.repositories.taskRoutes,
+      providerHealth: this.options.repositories.providerHealth,
+      settings: routingSettings
+    });
   }
 
   private persistCheckpoint(
@@ -884,4 +1068,73 @@ function summarizeWorkflowLlmRuns(llmRuns: LLMRunRecord[]): CostSummary {
 
 function roundSummary(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function outputTokenBudgetForTask(taskType: LLMTaskType): number {
+  switch (taskType) {
+    case "draft_chapter":
+      return 8_000;
+    case "revise_chapter":
+      return 8_000;
+    case "scene_cards":
+      return 2_000;
+    case "chapter_outline":
+      return 1_500;
+    case "continuity_audit":
+    case "suspense_hook_audit":
+      return 1_500;
+    case "state_settlement":
+      return 1_200;
+    default:
+      return 1_000;
+  }
+}
+
+function createProviderJsonState(
+  artifactType: string,
+  text: string,
+  fallback: Partial<ChapterWorkflowState>
+): Partial<ChapterWorkflowState> {
+  const parsed = parseJson(text);
+  if (!parsed) return fallback;
+  if (artifactType === "outline" && isRecord(parsed)) {
+    return { chapterOutline: parsed };
+  }
+  if (artifactType === "scene_cards" && Array.isArray(parsed)) {
+    return {
+      sceneCards: parsed.filter(isRecord)
+    };
+  }
+  if (artifactType === "continuity_audit" && isRecord(parsed)) {
+    return { continuityAudit: parsed };
+  }
+  if (artifactType === "rhythm_audit" && isRecord(parsed)) {
+    return { webnovelRhythmAudit: parsed };
+  }
+  if (artifactType === "settlement_proposal" && isRecord(parsed)) {
+    return { stateSettlementProposal: parsed };
+  }
+  return fallback;
+}
+
+function updateTextState(
+  artifactType: string,
+  text: string,
+  fallback: Partial<ChapterWorkflowState>
+): Partial<ChapterWorkflowState> {
+  if (artifactType === "draft") return { ...fallback, draftMarkdown: text };
+  if (artifactType === "revision") return { ...fallback, revisedMarkdown: text };
+  return fallback;
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

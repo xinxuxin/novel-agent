@@ -5,6 +5,7 @@ import { createDatabaseConnection } from "./connection";
 import type { DatabaseConnection, WenForgeDatabase } from "./connection";
 import { migrateDatabase } from "./migrate";
 import { BookRepository } from "./repositories/book-repository";
+import { BudgetPolicyRepository } from "./repositories/budget-policy-repository";
 import { ChapterRepository } from "./repositories/chapter-repository";
 import { CostRepository } from "./repositories/cost-repository";
 import { GenerationRepository } from "./repositories/generation-repository";
@@ -14,6 +15,7 @@ import { ModelPriceRepository } from "./repositories/model-price-repository";
 import { ModelProfileRepository } from "./repositories/model-profile-repository";
 import { ProjectRepository } from "./repositories/project-repository";
 import { ProviderCredentialRepository } from "./repositories/provider-credential-repository";
+import { ProviderHealthRepository } from "./repositories/provider-health-repository";
 import { SettingsRepository } from "./repositories/settings-repository";
 import { StoryBibleRepository } from "./repositories/story-bible-repository";
 import { TaskRouteRepository } from "./repositories/task-route-repository";
@@ -35,6 +37,8 @@ export interface RepositoryRegistry {
   generation: GenerationRepository;
   settings: SettingsRepository;
   providerCredentials: ProviderCredentialRepository;
+  providerHealth: ProviderHealthRepository;
+  budgetPolicies: BudgetPolicyRepository;
   modelProfiles: ModelProfileRepository;
   modelPrices: ModelPriceRepository;
   taskRoutes: TaskRouteRepository;
@@ -62,6 +66,8 @@ export function createRepositories(db: WenForgeDatabase): RepositoryRegistry {
     generation: new GenerationRepository(db),
     settings: new SettingsRepository(db),
     providerCredentials: new ProviderCredentialRepository(db),
+    providerHealth: new ProviderHealthRepository(db),
+    budgetPolicies: new BudgetPolicyRepository(db),
     modelProfiles: new ModelProfileRepository(db),
     modelPrices: new ModelPriceRepository(db),
     taskRoutes: new TaskRouteRepository(db)

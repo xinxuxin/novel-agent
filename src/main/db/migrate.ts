@@ -408,10 +408,25 @@ create table if not exists task_model_routes (
 create table if not exists provider_health (
   id text primary key,
   provider text not null,
+  model text,
   status text not null,
   checked_at text not null,
   error_code text,
   error_message text
+);
+
+create table if not exists budget_policies (
+  id text primary key,
+  name text not null,
+  per_call_budget_cap real,
+  per_workflow_budget_cap real,
+  daily_budget_cap real,
+  project_budget_cap real,
+  warning_threshold_percent real not null default 50,
+  on_budget_exceeded text not null default 'warn',
+  currency text not null default 'USD',
+  created_at text not null,
+  updated_at text not null
 );
 
 create table if not exists llm_runs (
@@ -508,6 +523,7 @@ function ensureColumns(sqlite: SqliteDatabase): void {
   ensureColumn(sqlite, "provider_credentials", "is_configured", "integer not null default 0");
   ensureColumn(sqlite, "provider_credentials", "last_tested_at", "text");
   ensureColumn(sqlite, "provider_credentials", "last_status", "text not null default 'unknown'");
+  ensureColumn(sqlite, "provider_health", "model", "text");
 
   ensureColumn(sqlite, "characters", "first_appearance_chapter_id", "text");
   ensureColumn(sqlite, "characters", "goal", "text");

@@ -49,10 +49,14 @@ export type {
   ModelPriceRecord,
   ModelProfileRecord,
   ModelRouteResolution,
+  ProviderHealthRecord,
   ProviderCredentialDto,
+  RoutePreviewContext,
   SaveCredentialInput,
   TaskRouteRecord
 } from "./model-routing";
+export { DEFAULT_BUDGET_POLICY } from "./budgets";
+export type { BudgetExceededAction, BudgetPolicyRecord, UpdateBudgetPolicyInput } from "./budgets";
 export { DEFAULT_PRIVACY_SETTINGS, DEFAULT_ROUTING_SETTINGS } from "./settings";
 export type { PrivacySettings, RoutingSettings } from "./settings";
 export type { ContextPreviewPack, ContextPreviewRequest } from "./context";

@@ -65,6 +65,7 @@ export const streamRequestSchema = z.object({
   projectId: z.string().nullable().optional(),
   bookId: z.string().nullable().optional(),
   chapterId: z.string().nullable().optional(),
+  generationRunId: z.string().nullable().optional(),
   messages: z.array(chatMessageSchema).min(1),
   temperature: z.number().min(0).max(2).optional(),
   maxOutputTokens: z.number().int().positive().optional(),

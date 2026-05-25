@@ -2,6 +2,7 @@ import type {
   AIProviderId,
   AIStreamEvent,
   CostBreakdown,
+  NormalizedProviderResponse,
   StreamRequest,
   StreamStartResult,
   TokenUsage
@@ -14,6 +15,7 @@ import type { RepositoryRegistry } from "@main/db/service";
 import type { CredentialService } from "@main/providers/credential-service";
 import { ModelRouter } from "@main/providers/model-router";
 import { SafeIpcError } from "@main/ipc/typed-ipc";
+import { RedactionService } from "@main/security/redaction-service";
 import { CostCalculator } from "./cost-calculator";
 import { hashMessages, sha256Hex } from "./hash";
 import type { ProviderAdapter, ProviderAdapterConfig } from "./provider-adapter";
@@ -47,6 +49,7 @@ export class AiGateway {
   private readonly adapters: Map<AIProviderId, ProviderAdapter>;
   private readonly tokenEstimator: TokenEstimator;
   private readonly costCalculator: CostCalculator;
+  private readonly redaction = new RedactionService();
   private readonly activeRuns = new Map<string, ActiveRun>();
 
   constructor(private readonly options: AiGatewayOptions) {
@@ -76,6 +79,7 @@ export class AiGateway {
       true
     );
     const run = this.options.repositories.cost.createLlmRun({
+      generationRunId: request.generationRunId ?? null,
       provider: resolved.provider,
       model: resolved.model,
       taskType: request.taskType,
@@ -140,6 +144,108 @@ export class AiGateway {
 
   async waitForRun(runId: string): Promise<void> {
     await this.activeRuns.get(runId)?.finished;
+  }
+
+  async generateText(request: StreamRequest): Promise<{
+    runId: string;
+    provider: AIProviderId;
+    model: string;
+    response: NormalizedProviderResponse;
+    usageSource: "estimated" | "provider" | "mixed";
+    finalCost: CostBreakdown;
+    latencyMs: number;
+  }> {
+    const resolved = this.resolveRequest(request);
+    const adapter = this.adapters.get(resolved.provider);
+    if (!adapter) {
+      throw new SafeIpcError("PROVIDER_UNAVAILABLE", "No provider adapter is available");
+    }
+    adapter.validateConfig(resolved.config);
+
+    const inputTokensEstimated = this.tokenEstimator.estimateMessages(request.messages);
+    const initialCost = this.calculateCost(
+      {
+        inputTokens: inputTokensEstimated,
+        outputTokens: 0
+      },
+      resolved.price,
+      true
+    );
+    const run = this.options.repositories.cost.createLlmRun({
+      generationRunId: request.generationRunId ?? null,
+      provider: resolved.provider,
+      model: resolved.model,
+      taskType: request.taskType,
+      projectId: request.projectId ?? null,
+      bookId: request.bookId ?? null,
+      chapterId: request.chapterId ?? null,
+      inputTokensEstimated,
+      estimatedCostLive: initialCost.totalCost,
+      currency: initialCost.currency,
+      promptHash: hashMessages(request.messages)
+    });
+
+    const startedAt = Date.now();
+    try {
+      const response = await adapter.generateText(
+        {
+          ...request,
+          provider: resolved.provider,
+          model: resolved.model,
+          temperature: request.temperature ?? resolved.temperature,
+          maxOutputTokens: request.maxOutputTokens ?? resolved.maxOutputTokens
+        },
+        new AbortController().signal,
+        resolved.config
+      );
+      const outputTokensEstimated = this.tokenEstimator.estimateText(response.text);
+      const usage = response.usage ?? {
+        inputTokens: inputTokensEstimated,
+        outputTokens: outputTokensEstimated
+      };
+      const usageSource = response.usage ? "provider" : "estimated";
+      const finalCost = this.calculateCost(usage, resolved.price, !response.usage);
+      const latencyMs = Date.now() - startedAt;
+      this.options.repositories.cost.finishRun(run.id, {
+        status: "succeeded",
+        outputTokensEstimatedLive: outputTokensEstimated,
+        inputTokensReported: response.usage?.inputTokens ?? null,
+        outputTokensReported: response.usage?.outputTokens ?? null,
+        cachedInputTokensReported: response.usage?.cachedInputTokens ?? null,
+        usageSource,
+        estimatedCostLive: finalCost.totalCost,
+        finalCost: finalCost.totalCost,
+        latencyMs,
+        responseHash: sha256Hex(response.text)
+      });
+      return {
+        runId: run.id,
+        provider: resolved.provider,
+        model: resolved.model,
+        response,
+        usageSource,
+        finalCost,
+        latencyMs
+      };
+    } catch (error) {
+      const providerError = this.normalizeError(adapter, error);
+      const finalCost = this.calculateCost(
+        { inputTokens: inputTokensEstimated, outputTokens: 0 },
+        resolved.price,
+        true
+      );
+      this.options.repositories.cost.finishRun(run.id, {
+        status: providerError.code === "aborted" ? "cancelled" : "failed",
+        outputTokensEstimatedLive: 0,
+        usageSource: "estimated",
+        estimatedCostLive: finalCost.totalCost,
+        finalCost: finalCost.totalCost,
+        latencyMs: Date.now() - startedAt,
+        errorCode: providerError.code,
+        errorMessage: providerError.message
+      });
+      throw new ProviderAdapterError(providerError, { cause: error });
+    }
   }
 
   private async runProviderStream(input: {
@@ -317,6 +423,7 @@ export class AiGateway {
       modelProfiles: this.options.repositories.modelProfiles,
       prices: this.options.repositories.modelPrices,
       routes: this.options.repositories.taskRoutes,
+      providerHealth: this.options.repositories.providerHealth,
       settings: routingSettings
     }).resolveRoute(request.taskType, request.qualityMode ?? "balanced");
 
@@ -363,8 +470,15 @@ export class AiGateway {
 
   private normalizeError(adapter: ProviderAdapter, error: unknown) {
     if (error instanceof ProviderAdapterError) {
-      return error.providerError;
+      return {
+        ...error.providerError,
+        message: this.redaction.redact(error.providerError.message)
+      };
     }
-    return adapter.normalizeError(error);
+    const normalized = adapter.normalizeError(error);
+    return {
+      ...normalized,
+      message: this.redaction.redact(normalized.message)
+    };
   }
 }

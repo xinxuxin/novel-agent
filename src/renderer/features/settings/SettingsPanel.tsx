@@ -8,6 +8,8 @@ import type {
   AIStreamEvent,
   ModelPriceRecord,
   ModelProfileRecord,
+  BudgetPolicyRecord,
+  ProviderHealthRecord,
   ProviderCredentialDto,
   TaskRouteRecord
 } from "@contracts/index";
@@ -15,13 +17,22 @@ import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
 import { PROVIDERS, QUALITY_MODES, TASK_TYPES } from "@shared/domain/model-routing";
 import type { ProviderId, QualityMode, TaskType } from "@shared/domain/model-routing";
 
-type SettingsTab = "providers" | "models" | "pricing" | "routing" | "privacy" | "advanced";
+type SettingsTab =
+  | "providers"
+  | "models"
+  | "pricing"
+  | "routing"
+  | "budgets"
+  | "privacy"
+  | "advanced";
 
 interface SettingsData {
   credentials: ProviderCredentialDto[];
   profiles: ModelProfileRecord[];
   prices: ModelPriceRecord[];
   routes: TaskRouteRecord[];
+  budget: BudgetPolicyRecord | null;
+  providerHealth: ProviderHealthRecord[];
   privacy: PrivacySettings | null;
   routing: RoutingSettings | null;
 }
@@ -70,6 +81,7 @@ const SETTINGS_TABS: Array<{ id: SettingsTab; label: string }> = [
   { id: "models", label: "Models" },
   { id: "pricing", label: "Pricing" },
   { id: "routing", label: "Routing" },
+  { id: "budgets", label: "Budgets" },
   { id: "privacy", label: "Privacy" },
   { id: "advanced", label: "Advanced" }
 ];
@@ -81,20 +93,25 @@ const initialData: SettingsData = {
   profiles: [],
   prices: [],
   routes: [],
+  budget: null,
+  providerHealth: [],
   privacy: null,
   routing: null
 };
 
 async function loadSettingsData(): Promise<SettingsData> {
-  const [credentials, profiles, prices, routes, privacy, routing] = await Promise.all([
-    window.wenforge.credentials.list(),
-    window.wenforge.modelProfiles.list(),
-    window.wenforge.modelPrices.list(),
-    window.wenforge.taskRoutes.list(),
-    window.wenforge.privacy.get(),
-    window.wenforge.routingSettings.get()
-  ]);
-  return { credentials, profiles, prices, routes, privacy, routing };
+  const [credentials, profiles, prices, routes, budget, providerHealth, privacy, routing] =
+    await Promise.all([
+      window.wenforge.credentials.list(),
+      window.wenforge.modelProfiles.list(),
+      window.wenforge.modelPrices.list(),
+      window.wenforge.taskRoutes.list(),
+      window.wenforge.budgets.getPolicies(),
+      window.wenforge.providerHealth.list(),
+      window.wenforge.privacy.get(),
+      window.wenforge.routingSettings.get()
+    ]);
+  return { credentials, profiles, prices, routes, budget, providerHealth, privacy, routing };
 }
 
 export function SettingsPanel(): JSX.Element {
@@ -283,6 +300,12 @@ export function SettingsPanel(): JSX.Element {
     }, "Routing settings updated.");
   };
 
+  const updateBudgetPolicy = async (patch: Partial<BudgetPolicyRecord>): Promise<void> => {
+    await runAction(async () => {
+      await window.wenforge.budgets.updatePolicies(patch);
+    }, "Budget policy updated.");
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -390,6 +413,18 @@ export function SettingsPanel(): JSX.Element {
             stalePriceIds={stalePriceIds}
             prices={data.prices}
             onUpdateRoute={updateRoute}
+          />
+        ) : null}
+        {!loading && activeTab === "budgets" && data.budget ? (
+          <BudgetsTab
+            budget={data.budget}
+            providerHealth={data.providerHealth}
+            onResetProviderHealth={() =>
+              runAction(async () => {
+                await window.wenforge.providerHealth.reset();
+              }, "Provider health reset.")
+            }
+            onUpdateBudget={updateBudgetPolicy}
           />
         ) : null}
         {!loading && activeTab === "privacy" && data.privacy ? (
@@ -891,6 +926,117 @@ function RoutingTab({
   );
 }
 
+function BudgetsTab({
+  budget,
+  providerHealth,
+  onResetProviderHealth,
+  onUpdateBudget
+}: {
+  budget: BudgetPolicyRecord;
+  providerHealth: ProviderHealthRecord[];
+  onResetProviderHealth: () => void;
+  onUpdateBudget: (patch: Partial<BudgetPolicyRecord>) => Promise<void>;
+}): JSX.Element {
+  const commitNullable = (key: keyof BudgetPolicyRecord, value: string): void => {
+    void onUpdateBudget({
+      [key]: parseOptionalNumber(value)
+    } as Partial<BudgetPolicyRecord>);
+  };
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
+        <SectionTitle title="Budget Policy" />
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <NullableNumberSetting
+            label="Per-call cap"
+            value={budget.perCallBudgetCap}
+            onCommit={(value) => commitNullable("perCallBudgetCap", value)}
+          />
+          <NullableNumberSetting
+            label="Per-workflow cap"
+            value={budget.perWorkflowBudgetCap}
+            onCommit={(value) => commitNullable("perWorkflowBudgetCap", value)}
+          />
+          <NullableNumberSetting
+            label="Daily cap"
+            value={budget.dailyBudgetCap}
+            onCommit={(value) => commitNullable("dailyBudgetCap", value)}
+          />
+          <NullableNumberSetting
+            label="Project cap"
+            value={budget.projectBudgetCap}
+            onCommit={(value) => commitNullable("projectBudgetCap", value)}
+          />
+          <NumberSetting
+            label="Warning threshold percent"
+            value={budget.warningThresholdPercent}
+            onCommit={(value) => onUpdateBudget({ warningThresholdPercent: value })}
+          />
+          <FieldLabel label="When budget is exceeded">
+            <select
+              className={fieldClassName}
+              value={budget.onBudgetExceeded}
+              onChange={(event) =>
+                void onUpdateBudget({
+                  onBudgetExceeded: event.target.value as BudgetPolicyRecord["onBudgetExceeded"]
+                })
+              }
+            >
+              <option value="warn">Warn</option>
+              <option value="pause">Pause workflow</option>
+              <option value="abort">Abort workflow</option>
+            </select>
+          </FieldLabel>
+          <FieldLabel label="Currency">
+            <input
+              className={fieldClassName}
+              defaultValue={budget.currency}
+              onBlur={(event) =>
+                void onUpdateBudget({ currency: event.target.value.trim() || "USD" })
+              }
+            />
+          </FieldLabel>
+        </div>
+      </section>
+      <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <SectionTitle title="Provider Health" />
+          <button
+            className={secondaryButtonClassName}
+            onClick={onResetProviderHealth}
+            type="button"
+          >
+            Reset
+          </button>
+        </div>
+        <div className="mt-4 space-y-2">
+          {providerHealth.length === 0 ? (
+            <EmptyState text="No provider health records yet." />
+          ) : null}
+          {providerHealth.map((item) => (
+            <div
+              className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
+              key={item.id}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-white">
+                  {PROVIDER_LABELS[item.provider]} · {item.model ?? "all models"}
+                </span>
+                <StatusPill tone={item.status === "healthy" ? "success" : "warning"}>
+                  {item.status}
+                </StatusPill>
+              </div>
+              {item.errorMessage ? (
+                <p className="mt-1 text-xs text-slate-500">{item.errorMessage}</p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function PrivacyTab({
   privacy,
   onUpdatePrivacy
@@ -1158,6 +1304,28 @@ function NumberSetting({
             void onCommit(nextValue);
           }
         }}
+      />
+    </FieldLabel>
+  );
+}
+
+function NullableNumberSetting({
+  label,
+  value,
+  onCommit
+}: {
+  label: string;
+  value: number | null;
+  onCommit: (value: string) => void;
+}): JSX.Element {
+  return (
+    <FieldLabel label={label}>
+      <input
+        className={fieldClassName}
+        defaultValue={value === null ? "" : String(value)}
+        inputMode="decimal"
+        onBlur={(event) => onCommit(event.target.value)}
+        placeholder="No cap"
       />
     </FieldLabel>
   );

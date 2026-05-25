@@ -90,6 +90,7 @@ describe("chapter_generation_v1 workflow runtime", () => {
       volumeId: volume.id,
       chapterId: chapter.id,
       qualityMode: "balanced",
+      executionMode: "mock",
       userInstruction: "突出雨夜压迫感",
       targetTokenBudget: 4000,
       confirmed: true
@@ -131,6 +132,7 @@ describe("chapter_generation_v1 workflow runtime", () => {
       volumeId: volume.id,
       chapterId: chapter.id,
       qualityMode: "balanced",
+      executionMode: "mock",
       confirmed: true
     });
 
@@ -190,6 +192,7 @@ describe("chapter_generation_v1 workflow runtime", () => {
       volumeId: volume.id,
       chapterId: chapter.id,
       qualityMode: "balanced",
+      executionMode: "mock",
       confirmed: true
     });
 
@@ -219,6 +222,7 @@ describe("chapter_generation_v1 workflow runtime", () => {
       volumeId: volume.id,
       chapterId: chapter.id,
       qualityMode: "balanced",
+      executionMode: "mock",
       confirmed: true
     });
 
@@ -238,6 +242,7 @@ describe("chapter_generation_v1 workflow runtime", () => {
       volumeId: volume.id,
       chapterId: chapter.id,
       qualityMode: "balanced",
+      executionMode: "mock",
       confirmed: true
     });
 
@@ -255,6 +260,7 @@ describe("chapter_generation_v1 workflow runtime", () => {
         bookId: "book-1",
         chapterId: "chapter-1",
         qualityMode: "balanced",
+        executionMode: "mock",
         confirmed: true
       }).success
     ).toBe(true);

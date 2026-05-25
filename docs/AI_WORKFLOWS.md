@@ -67,6 +67,22 @@ The runtime pauses at `human_gate`. From that point the user can:
 
 The renderer only talks to the graph through typed `generation.*` IPC endpoints.
 
+## Phase 9 Provider Runtime
+
+Phase 9 keeps mock mode for tests and local demos, then adds explicit provider mode for real configured models.
+
+Provider mode requirements:
+
+- the user must choose provider execution from the Generate tab
+- renderer preflight calls `modelRoutes.resolvePreview` and shows model/cost estimates
+- the main process resolves every node route again before starting
+- missing required routes, credentials, enabled model profiles, or blocking prices stop the workflow
+- every model node uses `ContextBuilder`, `PromptAssemblyService`, `ModelRouter`, `WorkflowModelExecutor`, the AI gateway, and provider adapters
+- every provider attempt creates an `llm_runs` row before the request
+- fallback, retry, JSON repair, provider health, and budget actions are recorded
+
+Provider output remains proposed content. Accepting a revision creates a non-canonical manuscript version, and setting it canonical still requires a separate confirmation.
+
 ## Review And Rewrite Workflow
 
 - Start from a selected manuscript version or generated draft.
@@ -121,6 +137,20 @@ Task routes are DB-backed and editable:
 - embedding_or_memory_indexing
 
 Routes resolve in the main process immediately before provider calls. Missing credentials, disabled prices, or unavailable models produce safe user-visible errors before starting expensive work.
+
+Fallback and retry policy:
+
+- rate limits can fall back to configured fallback models
+- transient network failures can retry with exponential backoff or fallback
+- auth and permission failures stop immediately
+- invalid structured JSON retries once through the JSON repair prompt
+- provider health is updated after route outcomes
+
+Budgets:
+
+- preflight enforces per-workflow caps
+- each routed model node enforces per-call caps
+- live/final cost overruns return the configured budget action
 
 ## Human Gates
 

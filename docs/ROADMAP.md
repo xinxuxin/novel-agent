@@ -126,12 +126,21 @@ Deferred from Phase 7: workflow node execution, provider-backed generation, sche
 
 Deferred from Phase 8: real provider-backed workflow nodes, live token streaming per graph node, selected-diff application, settlement proposal approval/application, and long-running worker isolation.
 
-## Phase 9: Review, Continuity, And Human Gates
+## Phase 9: Provider Routing, Fallback, And Budgets (Complete)
 
-- Add review cards for continuity, rhythm, AI-ish phrasing, cliches, and unresolved hooks.
-- Add non-destructive rewrite proposals with accept, reject, and selected-diff application.
-- Add state-settlement review for chapter summaries, timeline events, character changes, relationship changes, foreshadowing, resolved hooks, unresolved hooks, and continuity risks.
-- Require confirmation before destructive deletes, canonical manuscript overwrites, accepted memory changes, or route changes that affect active run cost.
+- [x] Connect chapter workflow model nodes to the main-process AI gateway while keeping explicit mock mode for tests and local demos.
+- [x] Route provider calls through `ContextBuilder`, prompt assembly, `ModelRouter`, workflow cost wrapper, provider adapters, and `llm_runs`.
+- [x] Add route preview with expected token estimates, fallback models, provider health, stale/missing price warnings, and optional run-level model override.
+- [x] Add fallback and retry behavior for rate limits, transient provider failures, and one structured JSON repair attempt.
+- [x] Stop immediately on auth, invalid-key, and permission errors without retrying or falling back.
+- [x] Persist and surface provider health outcomes for route attempts.
+- [x] Add `budget_policies` with per-call, per-workflow, daily, and project caps plus warning threshold and exceeded action.
+- [x] Enforce per-workflow preflight caps and per-call route caps; return live overrun actions for warn, pause, and abort behavior.
+- [x] Add typed IPC and preload APIs for route previews, budget policies, provider health, and budget-warning resume.
+- [x] Add renderer controls for mock/provider execution, provider preflight confirmation, route override, budget settings, provider health reset, and run attempt details through existing run records.
+- [x] Add tests for route resolution, fallback, auth no-retry, JSON repair retry, budget blocking, live budget action, provider health updates, and mock mode.
+
+Deferred from Phase 9: selected-diff application, settlement proposal approval/application, daily/project spend-window enforcement, and true graph-level pause/resume after live budget warnings.
 
 ## Phase 10: Import, Export, Backup, And Packaging Prep
 

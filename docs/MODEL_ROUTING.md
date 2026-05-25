@@ -73,15 +73,41 @@ Supported task types:
 
 ## Router Resolution
 
-`ModelRouter.resolveRoute(taskType, qualityMode)` checks:
+`ModelRouter.resolveRoute(taskType, qualityMode, context)` checks:
 
 1. Route exists and is enabled.
 2. Primary model profile exists and is enabled.
 3. A configured credential exists for the profile provider.
 4. An active price row exists for the provider/model pair.
 5. Active price is not stale according to `priceStaleAfterDays`.
+6. Provider health is not marked down.
 
 Missing credentials block route availability. Missing prices warn by default and can block when `missingPriceBehavior` is set to `block`. Stale prices warn.
+
+## Phase 9 Provider Routing
+
+Phase 9 connects chapter workflow nodes to the main-process AI gateway. Every provider-backed node now flows through:
+
+`ContextBuilder -> PromptAssembly -> ModelRouter -> WorkflowModelExecutor/CostWrapper -> ProviderAdapter -> llm_runs`
+
+The router now exposes:
+
+- `getPrimaryModel(taskType, qualityMode)`
+- `getFallbackModels(taskType, qualityMode)`
+- `estimateRouteCost(taskType, expectedTokens, qualityMode)`
+- `shouldUseFallback(error, providerStatus)`
+- `recordRouteOutcome(runId, provider, model, outcome)`
+
+Route preview accepts chapter importance, budget mode, expected token estimates, provider health, and optional user override model profile. Provider mode will not start when a required route, credential, model profile, or blocking price is missing. Mock mode must be selected explicitly when the user wants a local no-provider run.
+
+Fallback policy:
+
+- rate limits can fall back to configured fallback models
+- retryable network/timeout/overload failures can retry or fall back
+- auth, invalid-key, and permission errors do not retry or fall back
+- structured JSON failure retries once with the WenForge JSON repair prompt
+
+Provider health is updated after successes and failures and can be reset in Settings.
 
 ## Settings UI
 
@@ -91,6 +117,7 @@ The renderer exposes a Settings workspace with tabs for:
 - Models: add custom profiles and enable/disable seeded profiles.
 - Pricing: add or edit price rows and see stale price warnings.
 - Routing: change primary model profile, temperature, token limit, and enabled status.
+- Budgets: set caps, warning threshold, exceeded action, currency, and reset provider health.
 - Privacy: configure prompt, response, manuscript, recent-chapter, token-budget, and debug logging settings.
 - Advanced: configure stale price threshold and missing price policy.
 

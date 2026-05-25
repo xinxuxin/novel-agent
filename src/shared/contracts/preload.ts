@@ -23,6 +23,8 @@ import type {
   ModelPriceRecord,
   ModelProfileRecord,
   ModelRouteResolution,
+  ProviderHealthRecord,
+  RoutePreviewContext,
   ProviderCredentialDto,
   SaveCredentialInput,
   TaskRouteRecord
@@ -67,6 +69,7 @@ import type {
   UnresolvedHookInput,
   UnresolvedHookRecord
 } from "./story-bible";
+import type { BudgetPolicyRecord, UpdateBudgetPolicyInput } from "./budgets";
 
 export type WenForgePlatform =
   | "aix"
@@ -250,6 +253,21 @@ export interface WenForgeApi {
     ) => Promise<TaskRouteRecord>;
     resolve: (taskType: TaskType, qualityMode: QualityMode) => Promise<ModelRouteResolution>;
   };
+  modelRoutes: {
+    resolvePreview: (
+      taskType: TaskType,
+      qualityMode: QualityMode,
+      context?: RoutePreviewContext
+    ) => Promise<ModelRouteResolution>;
+  };
+  budgets: {
+    getPolicies: () => Promise<BudgetPolicyRecord>;
+    updatePolicies: (input: UpdateBudgetPolicyInput) => Promise<BudgetPolicyRecord>;
+  };
+  providerHealth: {
+    list: () => Promise<ProviderHealthRecord[]>;
+    reset: (provider?: ProviderHealthRecord["provider"]) => Promise<void>;
+  };
   privacy: {
     get: () => Promise<PrivacySettings>;
     update: (input: Partial<PrivacySettings>) => Promise<PrivacySettings>;
@@ -281,6 +299,10 @@ export interface WenForgeApi {
     streamEvents: (runId: string, sinceEventId?: string) => Promise<WorkflowEventRecord[]>;
     abort: (runId: string) => Promise<WorkflowRunRecord | null>;
     resume: (request: GenerationResumeRequest) => Promise<WorkflowRunRecord>;
+    resumeAfterBudgetWarning: (
+      runId: string,
+      confirmed: boolean
+    ) => Promise<WorkflowRunRecord | null>;
     requestRevision: (request: GenerationRequestRevision) => Promise<WorkflowRunRecord>;
     acceptArtifactAsVersion: (
       request: GenerationAcceptArtifactAsVersion

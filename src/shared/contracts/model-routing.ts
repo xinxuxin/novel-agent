@@ -98,8 +98,38 @@ export interface ModelRouteResolution {
   qualityMode: QualityMode;
   route: TaskRouteRecord | null;
   modelProfile: ModelProfileRecord | null;
+  fallbackModels: ModelProfileRecord[];
   price: ModelPriceRecord | null;
   credential: ProviderCredentialDto | null;
+  providerHealth: ProviderHealthRecord | null;
+  estimatedCostRange: {
+    minCost: number;
+    maxCost: number;
+    currency: string;
+  };
   warnings: string[];
   errors: string[];
+}
+
+export type ChapterImportance = "normal" | "opening" | "key_chapter" | "climax" | "finale";
+export type BudgetMode = "strict" | "flexible";
+
+export interface RoutePreviewContext {
+  chapterImportance?: ChapterImportance;
+  budgetMode?: BudgetMode;
+  expectedTokens?: {
+    inputTokens: number;
+    outputTokens: number;
+  };
+  userOverrideModelProfileId?: string | null;
+}
+
+export interface ProviderHealthRecord {
+  id: string;
+  provider: ProviderId;
+  model: string | null;
+  status: "unknown" | "healthy" | "degraded" | "down";
+  checkedAt: string;
+  errorCode: string | null;
+  errorMessage: string | null;
 }

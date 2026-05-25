@@ -17,8 +17,11 @@ import type {
   ModelProfileRecord,
   ModelRouteResolution,
   ProviderCredentialDto,
+  ProviderHealthRecord,
+  RoutePreviewContext,
   TaskRouteRecord
 } from "@contracts/model-routing";
+import type { BudgetPolicyRecord } from "@contracts/budgets";
 import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
 import type { ContextPreviewPack, ContextPreviewRequest } from "@contracts/context";
 import type {
@@ -592,6 +595,49 @@ export function createPreloadApi(
           { taskType, qualityMode }
         )
     },
+    modelRoutes: {
+      resolvePreview: (
+        taskType: TaskType,
+        qualityMode: QualityMode,
+        context?: RoutePreviewContext
+      ) =>
+        invokeContract<ModelRouteResolution>(
+          invoke,
+          IPC_CONTRACTS.modelRoutes.resolvePreview.channel,
+          IPC_CONTRACTS.modelRoutes.resolvePreview.response,
+          { ...context, taskType, qualityMode }
+        )
+    },
+    budgets: {
+      getPolicies: () =>
+        invokeContract<BudgetPolicyRecord>(
+          invoke,
+          IPC_CONTRACTS.budgets.getPolicies.channel,
+          IPC_CONTRACTS.budgets.getPolicies.response
+        ),
+      updatePolicies: (input) =>
+        invokeContract<BudgetPolicyRecord>(
+          invoke,
+          IPC_CONTRACTS.budgets.updatePolicies.channel,
+          IPC_CONTRACTS.budgets.updatePolicies.response,
+          input
+        )
+    },
+    providerHealth: {
+      list: () =>
+        invokeContract<ProviderHealthRecord[]>(
+          invoke,
+          IPC_CONTRACTS.providerHealth.list.channel,
+          IPC_CONTRACTS.providerHealth.list.response
+        ),
+      reset: (provider) =>
+        invokeContract<void>(
+          invoke,
+          IPC_CONTRACTS.providerHealth.reset.channel,
+          IPC_CONTRACTS.providerHealth.reset.response,
+          typeof provider === "undefined" ? undefined : { provider }
+        )
+    },
     privacy: {
       get: () =>
         invokeContract<PrivacySettings>(
@@ -713,6 +759,13 @@ export function createPreloadApi(
           IPC_CONTRACTS.generation.resume.channel,
           IPC_CONTRACTS.generation.resume.response,
           request
+        ),
+      resumeAfterBudgetWarning: (runId, confirmed) =>
+        invokeContract<WorkflowRunRecord | null>(
+          invoke,
+          IPC_CONTRACTS.generation.resumeAfterBudgetWarning.channel,
+          IPC_CONTRACTS.generation.resumeAfterBudgetWarning.response,
+          { runId, confirmed }
         ),
       requestRevision: (request) =>
         invokeContract<WorkflowRunRecord>(

@@ -18,6 +18,8 @@ import { SafeIpcError } from "./typed-ipc";
 import { registerIpcContract } from "./typed-ipc";
 import { DEFAULT_PRIVACY_SETTINGS, DEFAULT_ROUTING_SETTINGS } from "@contracts/settings";
 import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
+import type { UpdateBudgetPolicyInput } from "@contracts/budgets";
+import type { RoutePreviewContext } from "@contracts/model-routing";
 
 interface RegisterIpcOptions {
   settingsStore: SettingsStore;
@@ -90,6 +92,8 @@ function registerDataIpc(
     ? new ChapterWorkflowRuntime({
         database,
         repositories,
+        aiGateway,
+        credentialService,
         privacy: getPrivacySettings(repositories)
       })
     : null;
@@ -492,8 +496,37 @@ function registerDataIpc(
       modelProfiles: repositories.modelProfiles,
       prices: repositories.modelPrices,
       routes: repositories.taskRoutes,
+      providerHealth: repositories.providerHealth,
       settings: routingSettings
     }).resolveRoute(request.taskType, request.qualityMode);
+  });
+  registerIpcContract(IPC_CONTRACTS.modelRoutes.resolvePreview, (request) => {
+    const routingSettings = getRoutingSettings(repositories);
+    const context = withoutUndefined({
+      chapterImportance: request.chapterImportance,
+      budgetMode: request.budgetMode,
+      expectedTokens: request.expectedTokens,
+      userOverrideModelProfileId: request.userOverrideModelProfileId
+    }) as RoutePreviewContext;
+    return new ModelRouter({
+      credentials: repositories.providerCredentials,
+      modelProfiles: repositories.modelProfiles,
+      prices: repositories.modelPrices,
+      routes: repositories.taskRoutes,
+      providerHealth: repositories.providerHealth,
+      settings: routingSettings
+    }).resolveRoute(request.taskType, request.qualityMode, context);
+  });
+  registerIpcContract(IPC_CONTRACTS.budgets.getPolicies, () =>
+    repositories.budgetPolicies.getDefault()
+  );
+  registerIpcContract(IPC_CONTRACTS.budgets.updatePolicies, (request) =>
+    repositories.budgetPolicies.update(withoutUndefined(request) as UpdateBudgetPolicyInput)
+  );
+  registerIpcContract(IPC_CONTRACTS.providerHealth.list, () => repositories.providerHealth.list());
+  registerIpcContract(IPC_CONTRACTS.providerHealth.reset, (request) => {
+    repositories.providerHealth.reset(request?.provider);
+    return undefined;
   });
   registerIpcContract(IPC_CONTRACTS.privacy.get, () => getPrivacySettings(repositories));
   registerIpcContract(IPC_CONTRACTS.privacy.update, (request) => {
@@ -569,6 +602,13 @@ function registerDataIpc(
       throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
     }
     return workflowRuntime.resume(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.generation.resumeAfterBudgetWarning, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    requireConfirmation(request.confirmed);
+    return workflowRuntime.getRun(request.runId)?.run ?? null;
   });
   registerIpcContract(IPC_CONTRACTS.generation.requestRevision, (request) => {
     if (!workflowRuntime) {

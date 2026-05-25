@@ -447,6 +447,30 @@ export const modelPrices = sqliteTable("model_prices", {
   updatedAt: text("updated_at").notNull()
 });
 
+export const providerHealth = sqliteTable("provider_health", {
+  id: text("id").primaryKey(),
+  provider: text("provider").notNull(),
+  model: text("model"),
+  status: text("status").notNull(),
+  checkedAt: text("checked_at").notNull(),
+  errorCode: text("error_code"),
+  errorMessage: text("error_message")
+});
+
+export const budgetPolicies = sqliteTable("budget_policies", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  perCallBudgetCap: real("per_call_budget_cap"),
+  perWorkflowBudgetCap: real("per_workflow_budget_cap"),
+  dailyBudgetCap: real("daily_budget_cap"),
+  projectBudgetCap: real("project_budget_cap"),
+  warningThresholdPercent: real("warning_threshold_percent").notNull().default(50),
+  onBudgetExceeded: text("on_budget_exceeded").notNull().default("warn"),
+  currency: text("currency").notNull().default("USD"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
 export const appSettings = sqliteTable("app_settings", {
   key: text("key").primaryKey(),
   valueJson: text("value_json").notNull(),
@@ -481,5 +505,7 @@ export const schema = {
   settlementProposalItems,
   llmRuns,
   modelPrices,
+  providerHealth,
+  budgetPolicies,
   appSettings
 };
