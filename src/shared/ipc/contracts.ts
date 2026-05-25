@@ -1,5 +1,12 @@
 import { z } from "zod";
 import { PROVIDERS, QUALITY_MODES, TASK_TYPES } from "@shared/domain/model-routing";
+import {
+  costSummaryRequestSchema,
+  costSummarySchema,
+  llmRunRecordSchema,
+  streamRequestSchema,
+  streamStartResultSchema
+} from "@contracts/ai";
 
 export const themePreferenceSchema = z.enum(["dark", "light", "system"]);
 export const platformSchema = z.enum([
@@ -573,6 +580,27 @@ export const IPC_CONTRACTS = {
       routingSettingsSchema.partial(),
       routingSettingsSchema
     )
+  },
+  ai: {
+    stream: {
+      start: createContract("ai:stream:start", streamRequestSchema, streamStartResultSchema),
+      abort: createContract("ai:stream:abort", entityIdSchema, z.boolean())
+    },
+    runs: {
+      get: createContract(
+        "ai:runs:get",
+        z.object({ runId: z.string().min(1) }),
+        llmRunRecordSchema.nullable()
+      ),
+      listByChapter: createContract(
+        "ai:runs:list-by-chapter",
+        z.object({ chapterId: z.string().min(1) }),
+        z.array(llmRunRecordSchema)
+      )
+    },
+    costs: {
+      summary: createContract("ai:costs:summary", costSummaryRequestSchema, costSummarySchema)
+    }
   }
 } as const;
 
@@ -636,5 +664,10 @@ export const IPC_CONTRACT_LIST = [
   IPC_CONTRACTS.privacy.get,
   IPC_CONTRACTS.privacy.update,
   IPC_CONTRACTS.routingSettings.get,
-  IPC_CONTRACTS.routingSettings.update
+  IPC_CONTRACTS.routingSettings.update,
+  IPC_CONTRACTS.ai.stream.start,
+  IPC_CONTRACTS.ai.stream.abort,
+  IPC_CONTRACTS.ai.runs.get,
+  IPC_CONTRACTS.ai.runs.listByChapter,
+  IPC_CONTRACTS.ai.costs.summary
 ] as const;

@@ -1,9 +1,11 @@
 import { BrowserWindow, app, ipcMain } from "electron";
 
+import { AI_STREAM_EVENT_CHANNEL } from "@contracts/ai";
 import { IPC_CONTRACT_LIST, IPC_CONTRACTS } from "@shared/ipc/contracts";
 import { normalizeTheme } from "@shared/theme";
 import type { SettingsStore } from "@main/app/settings-store";
 import type { StudioModeController } from "@main/app/studio-mode";
+import type { AiGateway } from "@main/ai/ai-gateway";
 import type { RepositoryRegistry } from "@main/db/service";
 import type { CredentialService } from "@main/providers/credential-service";
 import { ModelRouter } from "@main/providers/model-router";
@@ -18,13 +20,15 @@ interface RegisterIpcOptions {
   studioModeController: StudioModeController;
   repositories?: RepositoryRegistry;
   credentialService?: CredentialService;
+  aiGateway?: AiGateway;
 }
 
 export function registerIpc({
   settingsStore,
   studioModeController,
   repositories,
-  credentialService
+  credentialService,
+  aiGateway
 }: RegisterIpcOptions): void {
   for (const contract of IPC_CONTRACT_LIST) {
     ipcMain.removeHandler(contract.channel);
@@ -60,7 +64,7 @@ export function registerIpc({
   }));
 
   if (repositories) {
-    registerDataIpc(repositories, credentialService);
+    registerDataIpc(repositories, credentialService, aiGateway);
   }
 }
 
@@ -72,7 +76,8 @@ function requireConfirmation(confirmed: boolean | undefined): void {
 
 function registerDataIpc(
   repositories: RepositoryRegistry,
-  credentialService?: CredentialService
+  credentialService?: CredentialService,
+  aiGateway?: AiGateway
 ): void {
   registerIpcContract(IPC_CONTRACTS.projects.list, () => repositories.projects.list());
   registerIpcContract(IPC_CONTRACTS.projects.get, (request) =>
@@ -266,6 +271,26 @@ function registerDataIpc(
     repositories.settings.set("routing", next);
     return next;
   });
+
+  if (aiGateway) {
+    registerIpcContract(IPC_CONTRACTS.ai.stream.start, (request, event) =>
+      aiGateway.startStream(request, (streamEvent) => {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send(AI_STREAM_EVENT_CHANNEL, streamEvent);
+        }
+      })
+    );
+    registerIpcContract(IPC_CONTRACTS.ai.stream.abort, (request) => aiGateway.abortRun(request.id));
+  }
+  registerIpcContract(IPC_CONTRACTS.ai.runs.get, (request) =>
+    repositories.cost.getRun(request.runId)
+  );
+  registerIpcContract(IPC_CONTRACTS.ai.runs.listByChapter, (request) =>
+    repositories.cost.listRunsByChapter(request.chapterId)
+  );
+  registerIpcContract(IPC_CONTRACTS.ai.costs.summary, (request) =>
+    repositories.cost.summarizeRuns(request)
+  );
 }
 
 function withoutUndefined<T extends Record<string, unknown>>(value: T): Partial<T> {

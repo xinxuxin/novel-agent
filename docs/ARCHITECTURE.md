@@ -104,6 +104,8 @@ Later, the cost layer wraps every model call:
 
 `credentials.testConnection` is intentionally conservative in Phase 3: it reports configured-but-untested unless a future provider adapter supplies a safe, known probe endpoint.
 
+Phase 4 adds the main-process AI gateway. It resolves a direct provider/model or task route, decrypts credentials only in main, creates an `llm_runs` record before the request, streams provider deltas through typed event IPC, estimates live output tokens and cost, and reconciles final usage when providers report it. Fake provider streams are available for tests and local developer checks; Anthropic and Gemini remain explicit stubs until provider-specific adapters are implemented reliably.
+
 ## License Guardrails
 
 - AGPL/GPL references are architecture-only unless explicitly approved by the user.

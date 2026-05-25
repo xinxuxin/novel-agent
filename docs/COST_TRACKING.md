@@ -64,7 +64,7 @@ Every LLM call creates an `llm_runs` record:
 
 Do not store complete prompts or responses in `llm_runs` by default.
 
-Phase 3 creates the table and routing/cost services needed for `llm_runs`, but real provider calls and streaming reconciliation remain deferred. No prompt, manuscript, or provider response text is written to `llm_runs` in this phase.
+Phase 3 creates the table and routing/cost services needed for `llm_runs`. Phase 4 creates and updates `llm_runs` through the main-process AI gateway.
 
 ## Estimation Flow
 
@@ -75,6 +75,22 @@ Phase 3 creates the table and routing/cost services needed for `llm_runs`, but r
 5. On completion, reconcile with provider-reported usage when available.
 6. If usage is unavailable, mark final cost as estimated.
 7. On error or cancellation, record partial output estimate, status, latency, and safe error code.
+
+## Phase 4 Implementation
+
+Phase 4 implements:
+
+- `TokenEstimator` with conservative CJK character counting and a `chars / 4` fallback for non-CJK text.
+- `CostCalculator` with input, output, cached-input, currency, and estimated/final flags.
+- Live cost events during streaming.
+- Final cost reconciliation from provider usage when available.
+- `usage_source` values:
+  - `provider` when reported usage is available
+  - `estimated` when local estimates are used
+  - `mixed` reserved for later partial-provider reconciliation
+- `ai.costs.summary` for filtered run totals.
+
+The gateway stores prompt and response hashes, not full content, unless future privacy settings explicitly opt into more verbose local logging.
 
 ## UI Surfaces
 

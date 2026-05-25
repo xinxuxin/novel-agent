@@ -9,6 +9,14 @@ import type { ProviderCredentialRepository } from "@main/db/repositories/provide
 import type { RedactionService } from "@main/security/redaction-service";
 import type { SecretEncryptionService } from "@main/security/secret-encryption-service";
 
+export interface DecryptedProviderCredential {
+  id: string;
+  provider: ProviderId;
+  apiKey: string;
+  baseUrl: string | null;
+  displayName: string;
+}
+
 export interface CredentialServiceOptions {
   repository: ProviderCredentialRepository;
   encryption: SecretEncryptionService;
@@ -91,6 +99,21 @@ export class CredentialService {
   getConfiguredProviderCredential(provider: ProviderId): ProviderCredentialDto | null {
     const credential = this.options.repository.listConfiguredByProvider(provider)[0];
     return credential ? this.toDto(credential) : null;
+  }
+
+  getDecryptedProviderCredential(provider: ProviderId): DecryptedProviderCredential | null {
+    const credential = this.options.repository.listConfiguredByProvider(provider)[0];
+    if (!credential?.encryptedSecretBase64) {
+      return null;
+    }
+
+    return {
+      id: credential.id,
+      provider: credential.provider,
+      apiKey: this.options.encryption.decryptFromBase64(credential.encryptedSecretBase64),
+      baseUrl: credential.baseUrl,
+      displayName: credential.displayName
+    };
   }
 
   private toDto(

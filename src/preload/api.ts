@@ -1,4 +1,6 @@
 import type { WenForgeApi } from "@contracts/preload";
+import type { CostSummary, LLMRunRecord, StreamStartResult } from "@contracts/ai";
+import { AI_STREAM_EVENT_CHANNEL, aiStreamEventSchema } from "@contracts/ai";
 import type {
   BookRecord,
   ChapterRecord,
@@ -25,6 +27,10 @@ import type { ThemePreference } from "@shared/theme";
 import type { z } from "zod";
 
 export type IpcInvoker = (channel: string, value?: unknown) => Promise<unknown>;
+export type IpcSubscriber = (
+  channel: string,
+  listener: (_event: unknown, value: unknown) => void
+) => () => void;
 
 class WenForgeIpcError extends Error {
   constructor(
@@ -51,7 +57,10 @@ async function invokeContract<T>(
   return responseSchema.parse(envelope.data);
 }
 
-export function createPreloadApi(invoke: IpcInvoker): WenForgeApi {
+export function createPreloadApi(
+  invoke: IpcInvoker,
+  subscribe: IpcSubscriber = () => () => undefined
+): WenForgeApi {
   return {
     app: {
       getVersion: () =>
@@ -415,6 +424,53 @@ export function createPreloadApi(invoke: IpcInvoker): WenForgeApi {
           IPC_CONTRACTS.routingSettings.update.response,
           input
         )
+    },
+    ai: {
+      stream: {
+        start: (request) =>
+          invokeContract<StreamStartResult>(
+            invoke,
+            IPC_CONTRACTS.ai.stream.start.channel,
+            IPC_CONTRACTS.ai.stream.start.response,
+            request
+          ),
+        abort: (runId) =>
+          invokeContract<boolean>(
+            invoke,
+            IPC_CONTRACTS.ai.stream.abort.channel,
+            IPC_CONTRACTS.ai.stream.abort.response,
+            { id: runId }
+          ),
+        onEvent: (listener) =>
+          subscribe(AI_STREAM_EVENT_CHANNEL, (_event, value) => {
+            listener(aiStreamEventSchema.parse(value));
+          })
+      },
+      runs: {
+        get: (runId) =>
+          invokeContract<LLMRunRecord | null>(
+            invoke,
+            IPC_CONTRACTS.ai.runs.get.channel,
+            IPC_CONTRACTS.ai.runs.get.response,
+            { runId }
+          ),
+        listByChapter: (chapterId) =>
+          invokeContract<LLMRunRecord[]>(
+            invoke,
+            IPC_CONTRACTS.ai.runs.listByChapter.channel,
+            IPC_CONTRACTS.ai.runs.listByChapter.response,
+            { chapterId }
+          )
+      },
+      costs: {
+        summary: (request) =>
+          invokeContract<CostSummary>(
+            invoke,
+            IPC_CONTRACTS.ai.costs.summary.channel,
+            IPC_CONTRACTS.ai.costs.summary.response,
+            request
+          )
+      }
     }
   };
 }

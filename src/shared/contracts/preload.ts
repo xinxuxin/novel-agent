@@ -1,5 +1,13 @@
 import type { ThemePreference } from "@shared/theme";
 import type {
+  AIStreamEvent,
+  CostSummary,
+  CostSummaryRequest,
+  LLMRunRecord,
+  StreamRequest,
+  StreamStartResult
+} from "./ai";
+import type {
   CredentialStatusDto,
   CredentialTestResult,
   ModelPriceRecord,
@@ -166,5 +174,19 @@ export interface WenForgeApi {
   routingSettings: {
     get: () => Promise<RoutingSettings>;
     update: (input: Partial<RoutingSettings>) => Promise<RoutingSettings>;
+  };
+  ai: {
+    stream: {
+      start: (request: StreamRequest) => Promise<StreamStartResult>;
+      abort: (runId: string) => Promise<boolean>;
+      onEvent: (listener: (event: AIStreamEvent) => void) => () => void;
+    };
+    runs: {
+      get: (runId: string) => Promise<LLMRunRecord | null>;
+      listByChapter: (chapterId: string) => Promise<LLMRunRecord[]>;
+    };
+    costs: {
+      summary: (request: CostSummaryRequest) => Promise<CostSummary>;
+    };
   };
 }

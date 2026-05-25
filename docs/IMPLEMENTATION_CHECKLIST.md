@@ -37,8 +37,15 @@
 
 ## Phase 4: Studio UI
 
-- [ ] Build full studio layout: command bar, project tree, chapter workspace, right context panel.
-- [ ] Build popover launcher and expand-to-studio flow.
+- [x] Add main-process AI gateway with stream start/abort IPC.
+- [x] Add fake provider, OpenAI-compatible adapter, and safe stubs where provider-specific implementation is deferred.
+- [x] Create `llm_runs` before provider calls and update runs on success, error, and abort.
+- [x] Add live token and cost events.
+- [x] Store prompt/response hashes rather than full text by default.
+- [x] Add developer test generation panel and status/cost bar updates.
+- [x] Test parser, estimator, cost calculator, fake streaming, aborts, and run lifecycle.
+- [x] Build full studio layout: command bar, project tree, chapter workspace, right context panel.
+- [x] Build popover launcher and expand-to-studio flow.
 - [ ] Integrate TipTap manuscript editor.
 - [ ] Add generated draft, review card, diff, accept/reject, and rollback surfaces.
 - [ ] Add story bible, continuity warning, model route, and cost meter panels.

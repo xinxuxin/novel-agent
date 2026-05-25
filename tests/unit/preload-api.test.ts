@@ -29,6 +29,7 @@ describe("preload API", () => {
     });
 
     expect(Object.keys(api).sort()).toEqual([
+      "ai",
       "app",
       "books",
       "chapters",

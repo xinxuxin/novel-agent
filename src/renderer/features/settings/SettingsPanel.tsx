@@ -4,11 +4,13 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
+  AIProviderId,
+  AIStreamEvent,
   ModelPriceRecord,
   ModelProfileRecord,
   ProviderCredentialDto,
   TaskRouteRecord
-} from "@contracts/model-routing";
+} from "@contracts/index";
 import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
 import { PROVIDERS, QUALITY_MODES, TASK_TYPES } from "@shared/domain/model-routing";
 import type { ProviderId, QualityMode, TaskType } from "@shared/domain/model-routing";
@@ -34,6 +36,11 @@ const PROVIDER_LABELS: Record<ProviderId, string> = {
   xai: "xAI",
   openrouter: "OpenRouter",
   generic_openai_compatible: "Generic OpenAI-compatible"
+};
+
+const AI_PROVIDER_LABELS: Record<AIProviderId, string> = {
+  ...PROVIDER_LABELS,
+  fake: "Fake local stream"
 };
 
 const TASK_LABELS: Record<TaskType, string> = {
@@ -389,7 +396,11 @@ export function SettingsPanel(): JSX.Element {
           <PrivacyTab privacy={data.privacy} onUpdatePrivacy={updatePrivacy} />
         ) : null}
         {!loading && activeTab === "advanced" && data.routing ? (
-          <AdvancedTab routing={data.routing} onUpdateRoutingSettings={updateRoutingSettings} />
+          <AdvancedTab
+            profiles={data.profiles}
+            routing={data.routing}
+            onUpdateRoutingSettings={updateRoutingSettings}
+          />
         ) : null}
       </motion.section>
     </div>
@@ -926,9 +937,11 @@ function PrivacyTab({
 }
 
 function AdvancedTab({
+  profiles,
   routing,
   onUpdateRoutingSettings
 }: {
+  profiles: ModelProfileRecord[];
   routing: RoutingSettings;
   onUpdateRoutingSettings: (patch: Partial<RoutingSettings>) => Promise<void>;
 }): JSX.Element {
@@ -975,6 +988,150 @@ function AdvancedTab({
           </button>
         </div>
       </section>
+      <DeveloperGenerationPanel profiles={profiles} />
+    </div>
+  );
+}
+
+function DeveloperGenerationPanel({ profiles }: { profiles: ModelProfileRecord[] }): JSX.Element {
+  const [provider, setProvider] = useState<AIProviderId>("fake");
+  const [model, setModel] = useState("fake-story-model");
+  const [taskType, setTaskType] = useState<TaskType>("brainstorm");
+  const [prompt, setPrompt] = useState("写一段都市异能小说的雨夜开场。");
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [streamText, setStreamText] = useState("");
+  const [status, setStatus] = useState("Idle");
+  const [liveCost, setLiveCost] = useState(0);
+  const [usageText, setUsageText] = useState("0 input / 0 output");
+
+  const selectableProfiles = profiles.filter((profile) => profile.provider === provider);
+
+  useEffect(() => {
+    return window.wenforge.ai.stream.onEvent((event: AIStreamEvent) => {
+      if (!activeRunId || event.runId !== activeRunId) {
+        return;
+      }
+      if (event.type === "delta") {
+        setStreamText((current) => `${current}${event.text}`);
+      }
+      if (event.type === "cost") {
+        setLiveCost(event.estimatedCostLive);
+        setUsageText(
+          `${event.inputTokensEstimated} input / ${event.outputTokensEstimatedLive} output`
+        );
+      }
+      if (event.type === "complete") {
+        setStatus(`Complete · ${event.usageSource}`);
+        setLiveCost(event.cost.totalCost);
+        setUsageText(`${event.usage.inputTokens} input / ${event.usage.outputTokens} output`);
+      }
+      if (event.type === "error") {
+        setStatus(`${event.code}: ${event.message}`);
+      }
+    });
+  }, [activeRunId]);
+
+  const start = async (): Promise<void> => {
+    setStreamText("");
+    setStatus("Starting");
+    setLiveCost(0);
+    const result = await window.wenforge.ai.stream.start({
+      provider,
+      model,
+      taskType,
+      messages: [{ role: "user", content: prompt }],
+      qualityMode: "balanced"
+    });
+    setActiveRunId(result.runId);
+    setStatus(`Running · ${result.runId}`);
+  };
+
+  const abort = async (): Promise<void> => {
+    if (!activeRunId) {
+      return;
+    }
+    await window.wenforge.ai.stream.abort(activeRunId);
+  };
+
+  return (
+    <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4 lg:col-span-2">
+      <SectionTitle title="Developer Test Generation" />
+      <div className="mt-4 grid gap-3 lg:grid-cols-[180px_1fr_180px_auto_auto]">
+        <select
+          className={fieldClassName}
+          value={provider}
+          onChange={(event) => {
+            const nextProvider = event.target.value as AIProviderId;
+            const firstProfile = profiles.find((profile) => profile.provider === nextProvider);
+            setProvider(nextProvider);
+            setModel(nextProvider === "fake" ? "fake-story-model" : (firstProfile?.model ?? ""));
+          }}
+        >
+          {(["fake", ...PROVIDERS] as AIProviderId[]).map((providerId) => (
+            <option key={providerId} value={providerId}>
+              {AI_PROVIDER_LABELS[providerId]}
+            </option>
+          ))}
+        </select>
+        {provider === "fake" ? (
+          <input
+            className={fieldClassName}
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+          />
+        ) : (
+          <select
+            className={fieldClassName}
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+          >
+            {selectableProfiles.map((profile) => (
+              <option key={profile.id} value={profile.model}>
+                {profile.displayName}
+              </option>
+            ))}
+          </select>
+        )}
+        <select
+          className={fieldClassName}
+          value={taskType}
+          onChange={(event) => setTaskType(event.target.value as TaskType)}
+        >
+          {TASK_TYPES.map((task) => (
+            <option key={task} value={task}>
+              {TASK_LABELS[task]}
+            </option>
+          ))}
+        </select>
+        <button className={primaryButtonClassName} onClick={() => void start()} type="button">
+          Start
+        </button>
+        <button className={secondaryButtonClassName} onClick={() => void abort()} type="button">
+          Abort
+        </button>
+      </div>
+      <textarea
+        className={`${fieldClassName} mt-3 h-24 resize-none py-3`}
+        value={prompt}
+        onChange={(event) => setPrompt(event.target.value)}
+      />
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <StatusTile label="Status" value={status} />
+        <StatusTile label="Usage" value={usageText} />
+        <StatusTile label="Live cost" value={`$${liveCost.toFixed(6)}`} />
+      </div>
+      <div className="mt-3 min-h-28 whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-3 text-sm leading-7 text-slate-300">
+        {streamText || "Stream output will appear here."}
+      </div>
+    </section>
+  );
+}
+
+function StatusTile({ label, value }: { label: string; value: string }): JSX.Element {
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/24 p-3">
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      <p className="mt-1 text-sm text-slate-200">{value}</p>
     </div>
   );
 }

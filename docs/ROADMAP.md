@@ -57,15 +57,29 @@ Deferred from the broader product stack: shadcn component generation, TanStack Q
 
 Deferred from Phase 3: real provider adapters, network health checks, streaming generation, token reconciliation, and live `llm_runs` updates. `credentials.testConnection` only verifies stored configuration unless a later provider adapter adds a safe probe.
 
-## Phase 4: Editor And Review Workspace
+## Phase 4: Main-Process AI Gateway And Cost Accounting (Complete)
+
+- [x] Add shared AI contracts and Zod schemas for providers, messages, stream requests, events, usage, costs, run records, and provider errors.
+- [x] Add a main-process AI gateway that creates `llm_runs` before provider calls.
+- [x] Add deterministic fake provider streaming for tests and local developer checks.
+- [x] Add OpenAI-compatible streaming adapter with SSE parsing and usage normalization.
+- [x] Add OpenAI, DeepSeek, DashScope/Qwen, Moonshot/Kimi, xAI, OpenRouter, and generic OpenAI-compatible adapter defaults.
+- [x] Add explicit `not_implemented` stubs for Anthropic and Gemini until reliable adapters are added.
+- [x] Add token estimation for Chinese and non-CJK text.
+- [x] Add live cost events and final cost reconciliation from provider-reported usage.
+- [x] Keep prompt and response text out of run records by default while storing hashes.
+- [x] Add AI IPC endpoints, preload APIs, developer test generation UI, and status/cost bar updates.
+- [x] Add tests for streaming, SSE parsing, aborts, cost math, token estimation, run lifecycle, safe errors, and hash-only storage.
+
+## Phase 5: Editor And Review Workspace
 
 - Integrate TipTap for manuscript editing with canonical version previews and manual save flows.
 - Add generated draft, diff/review, and accept/reject surfaces without overwriting canonical manuscript in place.
 - Add story bible editing surfaces and state proposal preview cards.
-- Promote the current cost/status placeholders into real run, chapter, session, and project cost views once generation exists.
+- Promote the current gateway stream events into chapter generation stream and review views.
 - Add provider route selection affordances inside the chapter workflow panel while continuing to hide decrypted credentials.
 
-## Phase 5: LangGraph Workflow MVP
+## Phase 6: LangGraph Workflow MVP
 
 - Add LangGraph.js workflow runtime in the main process or a controlled worker.
 - Implement a chapter workflow skeleton with mock provider nodes first: prepare context, outline, scene cards, draft, continuity audit, rhythm audit, revise, human gate, and settlement proposal.
@@ -73,21 +87,21 @@ Deferred from Phase 3: real provider adapters, network health checks, streaming 
 - Add cancellation and resume from safe checkpoints.
 - Connect real provider adapters only after mock workflow tests pass.
 
-## Phase 6: WenForge Skill And Prompt Package
+## Phase 7: WenForge Skill And Prompt Package
 
 - Create original WenForge prompt templates for project discovery, outline, scene cards, drafting, audit, rewrite, and state settlement.
 - Encode progressive questioning, reader positioning, genre expectations, hook checks, and validation/repair as WenForge-native methodology.
 - Do not copy prompt text from AGPL or no-license references.
 - Add prompt assembly tests that verify required context, logging redaction, task route usage, and structured output expectations.
 
-## Phase 7: Review, Continuity, And Human Gates
+## Phase 8: Review, Continuity, And Human Gates
 
 - Add review cards for continuity, rhythm, AI-ish phrasing, cliches, and unresolved hooks.
 - Add non-destructive rewrite proposals with accept, reject, and selected-diff application.
 - Add state-settlement review for chapter summaries, timeline events, character changes, relationship changes, foreshadowing, resolved hooks, unresolved hooks, and continuity risks.
 - Require confirmation before destructive deletes, canonical manuscript overwrites, accepted memory changes, or route changes that affect active run cost.
 
-## Phase 8: Import, Export, Backup, And Packaging Prep
+## Phase 9: Import, Export, Backup, And Packaging Prep
 
 - Add Markdown/TXT import with safe path handling and no untrusted HTML injection.
 - Add project export, cost report export, backup, restore, and migration safety checks.

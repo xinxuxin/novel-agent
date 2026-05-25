@@ -3,6 +3,7 @@ import type { JSX } from "react";
 import { useEffect, useState } from "react";
 
 import { CommandPalette } from "@components/CommandPalette";
+import type { AIStreamEvent } from "@contracts/ai";
 import type {
   BookRecord,
   ChapterRecord,
@@ -26,6 +27,10 @@ export function App(): JSX.Element {
   const [canonical, setCanonical] = useState<ManuscriptVersionRecord | null>(null);
   const [storyBibleEntries, setStoryBibleEntries] = useState<StoryBibleEntryRecord[]>([]);
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>("chapter");
+  const [activeRunLabel, setActiveRunLabel] = useState("No active run");
+  const [activeRunCost, setActiveRunCost] = useState(0);
+  const [sessionCost, setSessionCost] = useState(0);
+  const [costWarning, setCostWarning] = useState("price ok");
   const commandPaletteOpen = useUiStore((state) => state.commandPaletteOpen);
   const studioMode = useUiStore((state) => state.studioMode);
   const openCommandPalette = useUiStore((state) => state.openCommandPalette);
@@ -90,6 +95,27 @@ export function App(): JSX.Element {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [openCommandPalette]);
+
+  useEffect(
+    () =>
+      window.wenforge.ai.stream.onEvent((event: AIStreamEvent) => {
+        if (event.type === "cost") {
+          setActiveRunLabel(`${event.provider} / ${event.model}`);
+          setActiveRunCost(event.estimatedCostLive);
+          setCostWarning(event.warnings?.join(", ") || "price ok");
+        }
+        if (event.type === "complete") {
+          setActiveRunLabel(`${event.provider} / ${event.model}`);
+          setActiveRunCost(event.cost.totalCost);
+          setSessionCost((current) => current + event.cost.totalCost);
+          setCostWarning(event.usageSource);
+        }
+        if (event.type === "error") {
+          setCostWarning(event.code);
+        }
+      }),
+    []
+  );
 
   const toggleStudioMode = async (): Promise<void> => {
     setStudioMode(await window.wenforge.window.toggleStudioMode());
@@ -380,7 +406,10 @@ export function App(): JSX.Element {
 
         <footer className="grid h-9 grid-cols-[1fr_auto] items-center border-t border-white/10 bg-black/28 px-4 text-xs text-slate-500">
           <span>WenForge Studio {version}</span>
-          <span>Run cost: $0.0000 / Month: $0.0000</span>
+          <span>
+            {activeRunLabel} · Run ${activeRunCost.toFixed(6)} · Session ${sessionCost.toFixed(6)} ·{" "}
+            {costWarning}
+          </span>
         </footer>
       </motion.section>
 

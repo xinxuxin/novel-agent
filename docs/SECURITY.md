@@ -101,3 +101,17 @@ Phase 3 stores privacy settings in SQLite through typed IPC:
 - `enableDebugLogging`: false
 
 These defaults keep future provider runs from persisting complete prompts, responses, or manuscript text unless the user deliberately opts into a more verbose local logging mode.
+
+## Phase 4 AI Gateway
+
+Phase 4 adds a main-process-only AI gateway:
+
+- Renderer calls typed IPC endpoints and receives stream events only.
+- Provider API calls happen in the main process through provider adapters.
+- Decrypted credentials are read from `safeStorage` only inside the main process.
+- `llm_runs` are created before the adapter is called.
+- Full prompts and responses are not written to `llm_runs`; hashes are stored instead.
+- Provider errors are normalized to safe `code` and `message` fields.
+- Anthropic and Gemini remain explicit `not_implemented` stubs until reliable provider-specific adapters are added.
+
+The Developer Test Generation panel can use the fake local provider without credentials. Real provider runs still require configured encrypted credentials.

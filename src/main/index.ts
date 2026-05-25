@@ -5,6 +5,8 @@ import { SettingsStore } from "@main/app/settings-store";
 import { StudioModeController } from "@main/app/studio-mode";
 import { createAppTray } from "@main/app/tray";
 import { createMainWindow } from "@main/app/window";
+import { AiGateway } from "@main/ai/ai-gateway";
+import { createDefaultProviderAdapters } from "@main/ai/adapters";
 import { createAppDatabaseService } from "@main/db/service";
 import { registerIpc } from "@main/ipc/register";
 import { CredentialService } from "@main/providers/credential-service";
@@ -39,6 +41,11 @@ if (!hasSingleInstanceLock) {
       encryption: new SecretEncryptionService(safeStorage),
       redaction: new RedactionService()
     });
+    const aiGateway = new AiGateway({
+      repositories: databaseService.repositories,
+      credentialService,
+      adapters: createDefaultProviderAdapters()
+    });
     const openMainWindow = async (): Promise<BrowserWindow> => {
       const window = await createMainWindow((createdWindow) => {
         const studioModeController = new StudioModeController(createdWindow);
@@ -46,7 +53,8 @@ if (!hasSingleInstanceLock) {
           settingsStore,
           studioModeController,
           repositories: databaseService.repositories,
-          credentialService
+          credentialService,
+          aiGateway
         });
       });
       mainWindow = window;
