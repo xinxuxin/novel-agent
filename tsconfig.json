@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["src/renderer/app/*"],
+      "@main/*": ["src/main/*"],
+      "@preload/*": ["src/preload/*"],
+      "@renderer/*": ["src/renderer/*"],
+      "@shared/*": ["src/shared/*"],
+      "@components/*": ["src/renderer/components/*"],
+      "@features/*": ["src/renderer/features/*"],
+      "@contracts/*": ["src/shared/contracts/*"],
+      "@db/*": ["src/db/*"],
+      "@ai/*": ["src/ai/*"],
+      "@agents/*": ["src/agents/*"],
+      "@ui/*": ["src/renderer/components/*"]
+    }
+  }
+}

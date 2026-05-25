@@ -1,0 +1,11 @@
+node_modules/
+out/
+dist/
+coverage/
+playwright-report/
+test-results/
+references/
+docs/
+AGENTS.md
+THIRD_PARTY_NOTICES.md
+pnpm-lock.yaml

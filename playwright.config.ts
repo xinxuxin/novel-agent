@@ -1,0 +1,11 @@
+import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "tests/smoke",
+  testMatch: /electron\.spec\.ts/,
+  timeout: 30_000,
+  reporter: [["list"]],
+  use: {
+    trace: "retain-on-failure"
+  }
+});
