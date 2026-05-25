@@ -487,6 +487,73 @@ export const budgetPolicies = sqliteTable("budget_policies", {
   updatedAt: text("updated_at").notNull()
 });
 
+export const evalSuites = sqliteTable("eval_suites", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  version: text("version").notNull(),
+  builtIn: integer("built_in", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const evalCases = sqliteTable("eval_cases", {
+  id: text("id").primaryKey(),
+  suiteId: text("suite_id").notNull(),
+  title: text("title").notNull(),
+  genre: text("genre").notNull(),
+  promptText: text("prompt_text").notNull(),
+  referenceContext: text("reference_context"),
+  expectedFocusJson: text("expected_focus_json").notNull().default("[]"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const evalRuns = sqliteTable("eval_runs", {
+  id: text("id").primaryKey(),
+  suiteId: text("suite_id").notNull(),
+  bookId: text("book_id"),
+  mode: text("mode").notNull(),
+  status: text("status").notNull(),
+  modelProfileIdsJson: text("model_profile_ids_json").notNull(),
+  routeTaskType: text("route_task_type").notNull(),
+  qualityMode: text("quality_mode").notNull(),
+  startedAt: text("started_at").notNull(),
+  finishedAt: text("finished_at"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const evalOutputs = sqliteTable("eval_outputs", {
+  id: text("id").primaryKey(),
+  evalRunId: text("eval_run_id").notNull(),
+  evalCaseId: text("eval_case_id").notNull(),
+  modelProfileId: text("model_profile_id").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  outputText: text("output_text").notNull(),
+  promptHash: text("prompt_hash"),
+  responseHash: text("response_hash"),
+  llmRunId: text("llm_run_id"),
+  latencyMs: integer("latency_ms"),
+  cost: real("cost").notNull().default(0),
+  status: text("status").notNull().default("completed"),
+  blindLabel: text("blind_label").notNull(),
+  createdAt: text("created_at").notNull()
+});
+
+export const evalScores = sqliteTable("eval_scores", {
+  id: text("id").primaryKey(),
+  evalOutputId: text("eval_output_id").notNull(),
+  scorerType: text("scorer_type").notNull(),
+  scorerLabel: text("scorer_label").notNull(),
+  dimensionsJson: text("dimensions_json").notNull(),
+  overallScore: real("overall_score").notNull(),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull()
+});
+
 export const appSettings = sqliteTable("app_settings", {
   key: text("key").primaryKey(),
   valueJson: text("value_json").notNull(),
@@ -524,5 +591,10 @@ export const schema = {
   modelPrices,
   providerHealth,
   budgetPolicies,
+  evalSuites,
+  evalCases,
+  evalRuns,
+  evalOutputs,
+  evalScores,
   appSettings
 };

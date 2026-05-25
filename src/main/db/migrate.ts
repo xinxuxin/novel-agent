@@ -466,6 +466,73 @@ create table if not exists llm_runs (
   created_at text not null
 );
 
+create table if not exists eval_suites (
+  id text primary key,
+  name text not null,
+  description text,
+  version text not null,
+  built_in integer not null default 0,
+  created_at text not null,
+  updated_at text not null
+);
+
+create table if not exists eval_cases (
+  id text primary key,
+  suite_id text not null,
+  title text not null,
+  genre text not null,
+  prompt_text text not null,
+  reference_context text,
+  expected_focus_json text not null default '[]',
+  created_at text not null,
+  updated_at text not null
+);
+
+create table if not exists eval_runs (
+  id text primary key,
+  suite_id text not null,
+  book_id text,
+  mode text not null,
+  status text not null,
+  model_profile_ids_json text not null,
+  route_task_type text not null,
+  quality_mode text not null,
+  started_at text not null,
+  finished_at text,
+  notes text,
+  created_at text not null,
+  updated_at text not null
+);
+
+create table if not exists eval_outputs (
+  id text primary key,
+  eval_run_id text not null,
+  eval_case_id text not null,
+  model_profile_id text not null,
+  provider text not null,
+  model text not null,
+  output_text text not null,
+  prompt_hash text,
+  response_hash text,
+  llm_run_id text,
+  latency_ms integer,
+  cost real not null default 0,
+  status text not null default 'completed',
+  blind_label text not null,
+  created_at text not null
+);
+
+create table if not exists eval_scores (
+  id text primary key,
+  eval_output_id text not null,
+  scorer_type text not null,
+  scorer_label text not null,
+  dimensions_json text not null,
+  overall_score real not null,
+  notes text,
+  created_at text not null
+);
+
 create table if not exists app_settings (
   key text primary key,
   value_json text not null,

@@ -22,6 +22,21 @@ import type {
   TaskRouteRecord
 } from "@contracts/model-routing";
 import type { BudgetPolicyRecord } from "@contracts/budgets";
+import type {
+  CostDashboardSummary,
+  CostGroup,
+  CsvExportResult,
+  PriceImportResult,
+  RoutePriceWarning
+} from "@contracts/cost-dashboard";
+import type {
+  EvalCaseRecord,
+  EvalLeaderboardEntry,
+  EvalOutputRecord,
+  EvalRunRecord,
+  EvalScoreRecord,
+  EvalSuiteRecord
+} from "@contracts/evaluation";
 import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
 import type { ContextPreviewPack, ContextPreviewRequest } from "@contracts/context";
 import type {
@@ -721,6 +736,86 @@ export function createPreloadApi(
           input
         )
     },
+    costs: {
+      getSummary: (request = {}) =>
+        invokeContract<CostDashboardSummary>(
+          invoke,
+          IPC_CONTRACTS.costs.getSummary.channel,
+          IPC_CONTRACTS.costs.getSummary.response,
+          request
+        ),
+      getByProject: (request = {}) =>
+        invokeContract<CostGroup[]>(
+          invoke,
+          IPC_CONTRACTS.costs.getByProject.channel,
+          IPC_CONTRACTS.costs.getByProject.response,
+          request
+        ),
+      getByBook: (request = {}) =>
+        invokeContract<CostGroup[]>(
+          invoke,
+          IPC_CONTRACTS.costs.getByBook.channel,
+          IPC_CONTRACTS.costs.getByBook.response,
+          request
+        ),
+      getByChapter: (request = {}) =>
+        invokeContract<CostGroup[]>(
+          invoke,
+          IPC_CONTRACTS.costs.getByChapter.channel,
+          IPC_CONTRACTS.costs.getByChapter.response,
+          request
+        ),
+      getByRun: (request = {}) =>
+        invokeContract<CostGroup[]>(
+          invoke,
+          IPC_CONTRACTS.costs.getByRun.channel,
+          IPC_CONTRACTS.costs.getByRun.response,
+          request
+        ),
+      getByModel: (request = {}) =>
+        invokeContract<CostGroup[]>(
+          invoke,
+          IPC_CONTRACTS.costs.getByModel.channel,
+          IPC_CONTRACTS.costs.getByModel.response,
+          request
+        ),
+      exportCsv: (request = {}) =>
+        invokeContract<CsvExportResult>(
+          invoke,
+          IPC_CONTRACTS.costs.exportCsv.channel,
+          IPC_CONTRACTS.costs.exportCsv.response,
+          request
+        )
+    },
+    pricing: {
+      importJson: (json) =>
+        invokeContract<PriceImportResult>(
+          invoke,
+          IPC_CONTRACTS.pricing.importJson.channel,
+          IPC_CONTRACTS.pricing.importJson.response,
+          { json }
+        ),
+      exportJson: () =>
+        invokeContract<string>(
+          invoke,
+          IPC_CONTRACTS.pricing.exportJson.channel,
+          IPC_CONTRACTS.pricing.exportJson.response
+        ),
+      markStale: (priceIds, effectiveDate) =>
+        invokeContract<ModelPriceRecord[]>(
+          invoke,
+          IPC_CONTRACTS.pricing.markStale.channel,
+          IPC_CONTRACTS.pricing.markStale.response,
+          { priceIds, effectiveDate }
+        ),
+      routeWarnings: (staleAfterDays) =>
+        invokeContract<RoutePriceWarning[]>(
+          invoke,
+          IPC_CONTRACTS.pricing.routeWarnings.channel,
+          IPC_CONTRACTS.pricing.routeWarnings.response,
+          typeof staleAfterDays === "undefined" ? undefined : { staleAfterDays }
+        )
+    },
     providerHealth: {
       list: () =>
         invokeContract<ProviderHealthRecord[]>(
@@ -812,6 +907,122 @@ export function createPreloadApi(
             request
           )
       }
+    },
+    eval: {
+      suites: {
+        list: () =>
+          invokeContract<EvalSuiteRecord[]>(
+            invoke,
+            IPC_CONTRACTS.eval.suites.list.channel,
+            IPC_CONTRACTS.eval.suites.list.response
+          ),
+        create: (input) =>
+          invokeContract<EvalSuiteRecord>(
+            invoke,
+            IPC_CONTRACTS.eval.suites.create.channel,
+            IPC_CONTRACTS.eval.suites.create.response,
+            input
+          ),
+        update: (id, input) =>
+          invokeContract<EvalSuiteRecord | null>(
+            invoke,
+            IPC_CONTRACTS.eval.suites.update.channel,
+            IPC_CONTRACTS.eval.suites.update.response,
+            { id, ...input }
+          ),
+        delete: (id, confirmed) =>
+          invokeContract<boolean>(
+            invoke,
+            IPC_CONTRACTS.eval.suites.delete.channel,
+            IPC_CONTRACTS.eval.suites.delete.response,
+            { id, confirmed }
+          )
+      },
+      cases: {
+        list: (suiteId) =>
+          invokeContract<EvalCaseRecord[]>(
+            invoke,
+            IPC_CONTRACTS.eval.cases.list.channel,
+            IPC_CONTRACTS.eval.cases.list.response,
+            { suiteId }
+          ),
+        create: (input) =>
+          invokeContract<EvalCaseRecord>(
+            invoke,
+            IPC_CONTRACTS.eval.cases.create.channel,
+            IPC_CONTRACTS.eval.cases.create.response,
+            input
+          ),
+        update: (id, input) =>
+          invokeContract<EvalCaseRecord | null>(
+            invoke,
+            IPC_CONTRACTS.eval.cases.update.channel,
+            IPC_CONTRACTS.eval.cases.update.response,
+            { id, ...input }
+          ),
+        delete: (id, confirmed) =>
+          invokeContract<boolean>(
+            invoke,
+            IPC_CONTRACTS.eval.cases.delete.channel,
+            IPC_CONTRACTS.eval.cases.delete.response,
+            { id, confirmed }
+          )
+      },
+      run: {
+        start: (request) =>
+          invokeContract<EvalRunRecord>(
+            invoke,
+            IPC_CONTRACTS.eval.run.start.channel,
+            IPC_CONTRACTS.eval.run.start.response,
+            request
+          ),
+        abort: (runId) =>
+          invokeContract<EvalRunRecord | null>(
+            invoke,
+            IPC_CONTRACTS.eval.run.abort.channel,
+            IPC_CONTRACTS.eval.run.abort.response,
+            { runId }
+          )
+      },
+      outputs: {
+        list: (runId, blind) =>
+          invokeContract<EvalOutputRecord[]>(
+            invoke,
+            IPC_CONTRACTS.eval.outputs.list.channel,
+            IPC_CONTRACTS.eval.outputs.list.response,
+            { runId, blind }
+          )
+      },
+      score: {
+        human: (request) =>
+          invokeContract<EvalScoreRecord>(
+            invoke,
+            IPC_CONTRACTS.eval.score.human.channel,
+            IPC_CONTRACTS.eval.score.human.response,
+            request
+          ),
+        llmJudge: (outputId) =>
+          invokeContract<EvalScoreRecord>(
+            invoke,
+            IPC_CONTRACTS.eval.score.llmJudge.channel,
+            IPC_CONTRACTS.eval.score.llmJudge.response,
+            { outputId }
+          )
+      },
+      leaderboard: (runId) =>
+        invokeContract<EvalLeaderboardEntry[]>(
+          invoke,
+          IPC_CONTRACTS.eval.leaderboard.channel,
+          IPC_CONTRACTS.eval.leaderboard.response,
+          { runId }
+        ),
+      promoteWinnerToRoute: (request) =>
+        invokeContract<TaskRouteRecord>(
+          invoke,
+          IPC_CONTRACTS.eval.promoteWinnerToRoute.channel,
+          IPC_CONTRACTS.eval.promoteWinnerToRoute.response,
+          request
+        )
     },
     generation: {
       chapter: {

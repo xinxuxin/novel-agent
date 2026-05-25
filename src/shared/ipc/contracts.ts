@@ -8,6 +8,25 @@ import {
   streamStartResultSchema
 } from "@contracts/ai";
 import {
+  costDashboardSummarySchema,
+  costGroupSchema,
+  costScopeRequestSchema,
+  csvExportResultSchema,
+  priceImportResultSchema,
+  routePriceWarningSchema
+} from "@contracts/cost-dashboard";
+import {
+  evalCaseSchema,
+  evalHumanScoreRequestSchema,
+  evalLeaderboardEntrySchema,
+  evalOutputSchema,
+  evalPromoteRequestSchema,
+  evalRunSchema,
+  evalScoreSchema,
+  evalStartRequestSchema,
+  evalSuiteSchema
+} from "@contracts/evaluation";
+import {
   chapterGenerationStartRequestSchema,
   chapterWorkflowDetailSchema,
   generationAbortRequestSchema,
@@ -1113,6 +1132,56 @@ export const IPC_CONTRACTS = {
       budgetPolicySchema
     )
   },
+  costs: {
+    getSummary: createContract(
+      "costs:get-summary",
+      costScopeRequestSchema,
+      costDashboardSummarySchema
+    ),
+    getByProject: createContract(
+      "costs:get-by-project",
+      costScopeRequestSchema,
+      z.array(costGroupSchema)
+    ),
+    getByBook: createContract(
+      "costs:get-by-book",
+      costScopeRequestSchema,
+      z.array(costGroupSchema)
+    ),
+    getByChapter: createContract(
+      "costs:get-by-chapter",
+      costScopeRequestSchema,
+      z.array(costGroupSchema)
+    ),
+    getByRun: createContract("costs:get-by-run", costScopeRequestSchema, z.array(costGroupSchema)),
+    getByModel: createContract(
+      "costs:get-by-model",
+      costScopeRequestSchema,
+      z.array(costGroupSchema)
+    ),
+    exportCsv: createContract("costs:export-csv", costScopeRequestSchema, csvExportResultSchema)
+  },
+  pricing: {
+    importJson: createContract(
+      "pricing:import-json",
+      z.object({ json: z.string().min(2) }),
+      priceImportResultSchema
+    ),
+    exportJson: createContract("pricing:export-json", emptyRequestSchema, z.string()),
+    markStale: createContract(
+      "pricing:mark-stale",
+      z.object({
+        priceIds: z.array(z.string().min(1)).min(1),
+        effectiveDate: z.string().optional()
+      }),
+      z.array(modelPriceSchema)
+    ),
+    routeWarnings: createContract(
+      "pricing:route-warnings",
+      z.object({ staleAfterDays: z.number().int().positive().optional() }).optional(),
+      z.array(routePriceWarningSchema)
+    )
+  },
   providerHealth: {
     list: createContract("provider-health:list", emptyRequestSchema, z.array(providerHealthSchema)),
     reset: createContract(
@@ -1213,6 +1282,96 @@ export const IPC_CONTRACTS = {
         status: z.string().optional()
       }),
       settlementProposalItemSchema
+    )
+  },
+  eval: {
+    suites: {
+      list: createContract("eval:suites:list", emptyRequestSchema, z.array(evalSuiteSchema)),
+      create: createContract(
+        "eval:suites:create",
+        z.object({
+          name: z.string().trim().min(1),
+          description: z.string().nullable().optional(),
+          version: z.string().optional()
+        }),
+        evalSuiteSchema
+      ),
+      update: createContract(
+        "eval:suites:update",
+        z.object({
+          id: z.string().min(1),
+          name: z.string().trim().min(1).optional(),
+          description: z.string().nullable().optional(),
+          version: z.string().optional()
+        }),
+        evalSuiteSchema.nullable()
+      ),
+      delete: createContract("eval:suites:delete", confirmedDeleteSchema, z.boolean())
+    },
+    cases: {
+      list: createContract(
+        "eval:cases:list",
+        z.object({ suiteId: z.string().min(1) }),
+        z.array(evalCaseSchema)
+      ),
+      create: createContract(
+        "eval:cases:create",
+        z.object({
+          suiteId: z.string().min(1),
+          title: z.string().trim().min(1),
+          genre: z.string().trim().min(1),
+          promptText: z.string().trim().min(1),
+          referenceContext: z.string().nullable().optional(),
+          expectedFocusJson: z.string().optional()
+        }),
+        evalCaseSchema
+      ),
+      update: createContract(
+        "eval:cases:update",
+        z.object({
+          id: z.string().min(1),
+          title: z.string().trim().min(1).optional(),
+          genre: z.string().trim().min(1).optional(),
+          promptText: z.string().trim().min(1).optional(),
+          referenceContext: z.string().nullable().optional(),
+          expectedFocusJson: z.string().optional()
+        }),
+        evalCaseSchema.nullable()
+      ),
+      delete: createContract("eval:cases:delete", confirmedDeleteSchema, z.boolean())
+    },
+    run: {
+      start: createContract("eval:run:start", evalStartRequestSchema, evalRunSchema),
+      abort: createContract(
+        "eval:run:abort",
+        z.object({ runId: z.string().min(1) }),
+        evalRunSchema.nullable()
+      )
+    },
+    outputs: {
+      list: createContract(
+        "eval:outputs:list",
+        z.object({ runId: z.string().min(1), blind: z.boolean().optional() }),
+        z.array(evalOutputSchema)
+      )
+    },
+    score: {
+      human: createContract("eval:score:human", evalHumanScoreRequestSchema, evalScoreSchema),
+      llmJudge: createContract(
+        "eval:score:llm-judge",
+        z.object({ outputId: z.string().min(1) }),
+        evalScoreSchema
+      )
+    },
+    leaderboard: createContract(
+      "eval:leaderboard",
+      z.object({ runId: z.string().min(1) }),
+      z.array(evalLeaderboardEntrySchema)
+    ),
+    promoteWinnerToRoute: createContract(
+      "eval:promote-winner-to-route",
+      evalPromoteRequestSchema,
+      taskRouteSchema
     )
   },
   privacy: {
@@ -1411,6 +1570,17 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.modelRoutes.resolvePreview,
   IPC_CONTRACTS.budgets.getPolicies,
   IPC_CONTRACTS.budgets.updatePolicies,
+  IPC_CONTRACTS.costs.getSummary,
+  IPC_CONTRACTS.costs.getByProject,
+  IPC_CONTRACTS.costs.getByBook,
+  IPC_CONTRACTS.costs.getByChapter,
+  IPC_CONTRACTS.costs.getByRun,
+  IPC_CONTRACTS.costs.getByModel,
+  IPC_CONTRACTS.costs.exportCsv,
+  IPC_CONTRACTS.pricing.importJson,
+  IPC_CONTRACTS.pricing.exportJson,
+  IPC_CONTRACTS.pricing.markStale,
+  IPC_CONTRACTS.pricing.routeWarnings,
   IPC_CONTRACTS.providerHealth.list,
   IPC_CONTRACTS.providerHealth.reset,
   IPC_CONTRACTS.reviews.listByGenerationRun,
@@ -1425,6 +1595,21 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.settlement.applySelected,
   IPC_CONTRACTS.settlement.rejectSelected,
   IPC_CONTRACTS.settlement.editItem,
+  IPC_CONTRACTS.eval.suites.list,
+  IPC_CONTRACTS.eval.suites.create,
+  IPC_CONTRACTS.eval.suites.update,
+  IPC_CONTRACTS.eval.suites.delete,
+  IPC_CONTRACTS.eval.cases.list,
+  IPC_CONTRACTS.eval.cases.create,
+  IPC_CONTRACTS.eval.cases.update,
+  IPC_CONTRACTS.eval.cases.delete,
+  IPC_CONTRACTS.eval.run.start,
+  IPC_CONTRACTS.eval.run.abort,
+  IPC_CONTRACTS.eval.outputs.list,
+  IPC_CONTRACTS.eval.score.human,
+  IPC_CONTRACTS.eval.score.llmJudge,
+  IPC_CONTRACTS.eval.leaderboard,
+  IPC_CONTRACTS.eval.promoteWinnerToRoute,
   IPC_CONTRACTS.privacy.get,
   IPC_CONTRACTS.privacy.update,
   IPC_CONTRACTS.routingSettings.get,

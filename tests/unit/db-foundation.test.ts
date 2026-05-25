@@ -54,6 +54,11 @@ describe("local database foundation", () => {
       "settlement_proposals",
       "llm_runs",
       "model_prices",
+      "eval_suites",
+      "eval_cases",
+      "eval_runs",
+      "eval_outputs",
+      "eval_scores",
       "app_settings",
       "audit_log"
     ]) {

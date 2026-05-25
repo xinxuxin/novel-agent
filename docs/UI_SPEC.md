@@ -66,6 +66,7 @@ Popover mode:
 - Story bible with accepted facts and proposed updates.
 - Model router with task presets and provider/model selection.
 - Cost dashboard with run, chapter, project, session, and monthly views.
+- Model evaluation dashboard with blind comparison, scoring, leaderboard, and route promotion.
 - Provider settings with encrypted credential status and safe health checks.
 - Prompt/skill settings for WenForge-native templates.
 
@@ -125,6 +126,20 @@ Implemented surfaces:
 - per-settlement-item accept/apply selection, edit-as-JSON, and reject actions
 
 Selected hunk application is deferred. The current implementation deliberately ships full artifact acceptance/rejection first, because it is easier to audit and keeps canonical manuscript writes versioned.
+
+## Phase 11 Costs And Evaluation
+
+Implemented surfaces:
+
+- Costs workspace with active run, session, today, project, and month-to-date spend.
+- Local chart bars for spend over time, spend by model, cost per chapter, and cost by task type.
+- Usage-quality panel showing provider-reported vs estimated-only spend.
+- Average cost per approved chapter and per 1k Chinese characters.
+- Budget controls for per-call, workflow, daily, project, warning threshold, and exceed behavior.
+- Pricing tools for JSON import/export, stale marking, inline price edits, enabled toggles, and route price warnings.
+- Eval workspace for `中文网文基础评测 v1`, model selection, mock eval runs, blind scoring, output scoring, advisory LLM judge scoring, leaderboard, and confirmed route promotion.
+
+Eval outputs are visually and behaviorally separate from manuscript canon.
 
 ## Interaction Rules
 

@@ -128,6 +128,23 @@ Live budget behavior:
 
 The Settings budget panel edits the default budget policy. Daily and project caps are stored now and reserved for full spend-window enforcement in a later analytics pass.
 
+## Phase 11 Cost Dashboard
+
+Phase 11 adds `CostDashboardService` and a dedicated Costs workspace. It aggregates `llm_runs` into:
+
+- active run, session, today, project, and month-to-date totals
+- provider, model, task type, workflow node, chapter, and date groups
+- estimated-only, provider-reported, and mixed usage buckets
+- average cost per approved chapter
+- average cost per 1k Chinese characters from canonical manuscript character counts
+- stale price warnings from `model_prices.effective_date`
+
+The dashboard also exposes budget policy editing, price registry JSON import/export, stale-price marking, inline price edits, route warnings for missing/stale prices, and local CSV export.
+
+`costs.exportCsv` excludes prompts, responses, manuscript text, and secrets. Provider error messages are redacted before export.
+
+Evaluation runs are counted like other local model runs. Phase 11 mock eval outputs create `llm_runs` with estimated usage, so model comparisons include cost and latency without real provider calls in tests.
+
 ## UI Surfaces
 
 - Live run meter in the generation stream.
@@ -137,6 +154,7 @@ The Settings budget panel edits the default budget policy. Daily and project cap
 - Route editor warnings when a selected model has no active price record.
 - Provider workflow preflight modal showing selected models and estimated max cost.
 - Settings budget panel for caps, threshold, action, and provider health.
+- Costs workspace with local charts, budget controls, pricing tools, route price warnings, and redacted CSV export.
 
 ## Accuracy Notes
 

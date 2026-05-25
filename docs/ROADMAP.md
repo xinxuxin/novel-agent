@@ -159,7 +159,25 @@ Deferred from Phase 9: selected-diff application, settlement proposal approval/a
 
 Deferred from Phase 10: selected hunk application inside diffs, true provider-backed audit reruns from the Review tab, richer structured editing forms for every settlement entity type, and deeper daily/project spend-window enforcement.
 
-## Phase 11: Import, Export, Backup, And Packaging Prep
+## Phase 11: Cost Dashboard And Model Evaluation Suite (Complete)
+
+- [x] Add `CostDashboardService` for active run, session, today, project, month-to-date, provider, model, task type, workflow node, chapter, and date spend aggregation.
+- [x] Distinguish estimated-only, provider-reported, and mixed usage in dashboard summaries.
+- [x] Compute average cost per approved chapter and average cost per 1k Chinese characters from canonical manuscript character counts.
+- [x] Add stale price warnings and route price warnings for missing/stale active prices.
+- [x] Add budget controls for per-call, per-workflow, daily, project, warning threshold, and warn/pause/abort behavior.
+- [x] Add price registry JSON import/export, stale marking, inline price edits, and enabled toggles.
+- [x] Add redacted local cost CSV export.
+- [x] Add eval tables for suites, cases, runs, outputs, and scores.
+- [x] Seed `中文网文基础评测 v1` with ten Chinese web novel task cases.
+- [x] Add mock eval runs that create `llm_runs` without real provider calls.
+- [x] Add human scoring, advisory mock LLM judge scoring, blind output masking, leaderboard aggregation, and confirmed route promotion.
+- [x] Add Costs and Eval studio workspaces through typed IPC/preload APIs.
+- [x] Add tests for cost aggregation, CSV redaction, budget summaries, eval score aggregation, blind masking, manuscript isolation, and route-promotion confirmation.
+
+Deferred from Phase 11: provider-backed eval execution, full daily/project spend-window enforcement in runtime, richer charting dependencies, project backup/restore, import/export, first-run onboarding, and packaging prep.
+
+## Phase 12: Import, Export, Backup, And Packaging Prep
 
 - Add Markdown/TXT import with safe path handling and no untrusted HTML injection.
 - Add project export, cost report export, backup, restore, and migration safety checks.

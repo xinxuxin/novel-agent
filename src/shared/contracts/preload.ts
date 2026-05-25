@@ -73,6 +73,25 @@ import type {
 } from "./story-bible";
 import type { BudgetPolicyRecord, UpdateBudgetPolicyInput } from "./budgets";
 import type {
+  CostDashboardSummary,
+  CostGroup,
+  CostScopeRequest,
+  CsvExportResult,
+  PriceImportResult,
+  RoutePriceWarning
+} from "./cost-dashboard";
+import type {
+  EvalCaseRecord,
+  EvalHumanScoreRequest,
+  EvalLeaderboardEntry,
+  EvalOutputRecord,
+  EvalPromoteRequest,
+  EvalRunRecord,
+  EvalScoreRecord,
+  EvalStartRequest,
+  EvalSuiteRecord
+} from "./evaluation";
+import type {
   ApplySettlementResult,
   ManuscriptDiff,
   QualityGateResult,
@@ -312,6 +331,21 @@ export interface WenForgeApi {
     getPolicies: () => Promise<BudgetPolicyRecord>;
     updatePolicies: (input: UpdateBudgetPolicyInput) => Promise<BudgetPolicyRecord>;
   };
+  costs: {
+    getSummary: (request?: CostScopeRequest) => Promise<CostDashboardSummary>;
+    getByProject: (request?: CostScopeRequest) => Promise<CostGroup[]>;
+    getByBook: (request?: CostScopeRequest) => Promise<CostGroup[]>;
+    getByChapter: (request?: CostScopeRequest) => Promise<CostGroup[]>;
+    getByRun: (request?: CostScopeRequest) => Promise<CostGroup[]>;
+    getByModel: (request?: CostScopeRequest) => Promise<CostGroup[]>;
+    exportCsv: (request?: CostScopeRequest) => Promise<CsvExportResult>;
+  };
+  pricing: {
+    importJson: (json: string) => Promise<PriceImportResult>;
+    exportJson: () => Promise<string>;
+    markStale: (priceIds: string[], effectiveDate?: string) => Promise<ModelPriceRecord[]>;
+    routeWarnings: (staleAfterDays?: number) => Promise<RoutePriceWarning[]>;
+  };
   providerHealth: {
     list: () => Promise<ProviderHealthRecord[]>;
     reset: (provider?: ProviderHealthRecord["provider"]) => Promise<void>;
@@ -337,6 +371,47 @@ export interface WenForgeApi {
     costs: {
       summary: (request: CostSummaryRequest) => Promise<CostSummary>;
     };
+  };
+  eval: {
+    suites: {
+      list: () => Promise<EvalSuiteRecord[]>;
+      create: (input: {
+        name: string;
+        description?: string | null;
+        version?: string;
+      }) => Promise<EvalSuiteRecord>;
+      update: (
+        id: string,
+        input: Partial<{ name: string; description: string | null; version: string }>
+      ) => Promise<EvalSuiteRecord | null>;
+      delete: (id: string, confirmed: boolean) => Promise<boolean>;
+    };
+    cases: {
+      list: (suiteId: string) => Promise<EvalCaseRecord[]>;
+      create: (input: {
+        suiteId: string;
+        title: string;
+        genre: string;
+        promptText: string;
+        referenceContext?: string | null;
+        expectedFocusJson?: string;
+      }) => Promise<EvalCaseRecord>;
+      update: (id: string, input: Partial<EvalCaseRecord>) => Promise<EvalCaseRecord | null>;
+      delete: (id: string, confirmed: boolean) => Promise<boolean>;
+    };
+    run: {
+      start: (request: EvalStartRequest) => Promise<EvalRunRecord>;
+      abort: (runId: string) => Promise<EvalRunRecord | null>;
+    };
+    outputs: {
+      list: (runId: string, blind?: boolean) => Promise<EvalOutputRecord[]>;
+    };
+    score: {
+      human: (request: EvalHumanScoreRequest) => Promise<EvalScoreRecord>;
+      llmJudge: (outputId: string) => Promise<EvalScoreRecord>;
+    };
+    leaderboard: (runId: string) => Promise<EvalLeaderboardEntry[]>;
+    promoteWinnerToRoute: (request: EvalPromoteRequest) => Promise<TaskRouteRecord>;
   };
   generation: {
     chapter: {

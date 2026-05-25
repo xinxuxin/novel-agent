@@ -58,6 +58,32 @@ export type {
 export { DEFAULT_BUDGET_POLICY } from "./budgets";
 export type { BudgetExceededAction, BudgetPolicyRecord, UpdateBudgetPolicyInput } from "./budgets";
 export type {
+  CostDashboardSummary,
+  CostGroup,
+  CostScopeRequest,
+  CsvExportResult,
+  EstimatedVsReported,
+  PriceImportResult,
+  PriceRegistryExport,
+  PriceRegistryImport,
+  RoutePriceWarning,
+  StalePriceWarning
+} from "./cost-dashboard";
+export type {
+  EvalCaseRecord,
+  EvalDimension,
+  EvalLeaderboardEntry,
+  EvalMode,
+  EvalOutputRecord,
+  EvalRunRecord,
+  EvalScoreRecord,
+  EvalSuiteRecord,
+  EvalHumanScoreRequest,
+  EvalPromoteRequest,
+  EvalStartRequest
+} from "./evaluation";
+export { EVAL_DIMENSIONS } from "./evaluation";
+export type {
   ApplySettlementResult,
   DiffLineType,
   ManuscriptDiff,

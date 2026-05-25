@@ -122,3 +122,18 @@ The renderer exposes a Settings workspace with tabs for:
 - Advanced: configure stale price threshold and missing price policy.
 
 All changes use typed IPC endpoints. The renderer never imports DB modules and never receives decrypted API keys.
+
+## Phase 11 Evaluation Feedback Loop
+
+Phase 11 adds a local model evaluation suite for routing decisions:
+
+- compare enabled model profiles on Chinese web novel eval cases
+- run mock evals without provider calls during tests
+- score outputs manually or with advisory mock LLM judge scoring
+- mask providers/models in blind-comparison mode
+- rank models by quality, cost, latency, and cost-adjusted score
+- promote a winning output's model profile into a route preset only after explicit confirmation
+
+Promotion updates `task_model_routes.primary_model_profile_id`; it does not copy eval output text into manuscripts or story memory. Eval outputs still create `llm_runs`, so route choices can be judged against local cost and latency history.
+
+The Costs workspace also reports route price warnings for routes whose primary model is missing an active price row or uses a stale price.
