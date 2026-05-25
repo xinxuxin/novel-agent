@@ -24,6 +24,8 @@
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
+    "@tiptap/react": "^3.23.6",
+    "@tiptap/starter-kit": "^3.23.6",
     "better-sqlite3": "^12.10.0",
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.23.24",

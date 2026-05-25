@@ -325,7 +325,13 @@ export const IPC_CONTRACTS = {
     ),
     update: createContract(
       "books:update",
-      entityIdSchema.extend({ title: z.string().optional() }),
+      entityIdSchema.extend({
+        title: z.string().trim().min(1).optional(),
+        logline: z.string().optional(),
+        genre: z.string().optional(),
+        targetLengthChapters: z.number().int().positive().optional(),
+        status: z.string().optional()
+      }),
       bookSchema.nullable()
     ),
     delete: createContract("books:delete", confirmedDeleteSchema, z.boolean())
@@ -348,7 +354,12 @@ export const IPC_CONTRACTS = {
     ),
     update: createContract(
       "volumes:update",
-      entityIdSchema.extend({ title: z.string().optional() }),
+      entityIdSchema.extend({
+        title: z.string().trim().min(1).optional(),
+        volumeIndex: z.number().int().positive().optional(),
+        summary: z.string().nullable().optional(),
+        status: z.string().optional()
+      }),
       volumeSchema.nullable()
     ),
     delete: createContract("volumes:delete", confirmedDeleteSchema, z.boolean())
@@ -373,7 +384,15 @@ export const IPC_CONTRACTS = {
     ),
     update: createContract(
       "chapters:update",
-      entityIdSchema.extend({ title: z.string().optional() }),
+      entityIdSchema.extend({
+        volumeId: z.string().min(1).nullable().optional(),
+        chapterIndex: z.number().int().positive().optional(),
+        title: z.string().trim().min(1).optional(),
+        status: z.string().optional(),
+        targetWords: z.number().int().positive().optional(),
+        summary: z.string().nullable().optional(),
+        outlineJson: z.string().nullable().optional()
+      }),
       chapterSchema.nullable()
     ),
     reorder: createContract(
@@ -450,7 +469,12 @@ export const IPC_CONTRACTS = {
       ),
       update: createContract(
         "story-bible:entries:update",
-        entityIdSchema.extend({ title: z.string().optional() }),
+        entityIdSchema.extend({
+          entryType: z.string().min(1).optional(),
+          title: z.string().trim().min(1).optional(),
+          content: z.string().min(1).optional(),
+          status: z.string().optional()
+        }),
         storyBibleEntrySchema.nullable()
       ),
       delete: createContract("story-bible:entries:delete", confirmedDeleteSchema, z.boolean())

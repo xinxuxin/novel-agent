@@ -82,6 +82,30 @@ The current Settings workspace is reachable from the top command bar and uses si
 
 The Settings workspace is part of the studio shell. It must keep the same dark graphite command-center language and must not expose decrypted credentials, encrypted secret bytes, or complete prompts/manuscripts.
 
+## Phase 5 Implemented Studio Workspace
+
+The first usable studio UI now includes:
+
+- Top command bar with command palette trigger, studio/settings navigation, active run status, session cost, and route health summary.
+- Keyboard-navigable command palette opened by Cmd/Ctrl+K with create, manuscript, settings, generation placeholder, audit placeholder, and cost commands.
+- DB-backed project/book/volume/chapter navigation, chapter status badges, quick create controls, chapter rename, status change, and chapter reorder controls.
+- Compact popover launcher with recent chapters, quick generation placeholders, active run status, and expand-to-studio behavior.
+- Center chapter workspace tabs for Manuscript, Generate, Review, Timeline, and Versions.
+- TipTap manuscript editor for Chinese long-form editing with visible character counts, Chinese character counts, paragraph counts, and estimated token counts.
+- Local working-draft autosave per chapter in renderer storage; canonical manuscript changes still go through versioned main-process persistence.
+- Manual manuscript version save, set-current-draft-as-canonical confirmation, open version, set version canonical, and rollback-by-new-version controls.
+- Simple version diff view that marks added, removed, and unchanged lines.
+- Generated/proposed versions and placeholder generation surfaces are visually distinct from accepted canon.
+- Right panel with story bible context preview and manual entry creation, continuity warnings, cost meter, route card, recent LLM runs, and settlement proposal placeholder.
+
+Remaining UI work:
+
+- Replace generation placeholders with LangGraph workflow events.
+- Add persisted review cards with accept/reject/apply actions.
+- Add state-settlement proposal review and application screens.
+- Add richer story bible editing forms and memory search affordances.
+- Add deeper cost dashboards by project, month, chapter, and run.
+
 ## Interaction Rules
 
 - Generated text, audits, rewrites, and state updates are visibly marked as draft/proposed.

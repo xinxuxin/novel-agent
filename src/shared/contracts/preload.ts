@@ -33,6 +33,8 @@ import type {
   ProjectRecord,
   SaveManualVersionInput,
   StoryBibleEntryRecord,
+  UpdateChapterInput,
+  UpdateStoryBibleEntryInput,
   VolumeRecord
 } from "./data";
 
@@ -95,22 +97,36 @@ export interface WenForgeApi {
     listByProject: (projectId: string) => Promise<BookRecord[]>;
     get: (id: string) => Promise<BookRecord | null>;
     create: (input: CreateBookInput) => Promise<BookRecord>;
+    update: (
+      id: string,
+      input: Partial<CreateBookInput> & { status?: string }
+    ) => Promise<BookRecord | null>;
     delete: (id: string, confirmed: boolean) => Promise<boolean>;
   };
   volumes: {
     listByBook: (bookId: string) => Promise<VolumeRecord[]>;
     create: (input: CreateVolumeInput) => Promise<VolumeRecord>;
+    update: (
+      id: string,
+      input: Partial<CreateVolumeInput> & { status?: string }
+    ) => Promise<VolumeRecord | null>;
+    delete: (id: string, confirmed: boolean) => Promise<boolean>;
   };
   chapters: {
     listByBook: (bookId: string) => Promise<ChapterRecord[]>;
     get: (id: string) => Promise<ChapterRecord | null>;
     create: (input: CreateChapterInput) => Promise<ChapterRecord>;
+    update: (id: string, input: UpdateChapterInput) => Promise<ChapterRecord | null>;
+    reorder: (bookId: string, orderedChapterIds: string[]) => Promise<void>;
     setStatus: (id: string, status: string) => Promise<ChapterRecord | null>;
+    delete: (id: string, confirmed: boolean) => Promise<boolean>;
   };
   manuscripts: {
     listVersions: (chapterId: string) => Promise<ManuscriptVersionRecord[]>;
+    getVersion: (id: string) => Promise<ManuscriptVersionRecord | null>;
     getCanonical: (chapterId: string) => Promise<ManuscriptVersionRecord | null>;
     saveManualVersion: (input: SaveManualVersionInput) => Promise<ManuscriptVersionRecord>;
+    setCanonical: (chapterId: string, versionId: string) => Promise<ManuscriptVersionRecord | null>;
     rollback: (
       chapterId: string,
       versionId: string,
@@ -121,6 +137,11 @@ export interface WenForgeApi {
     entries: {
       list: (bookId: string) => Promise<StoryBibleEntryRecord[]>;
       create: (input: CreateStoryBibleEntryInput) => Promise<StoryBibleEntryRecord>;
+      update: (
+        id: string,
+        input: UpdateStoryBibleEntryInput
+      ) => Promise<StoryBibleEntryRecord | null>;
+      delete: (id: string, confirmed: boolean) => Promise<boolean>;
     };
   };
   memory: {

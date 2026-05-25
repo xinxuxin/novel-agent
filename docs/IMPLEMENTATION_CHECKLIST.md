@@ -35,7 +35,7 @@
 - [ ] Add real provider adapters and safe provider-specific health checks.
 - [ ] Add live cost estimation and final usage reconciliation once streaming generation exists.
 
-## Phase 4: Studio UI
+## Phase 4: Main-Process AI Gateway And Cost Accounting
 
 - [x] Add main-process AI gateway with stream start/abort IPC.
 - [x] Add fake provider, OpenAI-compatible adapter, and safe stubs where provider-specific implementation is deferred.
@@ -44,14 +44,20 @@
 - [x] Store prompt/response hashes rather than full text by default.
 - [x] Add developer test generation panel and status/cost bar updates.
 - [x] Test parser, estimator, cost calculator, fake streaming, aborts, and run lifecycle.
+
+## Phase 5: Studio UI And Chapter Workspace
+
 - [x] Build full studio layout: command bar, project tree, chapter workspace, right context panel.
 - [x] Build popover launcher and expand-to-studio flow.
-- [ ] Integrate TipTap manuscript editor.
-- [ ] Add generated draft, review card, diff, accept/reject, and rollback surfaces.
-- [ ] Add story bible, continuity warning, model route, and cost meter panels.
-- [ ] Add provider settings and manuscript logging setting.
+- [x] Integrate TipTap manuscript editor.
+- [x] Add manuscript stats, local draft autosave, save-version, and set-canonical confirmation.
+- [x] Add generated draft placeholder, review/diff surfaces, version opening, set-canonical, and rollback-by-new-version controls.
+- [x] Add story bible preview/manual entry creation, continuity warning, model route, recent runs, and cost meter panels.
+- [x] Keep settings and manuscript logging controls available through the Settings workspace.
+- [ ] Replace generation placeholders with workflow events.
+- [ ] Add persisted review card accept/reject/apply actions.
 
-## Phase 5: Workflow Runtime
+## Phase 6: Workflow Runtime
 
 - [ ] Add LangGraph.js workflow runtime without vendoring source.
 - [ ] Implement mock chapter workflow nodes: prepare context, retrieve memory, outline, scene cards, draft, audits, revise, human gate, settlement.
@@ -59,7 +65,7 @@
 - [ ] Add cancellation and resume behavior.
 - [ ] Connect real provider calls through the main-process provider and cost layers.
 
-## Phase 6: WenForge Skill And Prompt Package
+## Phase 7: WenForge Skill And Prompt Package
 
 - [ ] Write original WenForge prompt templates for all task presets.
 - [ ] Add progressive project questioning and reader positioning.
@@ -67,7 +73,7 @@
 - [ ] Add prompt assembly tests with redaction checks.
 - [ ] Keep prompt versions tracked and editable.
 
-## Phase 7: Review And Settlement
+## Phase 8: Review And Settlement
 
 - [ ] Add continuity audit cards.
 - [ ] Add webnovel rhythm audit cards.
@@ -76,7 +82,7 @@
 - [ ] Add state-settlement proposals with provenance.
 - [ ] Require human approval before canonical manuscript or story bible changes.
 
-## Phase 8: Import, Export, Backup, And Packaging Prep
+## Phase 9: Import, Export, Backup, And Packaging Prep
 
 - [ ] Add Markdown/TXT import with path validation.
 - [ ] Add project export and cost report export.

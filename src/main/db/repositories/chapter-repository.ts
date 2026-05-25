@@ -24,6 +24,8 @@ export interface CreateChapterInput {
   title: string;
   status?: string | undefined;
   targetWords?: number | undefined;
+  summary?: string | null | undefined;
+  outlineJson?: string | null | undefined;
 }
 
 function mapChapter(row: Record<string, unknown>): ChapterRecord {
@@ -90,7 +92,8 @@ export class ChapterRepository {
     this.db.sqlite
       .prepare(
         `update chapters set volume_id = @volumeId, chapter_index = @chapterIndex, title = @title,
-        status = @status, target_words = @targetWords, updated_at = @updatedAt where id = @id`
+        status = @status, target_words = @targetWords, summary = @summary,
+        outline_json = @outlineJson, updated_at = @updatedAt where id = @id`
       )
       .run({
         id,
@@ -99,6 +102,8 @@ export class ChapterRepository {
         title: input.title ?? existing.title,
         status: input.status ?? existing.status,
         targetWords: input.targetWords ?? existing.targetWords,
+        summary: input.summary === undefined ? existing.summary : input.summary,
+        outlineJson: input.outlineJson === undefined ? existing.outlineJson : input.outlineJson,
         updatedAt: nowIso()
       });
     return this.get(id);

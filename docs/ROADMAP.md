@@ -71,13 +71,21 @@ Deferred from Phase 3: real provider adapters, network health checks, streaming 
 - [x] Add AI IPC endpoints, preload APIs, developer test generation UI, and status/cost bar updates.
 - [x] Add tests for streaming, SSE parsing, aborts, cost math, token estimation, run lifecycle, safe errors, and hash-only storage.
 
-## Phase 5: Editor And Review Workspace
+## Phase 5: Studio UI And Chapter Workspace (Complete)
 
-- Integrate TipTap for manuscript editing with canonical version previews and manual save flows.
-- Add generated draft, diff/review, and accept/reject surfaces without overwriting canonical manuscript in place.
-- Add story bible editing surfaces and state proposal preview cards.
-- Promote the current gateway stream events into chapter generation stream and review views.
-- Add provider route selection affordances inside the chapter workflow panel while continuing to hide decrypted credentials.
+- [x] Replace the placeholder first screen with the working studio shell rather than a landing page.
+- [x] Add a top command bar with global command trigger, quick studio/settings navigation, active run status, session cost, and route health.
+- [x] Add a keyboard-navigable command palette for project, book, volume, chapter, manuscript, generation placeholder, settings, and cost commands.
+- [x] Add a DB-backed left sidebar with project switcher, book list, volume/chapter tree, status badges, quick create controls, chapter rename, status change, and reorder controls.
+- [x] Add compact popover mode with recent chapters, quick actions, current run status, and expand-to-studio behavior.
+- [x] Integrate TipTap for Chinese long-form manuscript editing with autosaved local working drafts, manuscript counts, estimated token counts, save-version flow, and set-canonical confirmation.
+- [x] Add chapter workspace tabs for Manuscript, Generate, Review, Timeline, and Versions.
+- [x] Add version history, open-version, set-canonical, rollback-by-new-version, and simple diff comparison surfaces.
+- [x] Keep generated/proposed content visually distinct from canonical manuscript versions.
+- [x] Add right-panel story bible preview/edit entry creation, continuity warning placeholder, cost meter, route card, recent run list, and settlement proposal placeholder.
+- [x] Extend preload only for existing typed IPC endpoints needed by the UI; decrypted credentials remain unavailable to the renderer.
+
+Deferred from Phase 5: real chapter workflow execution, accept/reject review-card persistence, state-settlement application, and provider-backed generation remain in later phases.
 
 ## Phase 6: LangGraph Workflow MVP
 

@@ -189,6 +189,13 @@ export function createPreloadApi(
           IPC_CONTRACTS.books.create.response,
           input
         ),
+      update: (id, input) =>
+        invokeContract<BookRecord | null>(
+          invoke,
+          IPC_CONTRACTS.books.update.channel,
+          IPC_CONTRACTS.books.update.response,
+          { id, ...input }
+        ),
       delete: (id, confirmed) =>
         invokeContract<boolean>(
           invoke,
@@ -211,6 +218,20 @@ export function createPreloadApi(
           IPC_CONTRACTS.volumes.create.channel,
           IPC_CONTRACTS.volumes.create.response,
           input
+        ),
+      update: (id, input) =>
+        invokeContract<VolumeRecord | null>(
+          invoke,
+          IPC_CONTRACTS.volumes.update.channel,
+          IPC_CONTRACTS.volumes.update.response,
+          { id, ...input }
+        ),
+      delete: (id, confirmed) =>
+        invokeContract<boolean>(
+          invoke,
+          IPC_CONTRACTS.volumes.delete.channel,
+          IPC_CONTRACTS.volumes.delete.response,
+          { id, confirmed }
         )
     },
     chapters: {
@@ -235,12 +256,34 @@ export function createPreloadApi(
           IPC_CONTRACTS.chapters.create.response,
           input
         ),
+      update: (id, input) =>
+        invokeContract<ChapterRecord | null>(
+          invoke,
+          IPC_CONTRACTS.chapters.update.channel,
+          IPC_CONTRACTS.chapters.update.response,
+          { id, ...input }
+        ),
+      reorder: async (bookId, orderedChapterIds) => {
+        await invokeContract<void>(
+          invoke,
+          IPC_CONTRACTS.chapters.reorder.channel,
+          IPC_CONTRACTS.chapters.reorder.response,
+          { bookId, orderedChapterIds }
+        );
+      },
       setStatus: (id, status) =>
         invokeContract<ChapterRecord | null>(
           invoke,
           IPC_CONTRACTS.chapters.setStatus.channel,
           IPC_CONTRACTS.chapters.setStatus.response,
           { id, status }
+        ),
+      delete: (id, confirmed) =>
+        invokeContract<boolean>(
+          invoke,
+          IPC_CONTRACTS.chapters.delete.channel,
+          IPC_CONTRACTS.chapters.delete.response,
+          { id, confirmed }
         )
     },
     manuscripts: {
@@ -250,6 +293,13 @@ export function createPreloadApi(
           IPC_CONTRACTS.manuscripts.listVersions.channel,
           IPC_CONTRACTS.manuscripts.listVersions.response,
           { chapterId }
+        ),
+      getVersion: (id) =>
+        invokeContract<ManuscriptVersionRecord | null>(
+          invoke,
+          IPC_CONTRACTS.manuscripts.getVersion.channel,
+          IPC_CONTRACTS.manuscripts.getVersion.response,
+          { id }
         ),
       getCanonical: (chapterId) =>
         invokeContract<ManuscriptVersionRecord | null>(
@@ -264,6 +314,13 @@ export function createPreloadApi(
           IPC_CONTRACTS.manuscripts.saveManualVersion.channel,
           IPC_CONTRACTS.manuscripts.saveManualVersion.response,
           input
+        ),
+      setCanonical: (chapterId, versionId) =>
+        invokeContract<ManuscriptVersionRecord | null>(
+          invoke,
+          IPC_CONTRACTS.manuscripts.setCanonical.channel,
+          IPC_CONTRACTS.manuscripts.setCanonical.response,
+          { chapterId, versionId }
         ),
       rollback: (chapterId, versionId, confirmed) =>
         invokeContract<ManuscriptVersionRecord>(
@@ -288,6 +345,20 @@ export function createPreloadApi(
             IPC_CONTRACTS.storyBible.entries.create.channel,
             IPC_CONTRACTS.storyBible.entries.create.response,
             input
+          ),
+        update: (id, input) =>
+          invokeContract<StoryBibleEntryRecord | null>(
+            invoke,
+            IPC_CONTRACTS.storyBible.entries.update.channel,
+            IPC_CONTRACTS.storyBible.entries.update.response,
+            { id, ...input }
+          ),
+        delete: (id, confirmed) =>
+          invokeContract<boolean>(
+            invoke,
+            IPC_CONTRACTS.storyBible.entries.delete.channel,
+            IPC_CONTRACTS.storyBible.entries.delete.response,
+            { id, confirmed }
           )
       }
     },

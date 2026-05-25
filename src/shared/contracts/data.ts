@@ -98,6 +98,7 @@ export interface CreateBookInput {
   logline?: string;
   genre?: string;
   targetLengthChapters?: number;
+  status?: string;
 }
 
 export interface CreateVolumeInput {
@@ -105,6 +106,7 @@ export interface CreateVolumeInput {
   title: string;
   volumeIndex: number;
   summary?: string;
+  status?: string;
 }
 
 export interface CreateChapterInput {
@@ -113,6 +115,17 @@ export interface CreateChapterInput {
   chapterIndex: number;
   title: string;
   targetWords?: number;
+  status?: string;
+}
+
+export interface UpdateChapterInput {
+  volumeId?: string | null;
+  chapterIndex?: number;
+  title?: string;
+  status?: string;
+  targetWords?: number;
+  summary?: string | null;
+  outlineJson?: string | null;
 }
 
 export interface SaveManualVersionInput {
@@ -129,4 +142,11 @@ export interface CreateStoryBibleEntryInput {
   entryType: string;
   title: string;
   content: string;
+}
+
+export interface UpdateStoryBibleEntryInput {
+  entryType?: string;
+  title?: string;
+  content?: string;
+  status?: string;
 }
