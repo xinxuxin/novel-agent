@@ -1,0 +1,137 @@
+{
+  "$schema": "https://wenforge.local/schemas/skill-manifest-v1.json",
+  "id": "wenforge-webnovel-writer",
+  "name": "WenForge Webnovel Writer",
+  "version": "1.0.0",
+  "language": "zh-CN",
+  "license": "Original-WenForge",
+  "description": "Original WenForge-native Chinese web novel planning, drafting, audit, revision, and state-settlement prompt package.",
+  "defaultOutputLanguage": "Simplified Chinese",
+  "privacy": {
+    "requiresMainProcessAssembly": true,
+    "rendererMayPreviewOnlyWhenAllowed": true,
+    "redactSecrets": true
+  },
+  "prompts": [
+    {
+      "id": "project-discovery",
+      "file": "project-discovery.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "brainstorm",
+      "outputSchema": "project-discovery"
+    },
+    {
+      "id": "reader-positioning",
+      "file": "reader-positioning.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "brainstorm",
+      "outputSchema": "reader-positioning"
+    },
+    {
+      "id": "story-bible",
+      "file": "story-bible.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "story_bible"
+    },
+    {
+      "id": "volume-outline",
+      "file": "volume-outline.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "volume_outline"
+    },
+    {
+      "id": "chapter-outline",
+      "file": "chapter-outline.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "chapter_outline",
+      "outputSchema": "chapter-outline"
+    },
+    {
+      "id": "scene-cards",
+      "file": "scene-cards.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "scene_cards",
+      "outputSchema": "scene-card"
+    },
+    {
+      "id": "draft-chapter",
+      "file": "draft-chapter.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "draft_chapter"
+    },
+    {
+      "id": "continuity-audit",
+      "file": "continuity-audit.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "continuity_audit",
+      "outputSchema": "continuity-audit"
+    },
+    {
+      "id": "webnovel-rhythm-audit",
+      "file": "webnovel-rhythm-audit.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "suspense_hook_audit",
+      "outputSchema": "webnovel-rhythm-audit"
+    },
+    {
+      "id": "revise-chapter",
+      "file": "revise-chapter.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "revise_chapter",
+      "outputSchema": "revision-plan"
+    },
+    {
+      "id": "state-settlement",
+      "file": "state-settlement.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "state_settlement",
+      "outputSchema": "state-settlement"
+    },
+    {
+      "id": "summarize-chapter",
+      "file": "summarize-chapter.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "summarize_chapter",
+      "outputSchema": "chapter-summary"
+    },
+    {
+      "id": "json-repair",
+      "file": "json-repair.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "state_settlement"
+    }
+  ],
+  "schemas": [
+    "project-discovery.schema.json",
+    "reader-positioning.schema.json",
+    "chapter-outline.schema.json",
+    "scene-card.schema.json",
+    "continuity-audit.schema.json",
+    "webnovel-rhythm-audit.schema.json",
+    "revision-plan.schema.json",
+    "state-settlement.schema.json",
+    "chapter-summary.schema.json"
+  ],
+  "rubrics": [
+    "hook-rubric.zh.md",
+    "continuity-rubric.zh.md",
+    "webnovel-rhythm-rubric.zh.md",
+    "aiish-phrasing-rubric.zh.md",
+    "genre-positioning-rubric.zh.md"
+  ],
+  "examples": ["urban-power-demo", "xuanhuan-demo"],
+  "eval": "chinese-webnovel-eval-v1.json"
+}

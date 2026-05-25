@@ -152,6 +152,7 @@ const privacySettingsSchema = z.object({
   storeFullPrompts: z.boolean(),
   storeFullResponses: z.boolean(),
   storeManuscriptsInLogs: z.boolean(),
+  allowPromptPreview: z.boolean(),
   allowSendingFullRecentChapters: z.boolean(),
   recentChapterCount: z.number().int().min(0),
   maxContextTokenBudget: z.number().int().positive(),

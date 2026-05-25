@@ -2,6 +2,7 @@ export interface PrivacySettings {
   storeFullPrompts: boolean;
   storeFullResponses: boolean;
   storeManuscriptsInLogs: boolean;
+  allowPromptPreview: boolean;
   allowSendingFullRecentChapters: boolean;
   recentChapterCount: number;
   maxContextTokenBudget: number;
@@ -17,6 +18,7 @@ export const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
   storeFullPrompts: false,
   storeFullResponses: false,
   storeManuscriptsInLogs: false,
+  allowPromptPreview: false,
   allowSendingFullRecentChapters: false,
   recentChapterCount: 3,
   maxContextTokenBudget: 120000,

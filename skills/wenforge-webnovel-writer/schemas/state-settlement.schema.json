@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wenforge.local/schemas/state-settlement.schema.json",
+  "title": "StateSettlement",
+  "type": "object",
+  "required": ["proposals"],
+  "properties": {
+    "proposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "proposal_type",
+          "source_chapter",
+          "evidence_summary",
+          "confidence",
+          "target_entity",
+          "proposed_change",
+          "requires_human_review"
+        ],
+        "properties": {
+          "proposal_type": {
+            "type": "string",
+            "enum": [
+              "chapter_summary",
+              "timeline_event",
+              "character_state",
+              "relationship_change",
+              "new_fact",
+              "new_foreshadowing",
+              "resolved_foreshadowing",
+              "unresolved_hook",
+              "continuity_risk"
+            ]
+          },
+          "source_chapter": { "type": "string" },
+          "evidence_summary": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "target_entity": { "type": "string" },
+          "proposed_change": { "type": "string" },
+          "requires_human_review": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

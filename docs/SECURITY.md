@@ -95,12 +95,13 @@ Phase 3 stores privacy settings in SQLite through typed IPC:
 - `storeFullPrompts`: false
 - `storeFullResponses`: false
 - `storeManuscriptsInLogs`: false
+- `allowPromptPreview`: false
 - `allowSendingFullRecentChapters`: false
 - `recentChapterCount`: 3
 - `maxContextTokenBudget`: 120000
 - `enableDebugLogging`: false
 
-These defaults keep future provider runs from persisting complete prompts, responses, or manuscript text unless the user deliberately opts into a more verbose local logging mode.
+These defaults keep future provider runs from persisting complete prompts, responses, or manuscript text unless the user deliberately opts into a more verbose local logging mode. Prompt preview is also disabled by default; when enabled for local inspection, assembled prompts are redacted before reaching the renderer.
 
 ## Phase 4 AI Gateway
 

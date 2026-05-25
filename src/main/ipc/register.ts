@@ -533,7 +533,10 @@ function withoutUndefined<T extends Record<string, unknown>>(value: T): Partial<
 }
 
 function getPrivacySettings(repositories: RepositoryRegistry): PrivacySettings {
-  return repositories.settings.get<PrivacySettings>("privacy") ?? DEFAULT_PRIVACY_SETTINGS;
+  return {
+    ...DEFAULT_PRIVACY_SETTINGS,
+    ...(repositories.settings.get<Partial<PrivacySettings>>("privacy") ?? {})
+  };
 }
 
 function getRoutingSettings(repositories: RepositoryRegistry): RoutingSettings {

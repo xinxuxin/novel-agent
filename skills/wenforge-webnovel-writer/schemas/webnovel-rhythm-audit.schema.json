@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wenforge.local/schemas/webnovel-rhythm-audit.schema.json",
+  "title": "WebnovelRhythmAudit",
+  "type": "object",
+  "required": [
+    "opening_hook_score",
+    "conflict_density_score",
+    "scene_momentum_score",
+    "emotional_turn_score",
+    "payoff_clarity_score",
+    "ending_hook_score",
+    "genre_alignment_score",
+    "cliche_warnings",
+    "aiish_phrasing_warnings",
+    "actionable_suggestions"
+  ],
+  "properties": {
+    "opening_hook_score": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "conflict_density_score": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "scene_momentum_score": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "emotional_turn_score": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "payoff_clarity_score": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "ending_hook_score": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "genre_alignment_score": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "cliche_warnings": { "type": "array", "items": { "type": "string" } },
+    "aiish_phrasing_warnings": { "type": "array", "items": { "type": "string" } },
+    "actionable_suggestions": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

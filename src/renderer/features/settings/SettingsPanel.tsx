@@ -905,6 +905,7 @@ function PrivacyTab({
           ["storeFullPrompts", "Store full prompts"],
           ["storeFullResponses", "Store full responses"],
           ["storeManuscriptsInLogs", "Store manuscripts in logs"],
+          ["allowPromptPreview", "Allow prompt preview"],
           ["allowSendingFullRecentChapters", "Allow full recent chapters"],
           ["enableDebugLogging", "Enable debug logging"]
         ] as Array<[keyof PrivacySettings, string]>

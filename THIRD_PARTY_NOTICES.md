@@ -9,6 +9,7 @@ As of this phase:
 - Copied or adapted third-party source code: none.
 - Copied or adapted third-party prompt text: none.
 - Copied or adapted third-party UI assets, logos, screenshots, or branding: none.
+- `skills/wenforge-webnovel-writer/` is original WenForge-authored prompt and skill text.
 - Reference repositories are cloned under `references/repos/` for static analysis only and are ignored by Git.
 
 ## Reference-Only Repositories
@@ -44,4 +45,3 @@ Before copying or closely adapting any MIT or Apache-2.0 material:
 - Add file-level attribution comments where appropriate.
 
 AGPL/GPL and no-license source remains non-copyable unless the user explicitly accepts the obligations or the upstream license status changes and is re-reviewed.
-

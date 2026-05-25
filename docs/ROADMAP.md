@@ -101,20 +101,25 @@ Deferred from Phase 5: real chapter workflow execution, accept/reject review-car
 
 Deferred from Phase 6: generated settlement proposal acceptance, workflow-created review cards, provider-backed context assembly, and vector embeddings remain later phases.
 
-## Phase 7: LangGraph Workflow MVP
+## Phase 7: WenForge Skill And Prompt Package (Complete)
+
+- [x] Create original WenForge prompt templates for project discovery, reader positioning, story bible, volume outline, chapter outline, scene cards, drafting, continuity audit, webnovel rhythm audit, revision, state settlement, summary, and JSON repair.
+- [x] Add `skills/wenforge-webnovel-writer/SKILL.md`, `README.md`, `skill.json`, versioned prompt files, JSON schemas, rubrics, examples, and a local eval fixture.
+- [x] Encode progressive questioning, reader positioning, genre expectations, hook checks, continuity policy, revision, and validation/repair as WenForge-native methodology.
+- [x] Keep all prompt and skill text original; no AGPL, GPL, no-license, proprietary, or distinctive reference prompt text is copied or closely translated.
+- [x] Add `SkillLoader`, `PromptTemplateService`, and `PromptAssemblyService` for main-process skill loading and prompt assembly.
+- [x] Add `allowPromptPreview` privacy setting, defaulted off, so prompt preview is shown only when explicitly allowed.
+- [x] Add prompt assembly tests for manifest validation, prompt inventory, schema parsing, required context sections, redaction/privacy, fake-context snapshots, and original-text notice posture.
+
+Deferred from Phase 7: workflow node execution, provider-backed generation, schema validation of model responses, prompt editing UI, and storing prompt metadata on generated artifacts.
+
+## Phase 8: LangGraph Workflow MVP
 
 - Add LangGraph.js workflow runtime in the main process or a controlled worker.
 - Implement a chapter workflow skeleton with mock provider nodes first: prepare context, outline, scene cards, draft, continuity audit, rhythm audit, revise, human gate, and settlement proposal.
 - Persist workflow checkpoints, generated artifacts, streamed chunks, and status events.
 - Add cancellation and resume from safe checkpoints.
 - Connect real provider adapters only after mock workflow tests pass.
-
-## Phase 8: WenForge Skill And Prompt Package
-
-- Create original WenForge prompt templates for project discovery, outline, scene cards, drafting, audit, rewrite, and state settlement.
-- Encode progressive questioning, reader positioning, genre expectations, hook checks, and validation/repair as WenForge-native methodology.
-- Do not copy prompt text from AGPL or no-license references.
-- Add prompt assembly tests that verify required context, logging redaction, task route usage, and structured output expectations.
 
 ## Phase 9: Review, Continuity, And Human Gates
 

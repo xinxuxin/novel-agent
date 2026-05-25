@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wenforge.local/schemas/scene-card.schema.json",
+  "title": "SceneCardList",
+  "type": "object",
+  "required": ["scenes"],
+  "properties": {
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "scene_index",
+          "pov",
+          "setting",
+          "participating_characters",
+          "goal",
+          "obstacle",
+          "conflict_beat",
+          "new_information",
+          "emotional_turn",
+          "required_continuity_facts",
+          "handoff"
+        ],
+        "properties": {
+          "scene_index": { "type": "integer", "minimum": 1 },
+          "pov": { "type": "string" },
+          "setting": { "type": "string" },
+          "participating_characters": { "type": "array", "items": { "type": "string" } },
+          "goal": { "type": "string" },
+          "obstacle": { "type": "string" },
+          "conflict_beat": { "type": "string" },
+          "new_information": { "type": "string" },
+          "emotional_turn": { "type": "string" },
+          "required_continuity_facts": { "type": "array", "items": { "type": "string" } },
+          "handoff": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wenforge.local/schemas/reader-positioning.schema.json",
+  "title": "ReaderPositioning",
+  "type": "object",
+  "required": [
+    "target_reader",
+    "platform_style",
+    "genre_expectation",
+    "emotional_promise",
+    "opening_ten_chapter_contract",
+    "forbidden_moves"
+  ],
+  "properties": {
+    "target_reader": { "type": "string" },
+    "platform_style": { "type": "string" },
+    "genre_expectation": { "type": "string" },
+    "emotional_promise": { "type": "string" },
+    "opening_ten_chapter_contract": { "type": "array", "items": { "type": "string" } },
+    "update_cadence_notes": { "type": "string" },
+    "commercial_constraints": { "type": "array", "items": { "type": "string" } },
+    "forbidden_moves": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

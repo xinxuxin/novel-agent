@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wenforge.local/schemas/project-discovery.schema.json",
+  "title": "ProjectDiscovery",
+  "type": "object",
+  "required": ["genre", "core_promise", "protagonist_seed", "reader_payoff", "questions"],
+  "properties": {
+    "genre": { "type": "string" },
+    "subgenre": { "type": "string" },
+    "core_promise": { "type": "string" },
+    "protagonist_seed": { "type": "string" },
+    "power_or_hook_seed": { "type": "string" },
+    "reader_payoff": { "type": "string" },
+    "commercial_constraints": { "type": "array", "items": { "type": "string" } },
+    "known_risks": { "type": "array", "items": { "type": "string" } },
+    "questions": { "type": "array", "items": { "type": "string" }, "maxItems": 8 }
+  },
+  "additionalProperties": false
+}

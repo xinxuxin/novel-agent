@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wenforge.local/schemas/continuity-audit.schema.json",
+  "title": "ContinuityAudit",
+  "type": "object",
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "severity",
+          "affected_entity",
+          "evidence_from_draft",
+          "conflicting_known_fact",
+          "suggested_repair",
+          "requires_human_review"
+        ],
+        "properties": {
+          "severity": { "type": "string", "enum": ["low", "medium", "high", "blocking"] },
+          "affected_entity": { "type": "string" },
+          "evidence_from_draft": { "type": "string" },
+          "conflicting_known_fact": { "type": "string" },
+          "suggested_repair": { "type": "string" },
+          "requires_human_review": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

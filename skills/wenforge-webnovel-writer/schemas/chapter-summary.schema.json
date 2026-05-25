@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wenforge.local/schemas/chapter-summary.schema.json",
+  "title": "ChapterSummary",
+  "type": "object",
+  "required": ["summary", "character_updates", "timeline_events", "unresolved_hooks"],
+  "properties": {
+    "summary": { "type": "string" },
+    "character_updates": { "type": "array", "items": { "type": "string" } },
+    "relationship_updates": { "type": "array", "items": { "type": "string" } },
+    "location_or_artifact_updates": { "type": "array", "items": { "type": "string" } },
+    "timeline_events": { "type": "array", "items": { "type": "string" } },
+    "foreshadowing": { "type": "array", "items": { "type": "string" } },
+    "unresolved_hooks": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

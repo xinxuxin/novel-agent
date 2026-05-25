@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wenforge.local/schemas/chapter-outline.schema.json",
+  "title": "ChapterOutline",
+  "type": "object",
+  "required": [
+    "chapter_promise",
+    "opening_hook",
+    "major_conflict",
+    "conflict_escalation",
+    "emotional_turn",
+    "payoff",
+    "chapter_end_hook",
+    "scene_plan",
+    "continuity_dependencies",
+    "risks"
+  ],
+  "properties": {
+    "chapter_promise": { "type": "string" },
+    "opening_hook": { "type": "string" },
+    "major_conflict": { "type": "string" },
+    "conflict_escalation": { "type": "array", "items": { "type": "string" } },
+    "emotional_turn": { "type": "string" },
+    "payoff": { "type": "string" },
+    "chapter_end_hook": { "type": "string" },
+    "scene_plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["scene_index", "purpose", "conflict", "handoff"],
+        "properties": {
+          "scene_index": { "type": "integer", "minimum": 1 },
+          "purpose": { "type": "string" },
+          "conflict": { "type": "string" },
+          "handoff": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "continuity_dependencies": { "type": "array", "items": { "type": "string" } },
+    "risks": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

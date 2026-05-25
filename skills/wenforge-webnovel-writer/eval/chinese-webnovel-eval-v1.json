@@ -1,0 +1,23 @@
+{
+  "id": "chinese-webnovel-eval-v1",
+  "version": "1.0.0",
+  "language": "zh-CN",
+  "description": "Small local evaluation fixture for WenForge-native Chinese web novel prompt assembly.",
+  "checks": [
+    {
+      "id": "draft_no_meta",
+      "templateId": "draft-chapter",
+      "assertions": ["only_manuscript_text", "simplified_chinese", "concrete_ending_hook"]
+    },
+    {
+      "id": "outline_required_fields",
+      "templateId": "chapter-outline",
+      "assertions": ["chapter_promise", "opening_hook", "chapter_end_hook", "risks"]
+    },
+    {
+      "id": "settlement_evidence",
+      "templateId": "state-settlement",
+      "assertions": ["source_chapter", "evidence_summary", "confidence", "proposals_only"]
+    }
+  ]
+}
