@@ -401,6 +401,22 @@ export const settlementProposalItems = sqliteTable("settlement_proposal_items", 
   updatedAt: text("updated_at").notNull()
 });
 
+export const stateUpdateApplications = sqliteTable("state_update_applications", {
+  id: text("id").primaryKey(),
+  proposalItemId: text("proposal_item_id"),
+  generationRunId: text("generation_run_id"),
+  entityType: text("entity_type"),
+  entityId: text("entity_id"),
+  updateType: text("update_type"),
+  beforeJson: text("before_json"),
+  afterJson: text("after_json"),
+  appliedBy: text("applied_by"),
+  appliedAt: text("applied_at"),
+  appliedEntityType: text("applied_entity_type"),
+  appliedEntityId: text("applied_entity_id"),
+  createdAt: text("created_at").notNull()
+});
+
 export const llmRuns = sqliteTable("llm_runs", {
   id: text("id").primaryKey(),
   generationRunId: text("generation_run_id"),
@@ -503,6 +519,7 @@ export const schema = {
   reviewCards,
   settlementProposals,
   settlementProposalItems,
+  stateUpdateApplications,
   llmRuns,
   modelPrices,
   providerHealth,

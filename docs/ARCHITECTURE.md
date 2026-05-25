@@ -53,6 +53,11 @@ IPC is narrow, versioned, and Zod-validated. Future endpoint families should be 
 - `memory.rebuildBookIndex`
 - `context.previewForChapter`
 - `generation.*`
+- `reviews.*`
+- `manuscript.diffVersions`
+- `manuscript.diffArtifact`
+- `manuscript.saveArtifactAsVersion`
+- `settlement.*`
 - `credentials.*`
 - `modelRoutes.*`
 - `costs.*`
@@ -73,11 +78,13 @@ Core records:
 - story memory: story bible entries, characters, factions, locations, artifacts, power-system rules, timeline events, foreshadowing, unresolved hooks, style guides, reader positioning, memory chunks
 - app configuration: provider credentials, logging settings, route defaults, UI preferences
 
-Generated outputs are drafts or proposals until accepted. Canonical manuscript writes use manuscript versions. Canonical story bible writes currently come from user-saved edits; generated facts are intentionally kept out of canonical memory until a later settlement approval path applies them.
+Generated outputs are drafts or proposals until accepted. Canonical manuscript writes use manuscript versions. Canonical story bible writes currently come from user-saved edits or confirmed settlement applications; generated facts stay out of canonical memory until the user applies supported settlement proposal items.
 
 Phase 2 implements main-process repositories for projects, books, volumes, chapters, manuscripts, story bible entries, memory search, generation artifacts, cost placeholders, and settings. Phase 3 adds repositories for provider credentials, model profiles, model prices, and task routes. The renderer receives data through typed IPC only and does not import database modules.
 
 Phase 6 extends the local data layer with structured story bible repositories for characters, factions, locations, artifacts, power-system rules, timeline events, foreshadowing, unresolved hooks, style guides, and reader positioning. `MemoryIndexService` rebuilds searchable memory from accepted story bible records, canonical manuscripts, and chapter summaries, using SQLite FTS5 first and keyword fallback when FTS is unavailable.
+
+Phase 10 adds a review and settlement confirmation layer. `ReviewSettlementService` owns review-card status updates, manuscript diffs, quality gates, generated artifact acceptance, settlement previews, and transactional settlement application. Applied settlement items write `state_update_applications` audit rows before new story bible, hook, timeline, character, or chapter-summary state becomes canonical.
 
 ## Workflow Runtime
 

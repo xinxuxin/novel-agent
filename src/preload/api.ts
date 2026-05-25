@@ -26,9 +26,17 @@ import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
 import type { ContextPreviewPack, ContextPreviewRequest } from "@contracts/context";
 import type {
   ChapterWorkflowDetail,
+  SettlementProposalItem,
   WorkflowEventRecord,
+  WorkflowReviewCard,
   WorkflowRunRecord
 } from "@contracts/workflow";
+import type {
+  ApplySettlementResult,
+  ManuscriptDiff,
+  QualityGateResult,
+  SettlementPreview
+} from "@contracts/review-settlement";
 import type {
   CharacterInput,
   CharacterRecord,
@@ -400,6 +408,96 @@ export function createPreloadApi(
           IPC_CONTRACTS.manuscripts.rollback.channel,
           IPC_CONTRACTS.manuscripts.rollback.response,
           { chapterId, versionId, confirmed }
+        )
+    },
+    reviews: {
+      listByGenerationRun: (runId) =>
+        invokeContract<WorkflowReviewCard[]>(
+          invoke,
+          IPC_CONTRACTS.reviews.listByGenerationRun.channel,
+          IPC_CONTRACTS.reviews.listByGenerationRun.response,
+          { runId }
+        ),
+      updateStatus: (id, status) =>
+        invokeContract<WorkflowReviewCard | null>(
+          invoke,
+          IPC_CONTRACTS.reviews.updateStatus.channel,
+          IPC_CONTRACTS.reviews.updateStatus.response,
+          { id, status }
+        ),
+      rerunAudit: (runId, auditType) =>
+        invokeContract<WorkflowReviewCard[]>(
+          invoke,
+          IPC_CONTRACTS.reviews.rerunAudit.channel,
+          IPC_CONTRACTS.reviews.rerunAudit.response,
+          { runId, auditType }
+        ),
+      qualityGate: (runId, overrideBlockingWarnings) =>
+        invokeContract<QualityGateResult>(
+          invoke,
+          IPC_CONTRACTS.reviews.qualityGate.channel,
+          IPC_CONTRACTS.reviews.qualityGate.response,
+          { runId, overrideBlockingWarnings }
+        )
+    },
+    manuscript: {
+      diffVersions: (fromVersionId, toVersionId) =>
+        invokeContract<ManuscriptDiff>(
+          invoke,
+          IPC_CONTRACTS.manuscript.diffVersions.channel,
+          IPC_CONTRACTS.manuscript.diffVersions.response,
+          { fromVersionId, toVersionId }
+        ),
+      diffArtifact: (artifactId, baseVersionId) =>
+        invokeContract<ManuscriptDiff>(
+          invoke,
+          IPC_CONTRACTS.manuscript.diffArtifact.channel,
+          IPC_CONTRACTS.manuscript.diffArtifact.response,
+          { artifactId, baseVersionId }
+        ),
+      saveArtifactAsVersion: (input) =>
+        invokeContract<ManuscriptVersionRecord>(
+          invoke,
+          IPC_CONTRACTS.manuscript.saveArtifactAsVersion.channel,
+          IPC_CONTRACTS.manuscript.saveArtifactAsVersion.response,
+          input
+        )
+    },
+    settlement: {
+      preview: (runId) =>
+        invokeContract<SettlementPreview | null>(
+          invoke,
+          IPC_CONTRACTS.settlement.preview.channel,
+          IPC_CONTRACTS.settlement.preview.response,
+          { runId }
+        ),
+      listByRun: (runId) =>
+        invokeContract<SettlementPreview | null>(
+          invoke,
+          IPC_CONTRACTS.settlement.listByRun.channel,
+          IPC_CONTRACTS.settlement.listByRun.response,
+          { runId }
+        ),
+      applySelected: (input) =>
+        invokeContract<ApplySettlementResult>(
+          invoke,
+          IPC_CONTRACTS.settlement.applySelected.channel,
+          IPC_CONTRACTS.settlement.applySelected.response,
+          input
+        ),
+      rejectSelected: (proposalId, itemIds) =>
+        invokeContract<SettlementProposalItem[]>(
+          invoke,
+          IPC_CONTRACTS.settlement.rejectSelected.channel,
+          IPC_CONTRACTS.settlement.rejectSelected.response,
+          { proposalId, itemIds }
+        ),
+      editItem: (itemId, afterJson, status) =>
+        invokeContract<SettlementProposalItem>(
+          invoke,
+          IPC_CONTRACTS.settlement.editItem.channel,
+          IPC_CONTRACTS.settlement.editItem.response,
+          { itemId, afterJson, status }
         )
     },
     storyBible: {

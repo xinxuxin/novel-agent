@@ -83,6 +83,23 @@ Provider mode requirements:
 
 Provider output remains proposed content. Accepting a revision creates a non-canonical manuscript version, and setting it canonical still requires a separate confirmation.
 
+## Phase 10 Review Gate
+
+Phase 10 adds the confirmation layer after workflow output has been generated. The Review tab is now the place where generated drafts, revisions, audits, and settlement proposals become accepted project state.
+
+Review-gate behavior:
+
+- continuity, rhythm, revision, and settlement findings are displayed as review cards with status
+- canonical approval is blocked while open blocking review cards exist
+- a user can override blocking cards only through an explicit warning checkbox and confirmation
+- generated artifacts save as non-canonical manuscript versions by default
+- setting a generated version canonical is transactional and never overwrites an existing canonical row in place
+- low ending-hook rhythm scores surface as warnings before approval
+- settlement proposal items are previewed, grouped, edited/rejected/applied, and audited separately from manuscript acceptance
+- unsupported settlement facts default to rejected until the user edits or confirms them in a later workflow
+
+The same quality gate protects the older generation endpoint for setting an accepted generated version canonical, so canonical writes cannot bypass Review tab policy.
+
 ## Review And Rewrite Workflow
 
 - Start from a selected manuscript version or generated draft.
@@ -91,6 +108,8 @@ Provider output remains proposed content. Accepting a revision creates a non-can
 - Generate a replacement draft or diff proposal.
 - Save accepted changes as a new manuscript version.
 - Never overwrite canonical text without confirmation.
+- Compare canonical text against generated draft/revision with a unified diff before acceptance.
+- If blocking findings remain unresolved, require an explicit approve-despite-warnings override.
 
 ## Story Bible Workflow
 
@@ -98,6 +117,8 @@ Provider output remains proposed content. Accepting a revision creates a non-can
 - Generated facts are proposals with source run, source chapter, evidence summary, and confidence.
 - Conflicts create warnings instead of silent replacements.
 - Accepted settlement updates keep provenance.
+- Phase 10 applies accepted settlement items transactionally and writes `state_update_applications` audit rows.
+- Settlement facts unsupported by the accepted manuscript evidence default to rejected in preview.
 - Phase 6 supports canonical CRUD for characters, factions, locations, artifacts, power-system rules, timeline events, foreshadowing, unresolved hooks, style guides, and reader positioning.
 - Memory indexing can rebuild from accepted story bible records, canonical manuscripts, and chapter summaries.
 - Context preview shows estimated tokens, included memory, omissions, truncation notes, and privacy warnings before generation.

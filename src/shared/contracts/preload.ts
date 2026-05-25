@@ -14,6 +14,8 @@ import type {
   GenerationRequestRevision,
   GenerationResumeRequest,
   GenerationSetAcceptedVersionCanonical,
+  SettlementProposalItem,
+  WorkflowReviewCard,
   WorkflowEventRecord,
   WorkflowRunRecord
 } from "./workflow";
@@ -70,6 +72,12 @@ import type {
   UnresolvedHookRecord
 } from "./story-bible";
 import type { BudgetPolicyRecord, UpdateBudgetPolicyInput } from "./budgets";
+import type {
+  ApplySettlementResult,
+  ManuscriptDiff,
+  QualityGateResult,
+  SettlementPreview
+} from "./review-settlement";
 
 export type WenForgePlatform =
   | "aix"
@@ -165,6 +173,46 @@ export interface WenForgeApi {
       versionId: string,
       confirmed: boolean
     ) => Promise<ManuscriptVersionRecord>;
+  };
+  reviews: {
+    listByGenerationRun: (runId: string) => Promise<WorkflowReviewCard[]>;
+    updateStatus: (
+      id: string,
+      status: "open" | "accepted" | "rejected" | "deferred" | "applied"
+    ) => Promise<WorkflowReviewCard | null>;
+    rerunAudit: (
+      runId: string,
+      auditType?: "continuity" | "webnovel_rhythm"
+    ) => Promise<WorkflowReviewCard[]>;
+    qualityGate: (runId: string, overrideBlockingWarnings?: boolean) => Promise<QualityGateResult>;
+  };
+  manuscript: {
+    diffVersions: (fromVersionId: string, toVersionId: string) => Promise<ManuscriptDiff>;
+    diffArtifact: (artifactId: string, baseVersionId?: string | null) => Promise<ManuscriptDiff>;
+    saveArtifactAsVersion: (input: {
+      runId: string;
+      artifactId: string;
+      title?: string;
+      setCanonical?: boolean;
+      confirmed?: boolean;
+      overrideBlockingWarnings?: boolean;
+    }) => Promise<ManuscriptVersionRecord>;
+  };
+  settlement: {
+    preview: (runId: string) => Promise<SettlementPreview | null>;
+    listByRun: (runId: string) => Promise<SettlementPreview | null>;
+    applySelected: (input: {
+      proposalId: string;
+      itemIds: string[];
+      confirmed?: boolean;
+      appliedBy?: string;
+    }) => Promise<ApplySettlementResult>;
+    rejectSelected: (proposalId: string, itemIds: string[]) => Promise<SettlementProposalItem[]>;
+    editItem: (
+      itemId: string,
+      afterJson: string,
+      status?: string
+    ) => Promise<SettlementProposalItem>;
   };
   storyBible: {
     entries: {

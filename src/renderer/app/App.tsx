@@ -27,6 +27,12 @@ import { WorkflowGeneratePanel } from "@features/workflows/WorkflowGeneratePanel
 import type { StudioCommandId } from "@features/workflows/command-registry";
 import { runDestructiveAction } from "@features/workflows/confirmation";
 import type { ModelRouteResolution } from "@contracts/model-routing";
+import type { ManuscriptDiff, SettlementPreview } from "@contracts/review-settlement";
+import type {
+  ChapterWorkflowDetail,
+  WorkflowArtifactRecord,
+  WorkflowReviewCard
+} from "@contracts/workflow";
 import { useUiStore } from "@renderer/stores/ui-store";
 
 type WorkspaceView = "chapter" | "storyBible" | "settings";
@@ -1102,14 +1108,18 @@ function ChapterWorkspace({
           ) : null}
           {activeTab === "review" ? (
             <ReviewWorkspace
+              activeChapter={activeChapter}
               canonical={canonical}
               compareA={compareA}
               compareAId={compareAId}
               compareB={compareB}
               compareBId={compareBId}
               diff={diff}
+              onCanonicalChanged={onWorkflowCanonicalChanged}
+              onCopyGenerated={onChangeDraft}
               onCompareA={onCompareA}
               onCompareB={onCompareB}
+              onVersionCreated={onWorkflowVersionCreated}
               versions={versions}
             />
           ) : null}
@@ -1131,26 +1141,165 @@ function ChapterWorkspace({
 }
 
 function ReviewWorkspace({
+  activeChapter,
   canonical,
   compareA,
   compareAId,
   compareB,
   compareBId,
   diff,
+  onCanonicalChanged,
+  onCopyGenerated,
   onCompareA,
   onCompareB,
+  onVersionCreated,
   versions
 }: {
+  activeChapter: ChapterRecord | null;
   canonical: ManuscriptVersionRecord | null;
   compareA: ManuscriptVersionRecord | null;
   compareAId: string | null;
   compareB: ManuscriptVersionRecord | null;
   compareBId: string | null;
   diff: ReturnType<typeof createSimpleDiff>;
+  onCanonicalChanged: (version: ManuscriptVersionRecord) => void;
+  onCopyGenerated: (value: string) => void;
   onCompareA: (value: string | null) => void;
   onCompareB: (value: string | null) => void;
+  onVersionCreated: (version: ManuscriptVersionRecord) => void;
   versions: ManuscriptVersionRecord[];
 }): JSX.Element {
+  const [detail, setDetail] = useState<ChapterWorkflowDetail | null>(null);
+  const [runDiff, setRunDiff] = useState<ManuscriptDiff | null>(null);
+  const [selectedArtifactId, setSelectedArtifactId] = useState<string>("");
+  const [severityFilter, setSeverityFilter] = useState("all");
+  const [overrideBlocking, setOverrideBlocking] = useState(false);
+  const [settlement, setSettlement] = useState<SettlementPreview | null>(null);
+  const [selectedSettlementIds, setSelectedSettlementIds] = useState<Set<string>>(new Set());
+
+  const latestArtifact = useMemo(
+    () =>
+      detail?.artifacts.find((artifact) => artifact.id === selectedArtifactId) ??
+      detail?.artifacts.find((artifact) => artifact.artifactType === "revision") ??
+      detail?.artifacts.find((artifact) => artifact.artifactType === "draft") ??
+      null,
+    [detail, selectedArtifactId]
+  );
+  const reviewCards = useMemo(() => detail?.reviewCards ?? [], [detail]);
+  const blockingCount = reviewCards.filter(
+    (card) => card.severity === "blocking" && card.status !== "rejected"
+  ).length;
+  const visibleCards = reviewCards.filter(
+    (card) => severityFilter === "all" || card.severity === severityFilter
+  );
+
+  const loadLatest = useCallback(async (): Promise<void> => {
+    if (!activeChapter) {
+      setDetail(null);
+      setSettlement(null);
+      setRunDiff(null);
+      return;
+    }
+    const runs = await window.wenforge.generation.listRunsByChapter(activeChapter.id);
+    const latest = runs[0] ? await window.wenforge.generation.getRun(runs[0].id) : null;
+    setDetail(latest);
+    const proposal = latest ? await window.wenforge.settlement.preview(latest.run.id) : null;
+    setSettlement(proposal);
+    const defaultArtifact =
+      latest?.artifacts.find((artifact) => artifact.artifactType === "revision") ??
+      latest?.artifacts.find((artifact) => artifact.artifactType === "draft") ??
+      null;
+    setSelectedArtifactId(defaultArtifact?.id ?? "");
+    setSelectedSettlementIds(
+      new Set(
+        proposal?.items
+          .filter((item) => item.recommendedStatus === "accept" && item.status !== "rejected")
+          .map((item) => item.id) ?? []
+      )
+    );
+    if (defaultArtifact) {
+      setRunDiff(await window.wenforge.manuscript.diffArtifact(defaultArtifact.id));
+    } else {
+      setRunDiff(null);
+    }
+  }, [activeChapter]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadLatest();
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadLatest]);
+
+  const updateArtifactDiff = async (artifactId: string): Promise<void> => {
+    setSelectedArtifactId(artifactId);
+    setRunDiff(artifactId ? await window.wenforge.manuscript.diffArtifact(artifactId) : null);
+  };
+
+  const updateReviewStatus = async (
+    card: WorkflowReviewCard,
+    status: "accepted" | "rejected" | "deferred"
+  ): Promise<void> => {
+    await window.wenforge.reviews.updateStatus(card.id, status);
+    await loadLatest();
+  };
+
+  const saveArtifact = async (setCanonical: boolean): Promise<void> => {
+    if (!detail || !latestArtifact) return;
+    if (setCanonical && blockingCount > 0 && !overrideBlocking) return;
+    const confirmed = !setCanonical || window.confirm("Save generated text and set it canonical?");
+    if (!confirmed) return;
+    const version = await window.wenforge.manuscript.saveArtifactAsVersion({
+      runId: detail.run.id,
+      artifactId: latestArtifact.id,
+      title: latestArtifact.title ?? "Generated proposal",
+      setCanonical,
+      confirmed,
+      overrideBlockingWarnings: overrideBlocking
+    });
+    if (version.isCanonical) {
+      onCanonicalChanged(version);
+    } else {
+      onVersionCreated(version);
+    }
+  };
+
+  const applySettlement = async (): Promise<void> => {
+    if (!settlement || selectedSettlementIds.size === 0) return;
+    const confirmed = window.confirm("Apply selected state-settlement updates?");
+    if (!confirmed) return;
+    await window.wenforge.settlement.applySelected({
+      proposalId: settlement.id,
+      itemIds: [...selectedSettlementIds],
+      confirmed: true,
+      appliedBy: "local-user"
+    });
+    await loadLatest();
+  };
+
+  const markVisibleReviews = async (
+    status: "accepted" | "rejected" | "deferred"
+  ): Promise<void> => {
+    await Promise.all(
+      visibleCards.map((card) => window.wenforge.reviews.updateStatus(card.id, status))
+    );
+    await loadLatest();
+  };
+
+  const requestRevisionFromIssues = async (): Promise<void> => {
+    if (!detail) return;
+    const selectedIssues = reviewCards
+      .filter((card) => card.status !== "rejected")
+      .map((card) => `${card.reviewType}: ${card.issue}`)
+      .join("\n");
+    if (!selectedIssues.trim()) return;
+    await window.wenforge.generation.requestRevision({
+      runId: detail.run.id,
+      userInstruction: `根据以下审稿意见修订：\n${selectedIssues}`
+    });
+    await loadLatest();
+  };
+
   return (
     <div className="h-full overflow-auto px-6 py-5">
       <div className="grid gap-4 xl:grid-cols-[1fr_300px]">
@@ -1191,23 +1340,475 @@ function ReviewWorkspace({
           </div>
         </section>
         <section className="space-y-3">
-          {[
-            ["Continuity audit", "No active findings yet."],
-            ["Webnovel rhythm", "Hook, payoff, and chapter-end checks pending."],
-            ["Human gate", "Accept, reject, or revise cards before canon changes."]
-          ].map(([title, body]) => (
-            <article
-              className="rounded-lg border border-white/10 bg-graphite-900/60 p-4"
-              key={title}
-            >
-              <h3 className="text-sm font-semibold text-white">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-500">{body}</p>
-            </article>
-          ))}
+          <ReviewActionsCard
+            blockingCount={blockingCount}
+            detail={detail}
+            latestArtifact={latestArtifact}
+            overrideBlocking={overrideBlocking}
+            onCopyGenerated={() => latestArtifact && onCopyGenerated(latestArtifact.contentText)}
+            onOverrideBlocking={setOverrideBlocking}
+            onRerunAudit={async () => {
+              if (detail) {
+                await window.wenforge.reviews.rerunAudit(detail.run.id);
+                await loadLatest();
+              }
+            }}
+            onReviseSelectedIssues={() => void requestRevisionFromIssues()}
+            onSaveCanonical={() => void saveArtifact(true)}
+            onSaveVersion={() => void saveArtifact(false)}
+            selectedArtifactId={selectedArtifactId}
+            onSelectArtifact={(artifactId) => void updateArtifactDiff(artifactId)}
+          />
+          <CostByNodeCard detail={detail} />
         </section>
+      </div>
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <section className="rounded-lg border border-white/10 bg-black/25 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                Review cards
+              </p>
+              <h3 className="mt-1 text-lg font-semibold text-white">
+                Audits, rhythm, and revision risks
+              </h3>
+            </div>
+            <select
+              className="rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-slate-200"
+              value={severityFilter}
+              onChange={(event) => setSeverityFilter(event.target.value)}
+            >
+              {["all", "info", "warning", "error", "blocking", "low", "medium"].map((severity) => (
+                <option key={severity} value={severity}>
+                  {severity}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <button
+                className="rounded-md border border-forge-mint/25 px-2 py-1.5 text-xs text-forge-mint"
+                onClick={() => void markVisibleReviews("accepted")}
+                type="button"
+              >
+                Accept all
+              </button>
+              <button
+                className="rounded-md border border-red-400/25 px-2 py-1.5 text-xs text-red-200"
+                onClick={() => void markVisibleReviews("rejected")}
+                type="button"
+              >
+                Reject all
+              </button>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3">
+            {visibleCards.length === 0 ? (
+              <p className="rounded-lg border border-white/10 p-4 text-sm text-slate-500">
+                No review cards for the latest run.
+              </p>
+            ) : null}
+            {visibleCards.map((card) => (
+              <ReviewCard
+                card={card}
+                key={card.id}
+                onStatus={(status) => void updateReviewStatus(card, status)}
+              />
+            ))}
+          </div>
+        </section>
+        <section className="rounded-lg border border-white/10 bg-black/25 p-5">
+          <SettlementPanel
+            selectedIds={selectedSettlementIds}
+            settlement={settlement}
+            onApply={applySettlement}
+            onEdit={async (itemId, afterJson) => {
+              await window.wenforge.settlement.editItem(itemId, afterJson);
+              await loadLatest();
+            }}
+            onReject={async (itemIds) => {
+              if (!settlement) return;
+              await window.wenforge.settlement.rejectSelected(settlement.id, itemIds);
+              await loadLatest();
+            }}
+            onToggle={(itemId) => {
+              setSelectedSettlementIds((current) => {
+                const next = new Set(current);
+                if (next.has(itemId)) next.delete(itemId);
+                else next.add(itemId);
+                return next;
+              });
+            }}
+          />
+        </section>
+      </div>
+      {runDiff ? <RunDiffPanel diff={runDiff} /> : null}
+    </div>
+  );
+}
+
+function ReviewActionsCard({
+  blockingCount,
+  detail,
+  latestArtifact,
+  overrideBlocking,
+  onCopyGenerated,
+  onOverrideBlocking,
+  onRerunAudit,
+  onReviseSelectedIssues,
+  onSaveCanonical,
+  onSaveVersion,
+  onSelectArtifact,
+  selectedArtifactId
+}: {
+  blockingCount: number;
+  detail: ChapterWorkflowDetail | null;
+  latestArtifact: WorkflowArtifactRecord | null;
+  overrideBlocking: boolean;
+  onCopyGenerated: () => void;
+  onOverrideBlocking: (value: boolean) => void;
+  onRerunAudit: () => Promise<void>;
+  onReviseSelectedIssues: () => void;
+  onSaveCanonical: () => void;
+  onSaveVersion: () => void;
+  onSelectArtifact: (artifactId: string) => void;
+  selectedArtifactId: string;
+}): JSX.Element {
+  const artifacts =
+    detail?.artifacts.filter((artifact) => ["draft", "revision"].includes(artifact.artifactType)) ??
+    [];
+  return (
+    <article className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
+      <h3 className="text-sm font-semibold text-white">Generated manuscript gate</h3>
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        Generated text remains proposed until it is saved as a version. Canonical approval is
+        blocked while blocking review cards are open.
+      </p>
+      <select
+        className="mt-3 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs text-slate-200"
+        value={selectedArtifactId}
+        onChange={(event) => onSelectArtifact(event.target.value)}
+      >
+        <option value="">No generated artifact</option>
+        {artifacts.map((artifact) => (
+          <option key={artifact.id} value={artifact.id}>
+            {artifact.artifactType} · {artifact.title ?? artifact.sourceNode}
+          </option>
+        ))}
+      </select>
+      {blockingCount > 0 ? (
+        <label className="mt-3 flex items-start gap-2 rounded-md border border-red-400/25 bg-red-400/10 p-2 text-xs leading-5 text-red-100">
+          <input
+            checked={overrideBlocking}
+            className="mt-1 h-4 w-4 accent-red-300"
+            onChange={(event) => onOverrideBlocking(event.target.checked)}
+            type="checkbox"
+          />
+          I understand the warnings and want to approve anyway.
+        </label>
+      ) : null}
+      <div className="mt-3 grid gap-2">
+        <button
+          className="rounded-md border border-white/10 bg-black/20 px-3 py-2 text-left text-xs text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!latestArtifact}
+          onClick={onSaveVersion}
+          type="button"
+        >
+          Save Generated As Non-Canonical Version
+        </button>
+        <button
+          className="rounded-md border border-forge-mint/30 bg-forge-mint/10 px-3 py-2 text-left text-xs text-forge-mint disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!latestArtifact || (blockingCount > 0 && !overrideBlocking)}
+          onClick={onSaveCanonical}
+          type="button"
+        >
+          Save Generated And Set Canonical
+        </button>
+        <button
+          className="rounded-md border border-white/10 bg-black/20 px-3 py-2 text-left text-xs text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!latestArtifact}
+          onClick={onCopyGenerated}
+          type="button"
+        >
+          Copy Generated To Editor
+        </button>
+        <button
+          className="rounded-md border border-forge-blue/30 bg-forge-blue/10 px-3 py-2 text-left text-xs text-forge-blue"
+          onClick={() => void onRerunAudit()}
+          type="button"
+        >
+          Rerun Audit
+        </button>
+        <button
+          className="rounded-md border border-forge-violet/30 bg-forge-violet/10 px-3 py-2 text-left text-xs text-forge-violet disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!detail}
+          onClick={onReviseSelectedIssues}
+          type="button"
+        >
+          Revise Based On Active Issues
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function CostByNodeCard({ detail }: { detail: ChapterWorkflowDetail | null }): JSX.Element {
+  const runs = detail?.llmRuns ?? [];
+  return (
+    <article className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
+      <h3 className="text-sm font-semibold text-white">Cost by node</h3>
+      <div className="mt-3 space-y-2">
+        {runs.length === 0 ? <p className="text-xs text-slate-500">No model runs yet.</p> : null}
+        {runs.map((run) => (
+          <div
+            className="rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs"
+            key={run.id}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-200">{run.taskType}</span>
+              <span className="text-forge-mint">
+                ${(run.finalCost ?? run.estimatedCostLive).toFixed(6)}
+              </span>
+            </div>
+            <p className="mt-1 text-slate-500">
+              {run.provider}/{run.model} · {run.latencyMs ?? 0}ms · {run.usageSource}
+            </p>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function ReviewCard({
+  card,
+  onStatus
+}: {
+  card: WorkflowReviewCard;
+  onStatus: (status: "accepted" | "rejected" | "deferred") => void;
+}): JSX.Element {
+  const raw = parseCardJson(card.rawJson);
+  const tone =
+    card.severity === "blocking"
+      ? "border-red-400/30 bg-red-400/10"
+      : card.severity === "error"
+        ? "border-amber-300/30 bg-amber-300/10"
+        : "border-white/10 bg-graphite-900/60";
+  return (
+    <article className={`rounded-lg border p-4 ${tone}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+              {card.reviewType}
+            </span>
+            <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-slate-300">
+              {card.severity}
+            </span>
+            <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-slate-500">
+              {card.status}
+            </span>
+          </div>
+          <h3 className="mt-3 text-sm font-semibold text-white">{card.title}</h3>
+        </div>
+        <div className="flex gap-2">
+          {(["accepted", "deferred", "rejected"] as const).map((status) => (
+            <button
+              className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-slate-300 hover:border-forge-blue/40"
+              key={status}
+              onClick={() => onStatus(status)}
+              type="button"
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-300">{card.issue}</p>
+      {card.evidence ? (
+        <p className="mt-2 text-xs text-slate-500">Evidence: {card.evidence}</p>
+      ) : null}
+      {card.suggestedFix ? (
+        <p className="mt-2 text-xs text-forge-mint">Suggested fix: {card.suggestedFix}</p>
+      ) : null}
+      {raw ? <ReviewRawDetails raw={raw} /> : null}
+    </article>
+  );
+}
+
+function ReviewRawDetails({ raw }: { raw: Record<string, unknown> }): JSX.Element {
+  const scores = [
+    "opening_hook_score",
+    "conflict_density_score",
+    "scene_momentum_score",
+    "emotional_turn_score",
+    "payoff_clarity_score",
+    "ending_hook_score",
+    "genre_alignment_score"
+  ].filter((key) => typeof raw[key] !== "undefined");
+  return (
+    <div className="mt-3 grid gap-2 md:grid-cols-2">
+      {scores.map((key) => (
+        <p className="rounded-md border border-white/10 bg-black/20 px-2 py-1 text-xs" key={key}>
+          <span className="text-slate-500">{key.replaceAll("_", " ")}</span>{" "}
+          <span className="text-white">{String(raw[key])}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function SettlementPanel({
+  selectedIds,
+  settlement,
+  onApply,
+  onEdit,
+  onReject,
+  onToggle
+}: {
+  selectedIds: Set<string>;
+  settlement: SettlementPreview | null;
+  onApply: () => Promise<void>;
+  onEdit: (itemId: string, afterJson: string) => Promise<void>;
+  onReject: (itemIds: string[]) => Promise<void>;
+  onToggle: (itemId: string) => void;
+}): JSX.Element {
+  const grouped = settlement?.groups ?? {};
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+            State settlement
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-white">Proposed memory updates</h3>
+        </div>
+        <button
+          className="rounded-md border border-forge-mint/30 bg-forge-mint/10 px-3 py-2 text-xs text-forge-mint disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!settlement || selectedIds.size === 0}
+          onClick={() => void onApply()}
+          type="button"
+        >
+          Apply Selected
+        </button>
+      </div>
+      <div className="mt-4 space-y-4">
+        {!settlement ? (
+          <p className="rounded-lg border border-white/10 p-4 text-sm text-slate-500">
+            No settlement proposal for the latest run.
+          </p>
+        ) : null}
+        {Object.entries(grouped).map(([group, items]) => (
+          <div className="space-y-2" key={group}>
+            <h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              {group}
+            </h4>
+            {items.map((item) => (
+              <div
+                className="rounded-lg border border-white/10 bg-graphite-900/60 p-3"
+                key={item.id}
+              >
+                <label className="flex items-start gap-2">
+                  <input
+                    checked={selectedIds.has(item.id)}
+                    className="mt-1 h-4 w-4 accent-forge-blue"
+                    disabled={item.recommendedStatus === "reject" || item.status === "rejected"}
+                    onChange={() => onToggle(item.id)}
+                    type="checkbox"
+                  />
+                  <span>
+                    <span className="text-sm font-medium text-white">{item.itemType}</span>
+                    <span className="ml-2 text-xs text-slate-500">{item.status}</span>
+                  </span>
+                </label>
+                <p className="mt-2 text-xs leading-5 text-slate-400">{item.evidenceSummary}</p>
+                <p
+                  className={`mt-2 text-xs ${
+                    item.recommendedStatus === "reject" ? "text-amber-200" : "text-forge-mint"
+                  }`}
+                >
+                  {item.recommendedStatus === "reject"
+                    ? "Unsupported by accepted manuscript evidence"
+                    : "Evidence supported"}
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-slate-300"
+                    onClick={() => {
+                      const next = window.prompt("Edit settlement JSON", item.afterJson);
+                      if (next) void onEdit(item.id, next);
+                    }}
+                    type="button"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="rounded-md border border-red-400/25 px-2 py-1 text-[11px] text-red-200"
+                    onClick={() => void onReject([item.id])}
+                    type="button"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );
+}
+
+function RunDiffPanel({ diff }: { diff: ManuscriptDiff }): JSX.Element {
+  return (
+    <section className="mt-4 rounded-lg border border-white/10 bg-black/25 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+            Canonical vs generated
+          </p>
+          <h3 className="mt-1 text-sm font-semibold text-white">
+            {diff.fromTitle} to {diff.toTitle}
+          </h3>
+        </div>
+        <p className="text-xs text-slate-400">
+          Words {diff.wordDelta >= 0 ? "+" : ""}
+          {diff.wordDelta} · Characters {diff.characterDelta >= 0 ? "+" : ""}
+          {diff.characterDelta}
+        </p>
+      </div>
+      <div className="mt-4 max-h-[420px] overflow-auto rounded-lg border border-white/10 bg-black/25">
+        {diff.lines.map((line, index) => (
+          <p
+            className={`border-b border-white/5 px-4 py-2 font-mono text-xs leading-5 ${
+              line.type === "added"
+                ? "bg-forge-mint/8 text-forge-mint"
+                : line.type === "removed"
+                  ? "bg-red-400/8 text-red-200"
+                  : "text-slate-400"
+            }`}
+            key={`${line.type}-${index}-${line.text}`}
+          >
+            <span className="mr-3 text-slate-600">
+              {line.type === "added" ? "+" : line.type === "removed" ? "-" : " "}
+            </span>
+            {line.text}
+          </p>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function parseCardJson(value: string | null): Record<string, unknown> | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function VersionSelect({

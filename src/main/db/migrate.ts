@@ -318,9 +318,17 @@ create table if not exists settlement_proposal_items (
 
 create table if not exists state_update_applications (
   id text primary key,
-  proposal_item_id text not null,
-  applied_entity_type text not null,
-  applied_entity_id text not null,
+  proposal_item_id text,
+  generation_run_id text,
+  entity_type text,
+  entity_id text,
+  update_type text,
+  before_json text,
+  after_json text,
+  applied_by text,
+  applied_at text,
+  applied_entity_type text,
+  applied_entity_id text,
   created_at text not null
 );
 
@@ -524,6 +532,14 @@ function ensureColumns(sqlite: SqliteDatabase): void {
   ensureColumn(sqlite, "provider_credentials", "last_tested_at", "text");
   ensureColumn(sqlite, "provider_credentials", "last_status", "text not null default 'unknown'");
   ensureColumn(sqlite, "provider_health", "model", "text");
+  ensureColumn(sqlite, "state_update_applications", "generation_run_id", "text");
+  ensureColumn(sqlite, "state_update_applications", "entity_type", "text");
+  ensureColumn(sqlite, "state_update_applications", "entity_id", "text");
+  ensureColumn(sqlite, "state_update_applications", "update_type", "text");
+  ensureColumn(sqlite, "state_update_applications", "before_json", "text");
+  ensureColumn(sqlite, "state_update_applications", "after_json", "text");
+  ensureColumn(sqlite, "state_update_applications", "applied_by", "text");
+  ensureColumn(sqlite, "state_update_applications", "applied_at", "text");
 
   ensureColumn(sqlite, "characters", "first_appearance_chapter_id", "text");
   ensureColumn(sqlite, "characters", "goal", "text");

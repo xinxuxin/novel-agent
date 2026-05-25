@@ -223,7 +223,8 @@ export type GenerationAcceptArtifactAsVersion = z.infer<
 export const generationSetAcceptedVersionCanonicalSchema = z.object({
   chapterId: z.string().min(1),
   versionId: z.string().min(1),
-  confirmed: z.boolean().optional()
+  confirmed: z.boolean().optional(),
+  overrideBlockingWarnings: z.boolean().optional()
 });
 export type GenerationSetAcceptedVersionCanonical = z.infer<
   typeof generationSetAcceptedVersionCanonicalSchema

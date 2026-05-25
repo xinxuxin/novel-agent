@@ -101,16 +101,38 @@ The first usable studio UI now includes:
 Remaining UI work:
 
 - Replace generation placeholders with LangGraph workflow events.
-- Add persisted review cards with accept/reject/apply actions.
-- Add state-settlement proposal review and application screens.
+- Add selected-hunk diff application after the full accept/reject path proves stable.
 - Add richer story bible editing forms and memory search affordances.
 - Add deeper cost dashboards by project, month, chapter, and run.
+
+## Phase 10 Review Workspace
+
+The Review tab is now the human approval surface for generated chapter output.
+
+Implemented surfaces:
+
+- latest generation run selection for the active chapter
+- severity filters for review cards
+- continuity cards with severity, issue, evidence, affected entity, suggested fix, and human-judgment flags
+- webnovel rhythm details from structured card JSON, including ending-hook warnings when scores are low
+- revision-plan details, selected issues, change rationale, risk, and raw structured details when present
+- generated artifact diff against canonical manuscript, with word and character deltas
+- manuscript version diff retained for manual version comparison
+- generated artifact actions for save as non-canonical version, save and set canonical after confirmation, and copy to editor
+- quality-gate banner and explicit override checkbox for blocking review cards
+- cost by node from persisted `llm_runs`
+- settlement proposal groups for characters, timeline, foreshadowing, hooks, world facts, style/reader notes, and continuity risks
+- per-settlement-item accept/apply selection, edit-as-JSON, and reject actions
+
+Selected hunk application is deferred. The current implementation deliberately ships full artifact acceptance/rejection first, because it is easier to audit and keeps canonical manuscript writes versioned.
 
 ## Interaction Rules
 
 - Generated text, audits, rewrites, and state updates are visibly marked as draft/proposed.
 - Destructive actions use confirmation dialogs.
 - Review cards include severity, issue, evidence summary, suggested fix, and accept/reject actions.
+- Blocking review cards disable canonical approval until the user checks the explicit approve-despite-warnings control.
+- Story bible settlement proposals are never applied automatically.
 - Cost estimates appear before generation and update during streaming.
 - Provider errors are redacted and actionable.
 - Decrypted secrets are never displayed.

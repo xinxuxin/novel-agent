@@ -57,6 +57,15 @@ export type {
 } from "./model-routing";
 export { DEFAULT_BUDGET_POLICY } from "./budgets";
 export type { BudgetExceededAction, BudgetPolicyRecord, UpdateBudgetPolicyInput } from "./budgets";
+export type {
+  ApplySettlementResult,
+  DiffLineType,
+  ManuscriptDiff,
+  ManuscriptDiffLine,
+  QualityGateResult,
+  SettlementPreview,
+  SettlementPreviewItem
+} from "./review-settlement";
 export { DEFAULT_PRIVACY_SETTINGS, DEFAULT_ROUTING_SETTINGS } from "./settings";
 export type { PrivacySettings, RoutingSettings } from "./settings";
 export type { ContextPreviewPack, ContextPreviewRequest } from "./context";

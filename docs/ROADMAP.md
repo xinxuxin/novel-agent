@@ -142,7 +142,24 @@ Deferred from Phase 8: real provider-backed workflow nodes, live token streaming
 
 Deferred from Phase 9: selected-diff application, settlement proposal approval/application, daily/project spend-window enforcement, and true graph-level pause/resume after live budget warnings.
 
-## Phase 10: Import, Export, Backup, And Packaging Prep
+## Phase 10: Review, Diff, And Settlement Confirmation (Complete)
+
+- [x] Add a main-process `ReviewSettlementService` for review-card status updates, manuscript diffs, quality gates, generated artifact acceptance, settlement preview, and confirmed settlement application.
+- [x] Keep generated drafts, revisions, audits, and settlement changes proposed until the user accepts them.
+- [x] Block canonical approval when unresolved blocking review cards exist, with an explicit override checkbox for the user to approve despite warnings.
+- [x] Add unified manuscript diffs for canonical vs generated artifact and manuscript version vs manuscript version, including word and character deltas.
+- [x] Allow generated artifacts to be saved as non-canonical manuscript versions by default.
+- [x] Require explicit confirmation before saving a generated artifact and setting it canonical in one action.
+- [x] Protect the older workflow canonical endpoint with the same blocking-review quality gate.
+- [x] Add rich Review tab surfaces for continuity findings, rhythm scores, revision-plan notes, generated diffs, cost by node, and settlement proposals.
+- [x] Add settlement proposal grouping, item edit/reject/apply controls, evidence-based default rejection for unsupported facts, and transactional application of accepted items.
+- [x] Add `state_update_applications` audit rows for applied settlement changes with run, entity, update type, before/after JSON, actor, and timestamp.
+- [x] Add typed IPC and preload APIs for `reviews.*`, `manuscript.diff*`, `manuscript.saveArtifactAsVersion`, and `settlement.*`.
+- [x] Add tests for quality gates, override confirmation, diff creation, non-canonical generated versions, canonical acceptance transactions, settlement reject/apply behavior, audit trails, and unsupported settlement defaults.
+
+Deferred from Phase 10: selected hunk application inside diffs, true provider-backed audit reruns from the Review tab, richer structured editing forms for every settlement entity type, and deeper daily/project spend-window enforcement.
+
+## Phase 11: Import, Export, Backup, And Packaging Prep
 
 - Add Markdown/TXT import with safe path handling and no untrusted HTML injection.
 - Add project export, cost report export, backup, restore, and migration safety checks.

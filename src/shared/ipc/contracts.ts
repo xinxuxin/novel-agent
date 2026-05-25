@@ -20,7 +20,9 @@ import {
   generationSetAcceptedVersionCanonicalSchema,
   generationStreamEventsRequestSchema,
   manuscriptVersionWorkflowResponseSchema,
+  settlementProposalItemSchema,
   workflowEventRecordSchema,
+  workflowReviewCardSchema,
   workflowRunRecordSchema
 } from "@contracts/workflow";
 
@@ -514,6 +516,47 @@ const providerHealthSchema = z.object({
   checkedAt: z.string(),
   errorCode: z.string().nullable(),
   errorMessage: z.string().nullable()
+});
+const manuscriptDiffLineSchema = z.object({
+  type: z.enum(["unchanged", "added", "removed"]),
+  oldLineNumber: z.number().int().positive().nullable(),
+  newLineNumber: z.number().int().positive().nullable(),
+  text: z.string()
+});
+const manuscriptDiffSchema = z.object({
+  fromTitle: z.string(),
+  toTitle: z.string(),
+  fromWordCount: z.number().int().min(0),
+  toWordCount: z.number().int().min(0),
+  wordDelta: z.number().int(),
+  fromCharacterCount: z.number().int().min(0),
+  toCharacterCount: z.number().int().min(0),
+  characterDelta: z.number().int(),
+  lines: z.array(manuscriptDiffLineSchema)
+});
+const qualityGateSchema = z.object({
+  canApproveCanonical: z.boolean(),
+  blockingReviewCardIds: z.array(z.string()),
+  warnings: z.array(z.string())
+});
+const settlementPreviewItemSchema = settlementProposalItemSchema.extend({
+  supportedByAcceptedManuscript: z.boolean(),
+  recommendedStatus: z.enum(["accept", "reject"]),
+  group: z.string()
+});
+const settlementPreviewSchema = z.object({
+  id: z.string(),
+  generationRunId: z.string(),
+  chapterId: z.string(),
+  status: z.string(),
+  items: z.array(settlementPreviewItemSchema),
+  groups: z.record(z.string(), z.array(settlementPreviewItemSchema)),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+const applySettlementResultSchema = z.object({
+  appliedItems: z.array(settlementPreviewItemSchema),
+  rejectedItems: z.array(settlementPreviewItemSchema)
 });
 export const IPC_CONTRACTS = {
   app: {
@@ -1078,6 +1121,100 @@ export const IPC_CONTRACTS = {
       z.undefined()
     )
   },
+  reviews: {
+    listByGenerationRun: createContract(
+      "reviews:list-by-generation-run",
+      z.object({ runId: z.string().min(1) }),
+      z.array(workflowReviewCardSchema)
+    ),
+    updateStatus: createContract(
+      "reviews:update-status",
+      z.object({
+        id: z.string().min(1),
+        status: z.enum(["open", "accepted", "rejected", "deferred", "applied"])
+      }),
+      workflowReviewCardSchema.nullable()
+    ),
+    rerunAudit: createContract(
+      "reviews:rerun-audit",
+      z.object({
+        runId: z.string().min(1),
+        auditType: z.enum(["continuity", "webnovel_rhythm"]).optional()
+      }),
+      z.array(workflowReviewCardSchema)
+    ),
+    qualityGate: createContract(
+      "reviews:quality-gate",
+      z.object({
+        runId: z.string().min(1),
+        overrideBlockingWarnings: z.boolean().optional()
+      }),
+      qualityGateSchema
+    )
+  },
+  manuscript: {
+    diffVersions: createContract(
+      "manuscript:diff-versions",
+      z.object({ fromVersionId: z.string().min(1), toVersionId: z.string().min(1) }),
+      manuscriptDiffSchema
+    ),
+    diffArtifact: createContract(
+      "manuscript:diff-artifact",
+      z.object({
+        artifactId: z.string().min(1),
+        baseVersionId: z.string().min(1).nullable().optional()
+      }),
+      manuscriptDiffSchema
+    ),
+    saveArtifactAsVersion: createContract(
+      "manuscript:save-artifact-as-version",
+      z.object({
+        runId: z.string().min(1),
+        artifactId: z.string().min(1),
+        title: z.string().trim().min(1).optional(),
+        setCanonical: z.boolean().optional(),
+        confirmed: z.boolean().optional(),
+        overrideBlockingWarnings: z.boolean().optional()
+      }),
+      manuscriptVersionWorkflowResponseSchema
+    )
+  },
+  settlement: {
+    preview: createContract(
+      "settlement:preview",
+      z.object({ runId: z.string().min(1) }),
+      settlementPreviewSchema.nullable()
+    ),
+    listByRun: createContract(
+      "settlement:list-by-run",
+      z.object({ runId: z.string().min(1) }),
+      settlementPreviewSchema.nullable()
+    ),
+    applySelected: createContract(
+      "settlement:apply-selected",
+      z.object({
+        proposalId: z.string().min(1),
+        itemIds: z.array(z.string().min(1)),
+        confirmed: z.boolean().optional(),
+        appliedBy: z.string().trim().min(1).optional()
+      }),
+      applySettlementResultSchema
+    ),
+    rejectSelected: createContract(
+      "settlement:reject-selected",
+      z.object({ proposalId: z.string().min(1), itemIds: z.array(z.string().min(1)) }),
+      z.array(settlementProposalItemSchema)
+    ),
+    editItem: createContract(
+      "settlement:edit-item",
+      z.object({
+        itemId: z.string().min(1),
+        afterJson: z.string().min(2),
+        status: z.string().optional()
+      }),
+      settlementProposalItemSchema
+    )
+  },
   privacy: {
     get: createContract("privacy:get", emptyRequestSchema, privacySettingsSchema),
     update: createContract("privacy:update", privacySettingsSchema.partial(), privacySettingsSchema)
@@ -1276,6 +1413,18 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.budgets.updatePolicies,
   IPC_CONTRACTS.providerHealth.list,
   IPC_CONTRACTS.providerHealth.reset,
+  IPC_CONTRACTS.reviews.listByGenerationRun,
+  IPC_CONTRACTS.reviews.updateStatus,
+  IPC_CONTRACTS.reviews.rerunAudit,
+  IPC_CONTRACTS.reviews.qualityGate,
+  IPC_CONTRACTS.manuscript.diffVersions,
+  IPC_CONTRACTS.manuscript.diffArtifact,
+  IPC_CONTRACTS.manuscript.saveArtifactAsVersion,
+  IPC_CONTRACTS.settlement.preview,
+  IPC_CONTRACTS.settlement.listByRun,
+  IPC_CONTRACTS.settlement.applySelected,
+  IPC_CONTRACTS.settlement.rejectSelected,
+  IPC_CONTRACTS.settlement.editItem,
   IPC_CONTRACTS.privacy.get,
   IPC_CONTRACTS.privacy.update,
   IPC_CONTRACTS.routingSettings.get,

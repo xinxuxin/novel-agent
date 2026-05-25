@@ -314,6 +314,15 @@ export class ChapterWorkflowRuntime {
     if (!input.confirmed) {
       throw new Error("Confirmation is required before setting canonical manuscript");
     }
+    const version = this.options.repositories.manuscripts.getVersion(input.versionId);
+    if (version?.generationRunId && !input.overrideBlockingWarnings) {
+      const blockingCards = this.options.repositories.generation
+        .listReviewCards(version.generationRunId)
+        .filter((card) => card.severity === "blocking" && card.status !== "rejected");
+      if (blockingCards.length > 0) {
+        throw new Error("Canonical approval is blocked by blocking review cards");
+      }
+    }
     return this.options.repositories.manuscripts.setCanonical(
       input.chapterId,
       input.versionId

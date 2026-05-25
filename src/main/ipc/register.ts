@@ -12,6 +12,7 @@ import { ContextBuilder } from "@main/context/context-builder";
 import { MemoryIndexService } from "@main/memory/memory-index-service";
 import type { CredentialService } from "@main/providers/credential-service";
 import { ModelRouter } from "@main/providers/model-router";
+import { ReviewSettlementService } from "@main/review/review-settlement-service";
 import { ChapterWorkflowRuntime } from "@main/workflows/chapter-workflow-runtime";
 import { getEnvironment } from "@main/platform/environment";
 import { SafeIpcError } from "./typed-ipc";
@@ -96,6 +97,9 @@ function registerDataIpc(
         credentialService,
         privacy: getPrivacySettings(repositories)
       })
+    : null;
+  const reviewSettlementService = database
+    ? new ReviewSettlementService({ database, repositories })
     : null;
 
   registerIpcContract(IPC_CONTRACTS.projects.list, () => repositories.projects.list());
@@ -527,6 +531,87 @@ function registerDataIpc(
   registerIpcContract(IPC_CONTRACTS.providerHealth.reset, (request) => {
     repositories.providerHealth.reset(request?.provider);
     return undefined;
+  });
+  registerIpcContract(IPC_CONTRACTS.reviews.listByGenerationRun, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return reviewSettlementService.listReviewsByGenerationRun(request.runId);
+  });
+  registerIpcContract(IPC_CONTRACTS.reviews.updateStatus, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return reviewSettlementService.updateReviewStatus(request.id, request.status);
+  });
+  registerIpcContract(IPC_CONTRACTS.reviews.rerunAudit, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    repositories.generation.addEvent({
+      generationRunId: request.runId,
+      eventType: "audit_rerun_requested",
+      message: "Audit rerun requested",
+      payload: { auditType: request.auditType ?? "all" }
+    });
+    return reviewSettlementService.listReviewsByGenerationRun(request.runId);
+  });
+  registerIpcContract(IPC_CONTRACTS.reviews.qualityGate, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return reviewSettlementService.qualityGate(
+      request.runId,
+      request.overrideBlockingWarnings ?? false
+    );
+  });
+  registerIpcContract(IPC_CONTRACTS.manuscript.diffVersions, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return reviewSettlementService.diffVersions(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.manuscript.diffArtifact, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return reviewSettlementService.diffArtifact(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.manuscript.saveArtifactAsVersion, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return reviewSettlementService.saveArtifactAsVersion(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.settlement.preview, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return reviewSettlementService.previewSettlement(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.settlement.listByRun, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return reviewSettlementService.previewSettlement(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.settlement.applySelected, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return reviewSettlementService.applySelectedSettlementItems(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.settlement.rejectSelected, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return reviewSettlementService.rejectSettlementItems(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.settlement.editItem, (request) => {
+    if (!reviewSettlementService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return reviewSettlementService.editSettlementItem(request);
   });
   registerIpcContract(IPC_CONTRACTS.privacy.get, () => getPrivacySettings(repositories));
   registerIpcContract(IPC_CONTRACTS.privacy.update, (request) => {
