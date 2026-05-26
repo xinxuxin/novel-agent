@@ -34,11 +34,16 @@ import {
   routePriceWarningSchema
 } from "@contracts/cost-dashboard";
 import {
+  evalApplyRecommendationRequestSchema,
   evalCaseSchema,
   evalHumanScoreRequestSchema,
+  evalJudgeRequestSchema,
   evalLeaderboardEntrySchema,
   evalOutputSchema,
   evalPromoteRequestSchema,
+  evalReportRequestSchema,
+  evalReportResultSchema,
+  evalRouteRecommendationsSchema,
   evalRunSchema,
   evalScoreSchema,
   evalStartRequestSchema,
@@ -1579,7 +1584,7 @@ export const IPC_CONTRACTS = {
       human: createContract("eval:score:human", evalHumanScoreRequestSchema, evalScoreSchema),
       llmJudge: createContract(
         "eval:score:llm-judge",
-        z.object({ outputId: z.string().min(1) }),
+        evalJudgeRequestSchema,
         evalScoreSchema
       )
     },
@@ -1592,6 +1597,21 @@ export const IPC_CONTRACTS = {
       "eval:promote-winner-to-route",
       evalPromoteRequestSchema,
       taskRouteSchema
+    ),
+    recommendRoutes: createContract(
+      "eval:recommend-routes",
+      z.object({ runId: z.string().min(1) }),
+      evalRouteRecommendationsSchema
+    ),
+    applyRecommendationToRoute: createContract(
+      "eval:apply-recommendation-to-route",
+      evalApplyRecommendationRequestSchema,
+      taskRouteSchema
+    ),
+    exportReport: createContract(
+      "eval:export-report",
+      evalReportRequestSchema,
+      evalReportResultSchema
     )
   },
   privacy: {
@@ -1854,6 +1874,9 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.eval.score.llmJudge,
   IPC_CONTRACTS.eval.leaderboard,
   IPC_CONTRACTS.eval.promoteWinnerToRoute,
+  IPC_CONTRACTS.eval.recommendRoutes,
+  IPC_CONTRACTS.eval.applyRecommendationToRoute,
+  IPC_CONTRACTS.eval.exportReport,
   IPC_CONTRACTS.privacy.get,
   IPC_CONTRACTS.privacy.update,
   IPC_CONTRACTS.routingSettings.get,

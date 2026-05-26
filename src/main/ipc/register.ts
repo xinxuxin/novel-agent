@@ -170,7 +170,13 @@ function registerDataIpc(
     ? new PricingRegistryService({ database, repositories })
     : null;
   const costForecastService = database ? new CostForecastService({ repositories }) : null;
-  const evaluationService = database ? new EvaluationService({ database, repositories }) : null;
+  const evaluationService = database
+    ? new EvaluationService({
+        database,
+        repositories,
+        aiGateway
+      })
+    : null;
   const importExportService = database
     ? new ImportExportService({
         database,
@@ -212,6 +218,7 @@ function registerDataIpc(
         })
       : null;
   evaluationService?.ensureBuiltInSuite();
+  evaluationService?.ensureRouteEvalSuite();
 
   registerIpcContract(IPC_CONTRACTS.projects.list, () => repositories.projects.list());
   registerIpcContract(IPC_CONTRACTS.projects.get, (request) =>
@@ -1029,11 +1036,13 @@ function registerDataIpc(
     requireConfirmation(request.confirmed);
     return evaluationService.deleteCase(request.id, true);
   });
-  registerIpcContract(IPC_CONTRACTS.eval.run.start, (request) => {
+  registerIpcContract(IPC_CONTRACTS.eval.run.start, async (request) => {
     if (!evaluationService) {
       throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
     }
-    return evaluationService.startRun(request);
+    return request.executionMode === "provider"
+      ? evaluationService.startRunProvider(request)
+      : evaluationService.startRun(request);
   });
   registerIpcContract(IPC_CONTRACTS.eval.run.abort, (request) => {
     if (!evaluationService) {
@@ -1056,11 +1065,13 @@ function registerDataIpc(
     }
     return evaluationService.scoreHuman(request);
   });
-  registerIpcContract(IPC_CONTRACTS.eval.score.llmJudge, (request) => {
+  registerIpcContract(IPC_CONTRACTS.eval.score.llmJudge, async (request) => {
     if (!evaluationService) {
       throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
     }
-    return evaluationService.scoreLlmJudge(request.outputId);
+    return request.executionMode === "provider"
+      ? evaluationService.scoreLlmJudgeProvider(request)
+      : evaluationService.scoreLlmJudge(request);
   });
   registerIpcContract(IPC_CONTRACTS.eval.leaderboard, (request) => {
     if (!evaluationService) {
@@ -1073,6 +1084,24 @@ function registerDataIpc(
       throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
     }
     return evaluationService.promoteWinnerToRoute(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.eval.recommendRoutes, (request) => {
+    if (!evaluationService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return evaluationService.recommendRoutes(request.runId);
+  });
+  registerIpcContract(IPC_CONTRACTS.eval.applyRecommendationToRoute, (request) => {
+    if (!evaluationService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return evaluationService.applyRecommendationToRoute(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.eval.exportReport, (request) => {
+    if (!evaluationService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return evaluationService.exportReport(request);
   });
   registerIpcContract(IPC_CONTRACTS.privacy.get, () => getPrivacySettings(repositories));
   registerIpcContract(IPC_CONTRACTS.privacy.update, (request) => {

@@ -227,6 +227,7 @@ Deferred from Phase 14: signed/notarized public installers, final branded icons,
 - [x] Phase 15b: add Premium Webnovel model aliases, Qwen3.7-Max/Kimi K2.6 placeholders, `premium_webnovel` route preset import/export, and fake-tested multi-model cross-check workflows.
 - [x] Phase 15c: add privacy-safe provider connectivity checks, redacted provider reports, budget-capped E2E chapter checks, diagnostics summaries, and fake-only automated coverage.
 - [x] Phase 15d: add editable price tiers, usage calibration, chapter/route cost forecasting, manual provider quota notes, and fake-only forecast coverage.
+- [x] Phase 15e: add Chinese webnovel routing eval v2, advisory LLM judge tracking, route recommendations, redacted eval reports, and opt-in provider eval gates.
 - Add safe native file picker flows for saving exports and opening import packages.
 - Add automatic backup triggers for daily, app-close, and before-destructive-operation settings.
 - Add optional EPUB export if dependency and formatting risk stay low.

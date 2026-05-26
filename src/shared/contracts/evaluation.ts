@@ -14,15 +14,32 @@ export const EVAL_DIMENSIONS = [
   "continuity_respect",
   "ending_hook",
   "low_ai_smell",
+  "structural_logic",
+  "market_fit",
   "cost_score",
   "latency_score"
 ] as const;
 
+export const ROUTING_EVAL_TASK_TYPES = [
+  "draft_chapter",
+  "webnovel_style_rewrite",
+  "suspense_hook_audit",
+  "continuity_audit",
+  "chapter_outline",
+  "revise_chapter",
+  "originality_audit",
+  "plot_logic_audit"
+] as const;
+
 export type EvalDimension = (typeof EVAL_DIMENSIONS)[number];
 export type EvalMode = "human_scoring" | "llm_judge" | "blind_comparison";
+export type RoutingEvalTaskType = (typeof ROUTING_EVAL_TASK_TYPES)[number];
 
 export const evalModeSchema = z.enum(["human_scoring", "llm_judge", "blind_comparison"]);
-export const evalDimensionsSchema = z.record(z.enum(EVAL_DIMENSIONS), z.number().min(0).max(10));
+export const evalDimensionsSchema = z.partialRecord(
+  z.enum(EVAL_DIMENSIONS),
+  z.number().min(0).max(10)
+);
 
 export const evalSuiteSchema = z.object({
   id: z.string(),
@@ -117,7 +134,10 @@ export const evalStartRequestSchema = z.object({
   modelProfileIds: z.array(z.string().min(1)).min(1),
   taskType: z.enum(LLM_TASK_TYPES),
   qualityMode: z.enum(QUALITY_MODES),
-  executionMode: z.enum(["mock", "provider"]).default("mock")
+  executionMode: z.enum(["mock", "provider"]).default("mock"),
+  confirmed: z.boolean().optional(),
+  budgetCapUsd: z.number().positive().optional(),
+  maxOutputTokens: z.number().int().positive().max(1200).optional()
 });
 export type EvalStartRequest = z.infer<typeof evalStartRequestSchema>;
 
@@ -137,3 +157,59 @@ export const evalPromoteRequestSchema = z.object({
   confirmed: z.boolean().optional()
 });
 export type EvalPromoteRequest = z.infer<typeof evalPromoteRequestSchema>;
+
+export const evalJudgeRequestSchema = z.object({
+  outputId: z.string().min(1),
+  judgeModelProfileId: z.string().min(1).optional(),
+  executionMode: z.enum(["mock", "provider"]).default("mock").optional(),
+  confirmed: z.boolean().optional(),
+  budgetCapUsd: z.number().positive().optional()
+});
+export type EvalJudgeRequest = z.infer<typeof evalJudgeRequestSchema>;
+
+export const evalRecommendationItemSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  taskType: z.enum(LLM_TASK_TYPES),
+  modelProfileId: z.string(),
+  provider: z.string(),
+  model: z.string(),
+  modelAlias: z.string().nullable(),
+  score: z.number().min(0),
+  cost: z.number().min(0),
+  latencyMs: z.number().min(0),
+  reason: z.string(),
+  requiresConfirmation: z.boolean()
+});
+export type EvalRecommendationItem = z.infer<typeof evalRecommendationItemSchema>;
+
+export const evalRouteRecommendationsSchema = z.object({
+  runId: z.string(),
+  generatedAt: z.string(),
+  items: z.array(evalRecommendationItemSchema)
+});
+export type EvalRouteRecommendations = z.infer<typeof evalRouteRecommendationsSchema>;
+
+export const evalApplyRecommendationRequestSchema = z.object({
+  runId: z.string().min(1),
+  recommendationId: z.string().min(1),
+  qualityMode: z.enum(QUALITY_MODES),
+  confirmed: z.boolean().optional()
+});
+export type EvalApplyRecommendationRequest = z.infer<
+  typeof evalApplyRecommendationRequestSchema
+>;
+
+export const evalReportRequestSchema = z.object({
+  runId: z.string().min(1),
+  includeRawOutputs: z.boolean().optional()
+});
+export type EvalReportRequest = z.infer<typeof evalReportRequestSchema>;
+
+export const evalReportResultSchema = z.object({
+  filePath: z.string(),
+  content: z.string(),
+  outputCount: z.number().int().min(0),
+  redacted: z.boolean()
+});
+export type EvalReportResult = z.infer<typeof evalReportResultSchema>;

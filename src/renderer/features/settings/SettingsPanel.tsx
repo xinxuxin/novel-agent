@@ -65,6 +65,8 @@ const TASK_LABELS: Record<TaskType, string> = {
   scene_cards: "Scene cards",
   draft_chapter: "Draft chapter",
   webnovel_style_rewrite: "Style rewrite",
+  originality_audit: "Originality audit",
+  plot_logic_audit: "Plot logic audit",
   continuity_audit: "Continuity audit",
   suspense_hook_audit: "Suspense audit",
   revise_chapter: "Revise chapter",

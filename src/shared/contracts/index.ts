@@ -95,19 +95,26 @@ export type {
   StalePriceWarning
 } from "./cost-dashboard";
 export type {
+  EvalApplyRecommendationRequest,
   EvalCaseRecord,
   EvalDimension,
   EvalLeaderboardEntry,
+  EvalJudgeRequest,
   EvalMode,
   EvalOutputRecord,
+  EvalRecommendationItem,
+  EvalReportRequest,
+  EvalReportResult,
+  EvalRouteRecommendations,
   EvalRunRecord,
   EvalScoreRecord,
   EvalSuiteRecord,
   EvalHumanScoreRequest,
   EvalPromoteRequest,
+  RoutingEvalTaskType,
   EvalStartRequest
 } from "./evaluation";
-export { EVAL_DIMENSIONS } from "./evaluation";
+export { EVAL_DIMENSIONS, ROUTING_EVAL_TASK_TYPES } from "./evaluation";
 export type {
   BackupCreateRequest,
   BackupRecord,

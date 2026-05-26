@@ -79,6 +79,17 @@ Calibration does not require additional provider calls. It never changes already
 
 Prices and tiers remain editable. Confirm current provider prices in the provider console before relying on forecasts, especially for regional or deployment-mode pricing.
 
+## Real Model Evaluation
+
+Phase 15e adds optional provider-backed model evaluation for WenForge routing. It uses the same opt-in guard as provider checks:
+
+- `RUN_REAL_PROVIDER_CHECKS=true`
+- not running in CI
+- explicit UI confirmation
+- positive budget cap
+
+Eval outputs are evaluation artifacts only. They do not update canonical manuscripts, story bible facts, memory chunks, or route presets unless the user separately confirms applying a recommendation.
+
 ## E2E Chapter Connectivity Check
 
 The optional short chapter check validates the provider-backed chapter workflow without changing canon:

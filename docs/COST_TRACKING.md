@@ -207,3 +207,7 @@ The Costs workspace can now forecast:
 - Economy vs Balanced vs Premium Webnovel route cost
 
 Forecasts show per-node models, estimated tokens, selected tiers, low/expected/high cost, project-budget warnings, and provider-level cost splits. Manual quota notes store credit balance, monthly budget, free quota remaining, refresh date, and notes without querying provider billing dashboards.
+
+## Phase 15e Eval Cost Accounting
+
+Model evaluation runs continue to create normal `llm_runs` records for every model output and every LLM judge call. Provider-backed evals are disabled unless explicitly confirmed, outside CI, and protected by a budget cap. Eval reports include cost, latency, cost-adjusted score, and recommended route changes, but they omit raw outputs by default.

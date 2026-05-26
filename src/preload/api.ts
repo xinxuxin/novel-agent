@@ -56,6 +56,8 @@ import type {
   EvalOutputRecord,
   EvalRunRecord,
   EvalScoreRecord,
+  EvalReportResult,
+  EvalRouteRecommendations,
   EvalSuiteRecord
 } from "@contracts/evaluation";
 import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
@@ -1246,12 +1248,12 @@ export function createPreloadApi(
             IPC_CONTRACTS.eval.score.human.response,
             request
           ),
-        llmJudge: (outputId) =>
+        llmJudge: (request) =>
           invokeContract<EvalScoreRecord>(
             invoke,
             IPC_CONTRACTS.eval.score.llmJudge.channel,
             IPC_CONTRACTS.eval.score.llmJudge.response,
-            { outputId }
+            typeof request === "string" ? { outputId: request } : request
           )
       },
       leaderboard: (runId) =>
@@ -1266,6 +1268,27 @@ export function createPreloadApi(
           invoke,
           IPC_CONTRACTS.eval.promoteWinnerToRoute.channel,
           IPC_CONTRACTS.eval.promoteWinnerToRoute.response,
+          request
+        ),
+      recommendRoutes: (runId) =>
+        invokeContract<EvalRouteRecommendations>(
+          invoke,
+          IPC_CONTRACTS.eval.recommendRoutes.channel,
+          IPC_CONTRACTS.eval.recommendRoutes.response,
+          { runId }
+        ),
+      applyRecommendationToRoute: (request) =>
+        invokeContract<TaskRouteRecord>(
+          invoke,
+          IPC_CONTRACTS.eval.applyRecommendationToRoute.channel,
+          IPC_CONTRACTS.eval.applyRecommendationToRoute.response,
+          request
+        ),
+      exportReport: (request) =>
+        invokeContract<EvalReportResult>(
+          invoke,
+          IPC_CONTRACTS.eval.exportReport.channel,
+          IPC_CONTRACTS.eval.exportReport.response,
           request
         )
     },

@@ -81,6 +81,8 @@ const OUTPUT_TOKEN_BUDGETS: Record<LLMTaskType, number> = {
   scene_cards: 2_000,
   draft_chapter: 3_000,
   webnovel_style_rewrite: 1_000,
+  originality_audit: 1_500,
+  plot_logic_audit: 1_500,
   continuity_audit: 1_500,
   suspense_hook_audit: 1_500,
   revise_chapter: 3_000,

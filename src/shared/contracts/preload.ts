@@ -121,11 +121,16 @@ import type {
   ProjectJsonPackage
 } from "./import-export";
 import type {
+  EvalApplyRecommendationRequest,
   EvalCaseRecord,
   EvalHumanScoreRequest,
+  EvalJudgeRequest,
   EvalLeaderboardEntry,
   EvalOutputRecord,
   EvalPromoteRequest,
+  EvalReportRequest,
+  EvalReportResult,
+  EvalRouteRecommendations,
   EvalRunRecord,
   EvalScoreRecord,
   EvalStartRequest,
@@ -514,10 +519,15 @@ export interface WenForgeApi {
     };
     score: {
       human: (request: EvalHumanScoreRequest) => Promise<EvalScoreRecord>;
-      llmJudge: (outputId: string) => Promise<EvalScoreRecord>;
+      llmJudge: (request: string | EvalJudgeRequest) => Promise<EvalScoreRecord>;
     };
     leaderboard: (runId: string) => Promise<EvalLeaderboardEntry[]>;
     promoteWinnerToRoute: (request: EvalPromoteRequest) => Promise<TaskRouteRecord>;
+    recommendRoutes: (runId: string) => Promise<EvalRouteRecommendations>;
+    applyRecommendationToRoute: (
+      request: EvalApplyRecommendationRequest
+    ) => Promise<TaskRouteRecord>;
+    exportReport: (request: EvalReportRequest) => Promise<EvalReportResult>;
   };
   generation: {
     chapter: {

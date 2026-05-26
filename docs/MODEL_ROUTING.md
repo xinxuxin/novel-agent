@@ -200,3 +200,9 @@ Forecasting is read-only:
 - calculates provider quota warnings from manual quota notes
 
 Forecasting never calls a provider, never reads decrypted credentials, and never mutates manuscripts, story bible entries, routes, or canonical state.
+
+## Phase 15e Eval-Driven Recommendations
+
+The v2 model evaluation suite can compare GPT-5.5, Claude Opus 4.7, Qwen3.7-Max, Kimi K2.6, and DeepSeek V4 Pro on WenForge-specific tasks. It produces route recommendations for daily drafting, key chapters, hook review, continuity review, state settlement, value-first routing, and quality-first routing.
+
+Recommendations are advisory until the user confirms an application. Applying a recommendation updates the selected `task_model_routes` row only; it does not modify manuscripts, story bible facts, memory, or provider credentials.

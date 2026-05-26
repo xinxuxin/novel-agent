@@ -20,6 +20,8 @@ export const TASK_TYPES = [
   "scene_cards",
   "draft_chapter",
   "webnovel_style_rewrite",
+  "originality_audit",
+  "plot_logic_audit",
   "continuity_audit",
   "suspense_hook_audit",
   "revise_chapter",
