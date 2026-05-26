@@ -63,7 +63,10 @@ export class CostDashboardService {
         "substr(request_started_at, 1, 10)",
         "substr(request_started_at, 1, 10)"
       ),
+      perProviderBurnDown: this.group(projectScope, "provider", "provider"),
       costPerChapter: this.groupChapters(projectScope),
+      modelRouteCostComparison: this.group(projectScope, "task_type || ':' || model", "task_type || ':' || model"),
+      expensiveRunOutliers: this.group(projectScope, "id", "id").slice(0, 10),
       estimatedVsReported: this.estimatedVsReported(projectScope),
       averageCostPerApprovedChapter: this.averageCostPerApprovedChapter(projectScope),
       averageCostPer1kChineseCharacters: this.averageCostPer1kChineseCharacters(projectScope),
@@ -324,7 +327,38 @@ export class PricingRegistryService {
     for (const price of parsed.prices) {
       this.options.repositories.modelPrices.upsert(price);
     }
-    return { importedCount: parsed.prices.length, skippedCount: 0 };
+    for (const tier of parsed.tiers ?? []) {
+      const price =
+        this.options.repositories.modelPrices.findActive(tier.provider, tier.model) ??
+        this.options.repositories.modelPrices.upsert({
+          provider: tier.provider,
+          model: tier.model,
+          inputPricePerMillion: tier.inputPricePerMillion,
+          outputPricePerMillion: tier.outputPricePerMillion,
+          cachedInputPricePerMillion: tier.cachedInputPricePerMillion,
+          currency: tier.currency,
+          effectiveDate: tier.effectiveDate,
+          sourceNote: tier.sourceNote,
+          enabled: tier.enabled
+        });
+      this.options.repositories.modelPriceTiers.upsert({
+        modelPriceId: tier.modelPriceId ?? price.id,
+        provider: tier.provider,
+        model: tier.model,
+        deploymentMode: tier.deploymentMode,
+        minInputTokens: tier.minInputTokens,
+        maxInputTokens: tier.maxInputTokens,
+        inputPricePerMillion: tier.inputPricePerMillion,
+        outputPricePerMillion: tier.outputPricePerMillion,
+        cachedInputPricePerMillion: tier.cachedInputPricePerMillion,
+        cacheWritePricePerMillion: tier.cacheWritePricePerMillion,
+        currency: tier.currency,
+        effectiveDate: tier.effectiveDate,
+        sourceNote: tier.sourceNote,
+        enabled: tier.enabled
+      });
+    }
+    return { importedCount: parsed.prices.length + (parsed.tiers?.length ?? 0), skippedCount: 0 };
   }
 
   exportJson(): string {
@@ -343,6 +377,22 @@ export class PricingRegistryService {
         effectiveDate: price.effectiveDate,
         sourceNote: price.sourceNote,
         enabled: price.enabled
+      })),
+      tiers: this.options.repositories.modelPriceTiers.list().map((tier) => ({
+        modelPriceId: tier.modelPriceId,
+        provider: tier.provider,
+        model: tier.model,
+        deploymentMode: tier.deploymentMode,
+        minInputTokens: tier.minInputTokens,
+        maxInputTokens: tier.maxInputTokens,
+        inputPricePerMillion: tier.inputPricePerMillion,
+        outputPricePerMillion: tier.outputPricePerMillion,
+        cachedInputPricePerMillion: tier.cachedInputPricePerMillion,
+        cacheWritePricePerMillion: tier.cacheWritePricePerMillion,
+        currency: tier.currency,
+        effectiveDate: tier.effectiveDate,
+        sourceNote: tier.sourceNote,
+        enabled: tier.enabled
       }))
     };
     return JSON.stringify(payload, null, 2);

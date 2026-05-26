@@ -396,6 +396,26 @@ create table if not exists model_prices (
   updated_at text not null
 );
 
+create table if not exists model_price_tiers (
+  id text primary key,
+  model_price_id text not null,
+  provider text not null,
+  model text not null,
+  deployment_mode text,
+  min_input_tokens integer not null default 0,
+  max_input_tokens integer,
+  input_price_per_million real not null,
+  output_price_per_million real not null,
+  cached_input_price_per_million real,
+  cache_write_price_per_million real,
+  currency text not null default 'USD',
+  effective_date text not null,
+  source_note text not null,
+  enabled integer not null default 1,
+  created_at text not null,
+  updated_at text not null
+);
+
 create table if not exists task_model_routes (
   id text primary key,
   task_type text not null,
@@ -434,6 +454,32 @@ create table if not exists budget_policies (
   warning_threshold_percent real not null default 50,
   on_budget_exceeded text not null default 'warn',
   currency text not null default 'USD',
+  created_at text not null,
+  updated_at text not null
+);
+
+create table if not exists usage_calibration (
+  id text primary key,
+  provider text not null,
+  model text not null,
+  samples integer not null default 0,
+  input_estimate_factor real not null default 1,
+  output_estimate_factor real not null default 1,
+  mean_absolute_error real not null default 0,
+  last_sample_at text,
+  created_at text not null,
+  updated_at text not null,
+  unique(provider, model)
+);
+
+create table if not exists provider_quota_notes (
+  id text primary key,
+  provider text not null unique,
+  credit_balance real,
+  monthly_budget real,
+  free_quota_remaining real,
+  refreshed_at text,
+  notes text,
   created_at text not null,
   updated_at text not null
 );

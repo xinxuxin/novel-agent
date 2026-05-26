@@ -463,6 +463,51 @@ export const modelPrices = sqliteTable("model_prices", {
   updatedAt: text("updated_at").notNull()
 });
 
+export const modelPriceTiers = sqliteTable("model_price_tiers", {
+  id: text("id").primaryKey(),
+  modelPriceId: text("model_price_id").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  deploymentMode: text("deployment_mode"),
+  minInputTokens: integer("min_input_tokens").notNull().default(0),
+  maxInputTokens: integer("max_input_tokens"),
+  inputPricePerMillion: real("input_price_per_million").notNull(),
+  outputPricePerMillion: real("output_price_per_million").notNull(),
+  cachedInputPricePerMillion: real("cached_input_price_per_million"),
+  cacheWritePricePerMillion: real("cache_write_price_per_million"),
+  currency: text("currency").notNull().default("USD"),
+  effectiveDate: text("effective_date").notNull(),
+  sourceNote: text("source_note").notNull(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const usageCalibration = sqliteTable("usage_calibration", {
+  id: text("id").primaryKey(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  samples: integer("samples").notNull().default(0),
+  inputEstimateFactor: real("input_estimate_factor").notNull().default(1),
+  outputEstimateFactor: real("output_estimate_factor").notNull().default(1),
+  meanAbsoluteError: real("mean_absolute_error").notNull().default(0),
+  lastSampleAt: text("last_sample_at"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const providerQuotaNotes = sqliteTable("provider_quota_notes", {
+  id: text("id").primaryKey(),
+  provider: text("provider").notNull(),
+  creditBalance: real("credit_balance"),
+  monthlyBudget: real("monthly_budget"),
+  freeQuotaRemaining: real("free_quota_remaining"),
+  refreshedAt: text("refreshed_at"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
 export const providerHealth = sqliteTable("provider_health", {
   id: text("id").primaryKey(),
   provider: text("provider").notNull(),
@@ -589,6 +634,9 @@ export const schema = {
   stateUpdateApplications,
   llmRuns,
   modelPrices,
+  modelPriceTiers,
+  usageCalibration,
+  providerQuotaNotes,
   providerHealth,
   budgetPolicies,
   evalSuites,

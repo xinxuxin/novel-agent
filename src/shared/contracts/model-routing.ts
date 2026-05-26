@@ -78,6 +78,52 @@ export interface ModelPriceRecord {
   updatedAt: string;
 }
 
+export interface ModelPriceTierRecord {
+  id: string;
+  modelPriceId: string;
+  provider: ProviderId;
+  model: string;
+  deploymentMode: string | null;
+  minInputTokens: number;
+  maxInputTokens: number | null;
+  inputPricePerMillion: number;
+  outputPricePerMillion: number;
+  cachedInputPricePerMillion: number | null;
+  cacheWritePricePerMillion: number | null;
+  currency: string;
+  effectiveDate: string;
+  sourceNote: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UsageCalibrationRecord {
+  id: string;
+  provider: ProviderId;
+  model: string;
+  samples: number;
+  inputEstimateFactor: number;
+  outputEstimateFactor: number;
+  meanAbsoluteError: number;
+  lastSampleAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  confidence?: number;
+}
+
+export interface ProviderQuotaNoteRecord {
+  id: string;
+  provider: ProviderId;
+  creditBalance: number | null;
+  monthlyBudget: number | null;
+  freeQuotaRemaining: number | null;
+  refreshedAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TaskRouteRecord {
   id: string;
   taskType: TaskType;

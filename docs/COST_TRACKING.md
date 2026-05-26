@@ -184,3 +184,26 @@ Premium Webnovel cross-checks estimate the full parallel plan before execution:
 If the estimated total exceeds the user-supplied cross-check budget cap, the run is blocked before provider execution and before any `llm_runs` are created. Successful calls still flow through the AI gateway, so each model attempt creates an `llm_runs` row with hashes, usage estimates/reported usage, and final cost.
 
 Cross-check artifacts store per-model cost metadata in `generated_artifacts.content_json` with `status = proposed`; they are not counted as accepted manuscript cost until the user later accepts a generated manuscript version.
+
+## Phase 15d Price Tiers And Forecasting
+
+Phase 15d keeps `model_prices` as the editable base price row and adds optional `model_price_tiers` rows for provider/model deployment modes and input-token bands. Cost calculation now chooses the enabled tier that matches:
+
+- provider and model
+- deployment mode, such as `global`, `chinese_mainland`, `international`, `hong_kong`, or `eu`
+- input token range
+
+If no tier exists, WenForge falls back to the base `model_prices` row. If tiers exist but none match the request, cost calculation falls back to the base row and surfaces `no_matching_price_tier`.
+
+Seeded tiers are editable placeholders only. Qwen3.7-Max, Qwen3-Max regional tiers, Kimi K2.6, DeepSeek V4 Pro, GPT-5.5, and Claude Opus 4.7 are all marked with source notes requiring user confirmation in the provider console. These rows are not permanent truth.
+
+Usage calibration is stored per provider/model in `usage_calibration`. When provider-reported usage is available, WenForge compares reported tokens against local estimates and updates input/output calibration factors. Future forecasts apply those factors, but provider-reported final costs are never changed retroactively by calibration.
+
+The Costs workspace can now forecast:
+
+- the selected chapter
+- the next 10 chapters
+- 100 chapters
+- Economy vs Balanced vs Premium Webnovel route cost
+
+Forecasts show per-node models, estimated tokens, selected tiers, low/expected/high cost, project-budget warnings, and provider-level cost splits. Manual quota notes store credit balance, monthly budget, free quota remaining, refresh date, and notes without querying provider billing dashboards.

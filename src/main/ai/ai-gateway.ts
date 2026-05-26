@@ -9,8 +9,10 @@ import type {
 } from "@contracts/ai";
 import { toModelProviderId } from "@contracts/ai";
 import type { ModelPriceRecord } from "@contracts/model-routing";
+import type { ModelPriceTierRecord } from "@contracts/model-routing";
 import { DEFAULT_ROUTING_SETTINGS } from "@contracts/settings";
 import type { RoutingSettings } from "@contracts/settings";
+import { UsageCalibrationService } from "@main/costs/usage-calibration-service";
 import type { RepositoryRegistry } from "@main/db/service";
 import type { CredentialService } from "@main/providers/credential-service";
 import { ModelRouter } from "@main/providers/model-router";
@@ -34,6 +36,7 @@ interface ResolvedRequest {
   provider: AIProviderId;
   model: string;
   price: ModelPriceRecord | null;
+  priceTiers: ModelPriceTierRecord[];
   config: ProviderAdapterConfig;
   temperature: number | undefined;
   maxOutputTokens: number | undefined;
@@ -49,6 +52,7 @@ export class AiGateway {
   private readonly adapters: Map<AIProviderId, ProviderAdapter>;
   private readonly tokenEstimator: TokenEstimator;
   private readonly costCalculator: CostCalculator;
+  private readonly calibrationService: UsageCalibrationService;
   private readonly redaction = new RedactionService();
   private readonly activeRuns = new Map<string, ActiveRun>();
 
@@ -56,6 +60,7 @@ export class AiGateway {
     this.adapters = new Map(options.adapters.map((adapter) => [adapter.id, adapter]));
     this.tokenEstimator = options.tokenEstimator ?? new TokenEstimator();
     this.costCalculator = options.costCalculator ?? new CostCalculator();
+    this.calibrationService = new UsageCalibrationService({ repositories: options.repositories });
   }
 
   async startStream(
@@ -76,6 +81,7 @@ export class AiGateway {
         outputTokens: 0
       },
       resolved.price,
+      resolved.priceTiers,
       true
     );
     const run = this.options.repositories.cost.createLlmRun({
@@ -169,6 +175,7 @@ export class AiGateway {
         outputTokens: 0
       },
       resolved.price,
+      resolved.priceTiers,
       true
     );
     const run = this.options.repositories.cost.createLlmRun({
@@ -204,7 +211,7 @@ export class AiGateway {
         outputTokens: outputTokensEstimated
       };
       const usageSource = response.usage ? "provider" : "estimated";
-      const finalCost = this.calculateCost(usage, resolved.price, !response.usage);
+      const finalCost = this.calculateCost(usage, resolved.price, resolved.priceTiers, !response.usage);
       const latencyMs = Date.now() - startedAt;
       this.options.repositories.cost.finishRun(run.id, {
         status: "succeeded",
@@ -217,6 +224,13 @@ export class AiGateway {
         finalCost: finalCost.totalCost,
         latencyMs,
         responseHash: sha256Hex(response.text)
+      });
+      this.recordCalibrationSample({
+        provider: resolved.provider,
+        model: resolved.model,
+        inputTokensEstimated,
+        outputTokensEstimated,
+        usage: response.usage ?? null
       });
       return {
         runId: run.id,
@@ -232,6 +246,7 @@ export class AiGateway {
       const finalCost = this.calculateCost(
         { inputTokens: inputTokensEstimated, outputTokens: 0 },
         resolved.price,
+        resolved.priceTiers,
         true
       );
       this.options.repositories.cost.finishRun(run.id, {
@@ -270,6 +285,7 @@ export class AiGateway {
           outputTokens: outputTokensEstimatedLive
         },
         input.resolved.price,
+        input.resolved.priceTiers,
         true
       );
       estimatedCostLive = cost.totalCost;
@@ -324,7 +340,12 @@ export class AiGateway {
         outputTokens: outputTokensEstimatedLive
       };
       const usageSource = latestUsage ? "provider" : "estimated";
-      const finalCost = this.calculateCost(finalUsage, input.resolved.price, !latestUsage);
+      const finalCost = this.calculateCost(
+        finalUsage,
+        input.resolved.price,
+        input.resolved.priceTiers,
+        !latestUsage
+      );
       this.options.repositories.cost.finishRun(input.runId, {
         status: "succeeded",
         outputTokensEstimatedLive,
@@ -336,6 +357,13 @@ export class AiGateway {
         finalCost: finalCost.totalCost,
         latencyMs: Date.now() - input.startedAt,
         responseHash: sha256Hex(response.text)
+      });
+      this.recordCalibrationSample({
+        provider: input.resolved.provider,
+        model: input.resolved.model,
+        inputTokensEstimated: input.inputTokensEstimated,
+        outputTokensEstimated: outputTokensEstimatedLive,
+        usage: latestUsage
       });
       input.emit({
         type: "complete",
@@ -356,7 +384,12 @@ export class AiGateway {
         inputTokens: input.inputTokensEstimated,
         outputTokens: outputTokensEstimatedLive
       };
-      const finalCost = this.calculateCost(estimatedUsage, input.resolved.price, true);
+      const finalCost = this.calculateCost(
+        estimatedUsage,
+        input.resolved.price,
+        input.resolved.priceTiers,
+        true
+      );
       this.options.repositories.cost.finishRun(input.runId, {
         status,
         outputTokensEstimatedLive,
@@ -388,6 +421,7 @@ export class AiGateway {
         provider: "fake",
         model: request.model ?? "fake-story-model",
         price: null,
+        priceTiers: [],
         config: {},
         temperature: request.temperature,
         maxOutputTokens: request.maxOutputTokens,
@@ -408,6 +442,10 @@ export class AiGateway {
         provider: request.provider,
         model: request.model,
         price: this.options.repositories.modelPrices.findActive(providerId, request.model),
+        priceTiers: this.options.repositories.modelPriceTiers.list({
+          provider: providerId,
+          model: request.model
+        }),
         config: { apiKey: credential.apiKey, baseUrl: credential.baseUrl },
         temperature: request.temperature,
         maxOutputTokens: request.maxOutputTokens,
@@ -422,6 +460,7 @@ export class AiGateway {
       credentials: this.options.repositories.providerCredentials,
       modelProfiles: this.options.repositories.modelProfiles,
       prices: this.options.repositories.modelPrices,
+      priceTiers: this.options.repositories.modelPriceTiers,
       routes: this.options.repositories.taskRoutes,
       providerHealth: this.options.repositories.providerHealth,
       settings: routingSettings
@@ -444,6 +483,10 @@ export class AiGateway {
       provider: resolved.modelProfile.provider,
       model: resolved.modelProfile.model,
       price: resolved.price,
+      priceTiers: this.options.repositories.modelPriceTiers.list({
+        provider: resolved.modelProfile.provider,
+        model: resolved.modelProfile.model
+      }),
       config: { apiKey: credential.apiKey, baseUrl: credential.baseUrl },
       temperature: request.temperature ?? resolved.route?.temperature,
       maxOutputTokens: request.maxOutputTokens ?? resolved.route?.maxOutputTokens,
@@ -454,17 +497,50 @@ export class AiGateway {
   private calculateCost(
     usage: TokenUsage,
     price: ModelPriceRecord | null,
+    tiers: ModelPriceTierRecord[],
     estimated: boolean
   ): CostBreakdown {
-    return this.costCalculator.calculate({
+    return this.costCalculator.calculateWithPriceSelection({
       usage,
-      price: price ?? {
+      basePrice: price ?? {
         inputPricePerMillion: 0,
         outputPricePerMillion: 0,
         cachedInputPricePerMillion: null,
         currency: "USD"
       },
+      tiers: tiers.map((tier) => ({
+        id: tier.id,
+        deploymentMode: tier.deploymentMode,
+        minInputTokens: tier.minInputTokens,
+        maxInputTokens: tier.maxInputTokens,
+        inputPricePerMillion: tier.inputPricePerMillion,
+        outputPricePerMillion: tier.outputPricePerMillion,
+        cachedInputPricePerMillion: tier.cachedInputPricePerMillion,
+        cacheWritePricePerMillion: tier.cacheWritePricePerMillion,
+        currency: tier.currency,
+        enabled: tier.enabled
+      })),
       estimated
+    }).cost;
+  }
+
+  private recordCalibrationSample(input: {
+    provider: AIProviderId;
+    model: string;
+    inputTokensEstimated: number;
+    outputTokensEstimated: number;
+    usage: TokenUsage | null;
+  }): void {
+    if (!input.usage) return;
+    const provider = toModelProviderId(input.provider);
+    if (!provider) return;
+    this.calibrationService.recordSample({
+      provider,
+      model: input.model,
+      inputTokensEstimated: input.inputTokensEstimated,
+      outputTokensEstimated: input.outputTokensEstimated,
+      inputTokensReported: input.usage.inputTokens,
+      outputTokensReported: input.usage.outputTokens
     });
   }
 

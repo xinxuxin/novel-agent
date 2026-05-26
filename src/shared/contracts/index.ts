@@ -76,14 +76,21 @@ export type {
 export { DEFAULT_BUDGET_POLICY } from "./budgets";
 export type { BudgetExceededAction, BudgetPolicyRecord, UpdateBudgetPolicyInput } from "./budgets";
 export type {
+  CostForecast,
+  CostForecastRequest,
   CostDashboardSummary,
+  ForecastNode,
   CostGroup,
   CostScopeRequest,
   CsvExportResult,
   EstimatedVsReported,
+  ModelPriceTierDto,
   PriceImportResult,
   PriceRegistryExport,
   PriceRegistryImport,
+  ProviderQuotaNoteDto,
+  ProviderQuotaSummary,
+  QualityModeComparison,
   RoutePriceWarning,
   StalePriceWarning
 } from "./cost-dashboard";

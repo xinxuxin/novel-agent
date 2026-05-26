@@ -184,3 +184,19 @@ Preset routing:
 - `summarize_chapter`: DeepSeek V4 Pro, then Kimi K2.6.
 
 Settings > Routing can apply, export, and import the Premium Webnovel preset. Missing credentials still block provider execution with safe actionable errors, and missing/stale prices follow the routing/budget policy.
+
+## Phase 15d Forecasting Inputs
+
+Route previews and chapter forecasts now use optional price tiers when they are available. The model profile still owns the editable provider/model id, and `model_prices` remains the base price. `model_price_tiers` can refine that base price by deployment mode and input-token range.
+
+Deployment mode is a user/provider-account configuration detail. WenForge does not infer it from physical location. Qwen regional tiers are seeded only as editable placeholders, and the user must confirm their account and endpoint pricing before relying on estimates.
+
+Forecasting is read-only:
+
+- it resolves the task routes for the requested quality mode
+- applies provider/model usage calibration factors when enough samples exist
+- selects matching price tiers or falls back to base prices
+- compares the estimate against the current budget policy
+- calculates provider quota warnings from manual quota notes
+
+Forecasting never calls a provider, never reads decrypted credentials, and never mutates manuscripts, story bible entries, routes, or canonical state.

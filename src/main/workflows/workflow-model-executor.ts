@@ -71,6 +71,7 @@ export class WorkflowModelExecutor {
       credentials: this.options.repositories.providerCredentials,
       modelProfiles: this.options.repositories.modelProfiles,
       prices: this.options.repositories.modelPrices,
+      priceTiers: this.options.repositories.modelPriceTiers,
       routes: this.options.repositories.taskRoutes,
       providerHealth: this.options.repositories.providerHealth,
       settings: routingSettings

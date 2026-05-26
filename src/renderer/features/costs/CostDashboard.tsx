@@ -3,10 +3,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   BudgetPolicyRecord,
+  CostForecast,
   CostDashboardSummary,
   CostGroup,
   CsvExportResult,
+  ModelPriceTierDto,
   ModelPriceRecord,
+  ProviderQuotaNoteDto,
+  ProviderQuotaSummary,
+  QualityModeComparison,
   RoutePriceWarning
 } from "@contracts/index";
 
@@ -34,6 +39,11 @@ export function CostDashboard({
   const [summary, setSummary] = useState<CostDashboardSummary | null>(null);
   const [budget, setBudget] = useState<BudgetPolicyRecord | null>(null);
   const [prices, setPrices] = useState<ModelPriceRecord[]>([]);
+  const [priceTiers, setPriceTiers] = useState<ModelPriceTierDto[]>([]);
+  const [forecast, setForecast] = useState<CostForecast | null>(null);
+  const [comparison, setComparison] = useState<QualityModeComparison | null>(null);
+  const [quotas, setQuotas] = useState<ProviderQuotaNoteDto[]>([]);
+  const [quotaSummary, setQuotaSummary] = useState<ProviderQuotaSummary | null>(null);
   const [routeWarnings, setRouteWarnings] = useState<RoutePriceWarning[]>([]);
   const [csv, setCsv] = useState<CsvExportResult | null>(null);
   const [importJson, setImportJson] = useState("");
@@ -51,16 +61,21 @@ export function CostDashboard({
   );
 
   const refresh = useCallback(async (): Promise<void> => {
-    const [nextSummary, nextBudget, nextPrices, nextWarnings] = await Promise.all([
+    const [nextSummary, nextBudget, nextPrices, nextTiers, nextWarnings, nextQuotas] =
+      await Promise.all([
       window.wenforge.costs.getSummary(scope),
       window.wenforge.budgets.getPolicies(),
       window.wenforge.modelPrices.list(),
-      window.wenforge.pricing.routeWarnings()
+      window.wenforge.modelPrices.listTiers(),
+      window.wenforge.pricing.routeWarnings(),
+      window.wenforge.pricing.listQuotas()
     ]);
     setSummary(nextSummary);
     setBudget(nextBudget);
     setPrices(nextPrices);
+    setPriceTiers(nextTiers);
     setRouteWarnings(nextWarnings);
+    setQuotas(nextQuotas);
   }, [scope]);
 
   useEffect(() => {
@@ -109,6 +124,46 @@ export function CostDashboard({
   const exportCosts = async (): Promise<void> => {
     setCsv(await window.wenforge.costs.exportCsv(scope));
     setNotice("Cost CSV generated locally with redacted errors.");
+  };
+
+  const estimateChapters = async (chapterCount: number): Promise<void> => {
+    const nextForecast = await window.wenforge.costs.forecastChapters({
+      projectId: projectId ?? undefined,
+      bookId: bookId ?? undefined,
+      chapterId: chapterId ?? undefined,
+      qualityMode: "balanced",
+      chapterCount
+    });
+    setForecast(nextForecast);
+    setQuotaSummary(await window.wenforge.costs.quotaSummary(nextForecast));
+  };
+
+  const compareRoutes = async (): Promise<void> => {
+    setComparison(
+      await window.wenforge.costs.compareQualityModes({
+        projectId: projectId ?? undefined,
+        bookId: bookId ?? undefined,
+        chapterId: chapterId ?? undefined,
+        chapterCount: 1
+      })
+    );
+  };
+
+  const updateQuota = async (
+    quota: ProviderQuotaNoteDto | null,
+    provider: ProviderQuotaNoteDto["provider"],
+    patch: Partial<ProviderQuotaNoteDto>
+  ): Promise<void> => {
+    await window.wenforge.pricing.upsertQuota({
+      provider,
+      creditBalance: quota?.creditBalance ?? null,
+      monthlyBudget: quota?.monthlyBudget ?? null,
+      freeQuotaRemaining: quota?.freeQuotaRemaining ?? null,
+      refreshedAt: quota?.refreshedAt ?? new Date().toISOString().slice(0, 10),
+      notes: quota?.notes ?? null,
+      ...patch
+    });
+    await refresh();
   };
 
   return (
@@ -193,6 +248,135 @@ export function CostDashboard({
         </section>
       </div>
 
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <section className={panelClassName}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-white">Chapter forecasting</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="rounded-md border border-forge-blue/30 px-2 py-1 text-xs text-forge-blue"
+                onClick={() => void estimateChapters(1)}
+                type="button"
+              >
+                Estimate this chapter
+              </button>
+              <button
+                className="rounded-md border border-white/10 px-2 py-1 text-xs text-slate-300"
+                onClick={() => void estimateChapters(10)}
+                type="button"
+              >
+                Next 10
+              </button>
+              <button
+                className="rounded-md border border-white/10 px-2 py-1 text-xs text-slate-300"
+                onClick={() => void estimateChapters(100)}
+                type="button"
+              >
+                100 chapters
+              </button>
+              <button
+                className="rounded-md border border-forge-mint/30 px-2 py-1 text-xs text-forge-mint"
+                onClick={() => void compareRoutes()}
+                type="button"
+              >
+                Compare routes
+              </button>
+            </div>
+          </div>
+          {forecast ? (
+            <div className="mt-4 grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
+              <div className="rounded-lg border border-white/10 bg-white/[0.025] p-3 text-sm">
+                <p className="text-slate-400">
+                  {forecast.qualityMode} · {forecast.chapterCount} chapter(s)
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-white">
+                  {money(forecast.totalExpectedCost)}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  low {money(forecast.lowCost)} · high {money(forecast.highCost)}
+                </p>
+                {forecast.remainingProjectBudget !== null ? (
+                  <p className="mt-2 text-xs text-slate-400">
+                    Project budget remaining: {money(forecast.remainingProjectBudget)}
+                  </p>
+                ) : null}
+              </div>
+              <div className="max-h-56 overflow-auto rounded-lg border border-white/10">
+                {forecast.nodes.map((node) => (
+                  <div
+                    className="grid grid-cols-[140px_minmax(0,1fr)_90px] gap-2 border-b border-white/10 px-3 py-2 text-xs last:border-b-0"
+                    key={node.taskType}
+                  >
+                    <span className="text-slate-400">{node.taskType}</span>
+                    <span className="truncate text-slate-200">
+                      {node.provider ? `${node.provider}/${node.model}` : node.warnings[0]}
+                    </span>
+                    <span className="text-right text-forge-mint">{money(node.expectedCost)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-slate-500">Run an estimate before generation.</p>
+          )}
+          {comparison ? (
+            <div className="mt-3 grid gap-2 md:grid-cols-3">
+              {comparison.forecasts.map((item) => (
+                <p
+                  className="rounded-md border border-white/10 bg-black/20 px-2 py-1 text-xs text-slate-300"
+                  key={item.qualityMode}
+                >
+                  {item.qualityMode}: {money(item.totalExpectedCost)}
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </section>
+        <section className={panelClassName}>
+          <h3 className="text-sm font-semibold text-white">Manual quota notes</h3>
+          <div className="mt-3 space-y-2">
+            {(["dashscope_qwen", "anthropic", "openai", "deepseek"] as const).map((provider) => {
+              const quota = quotas.find((item) => item.provider === provider) ?? null;
+              return (
+                <div className="rounded-md border border-white/10 p-2" key={provider}>
+                  <p className="text-xs font-medium text-slate-300">{provider}</p>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    <InlineOptionalNumber
+                      value={quota?.creditBalance ?? null}
+                      onCommit={(value) => void updateQuota(quota, provider, { creditBalance: value })}
+                    />
+                    <InlineOptionalNumber
+                      value={quota?.monthlyBudget ?? null}
+                      onCommit={(value) => void updateQuota(quota, provider, { monthlyBudget: value })}
+                    />
+                    <InlineOptionalNumber
+                      value={quota?.freeQuotaRemaining ?? null}
+                      onCommit={(value) =>
+                        void updateQuota(quota, provider, { freeQuotaRemaining: value })
+                      }
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {quotaSummary ? (
+            <div className="mt-3 space-y-1 text-xs text-slate-400">
+              {quotaSummary.providers.map((item) => (
+                <p key={item.provider}>
+                  {item.provider}: {item.chaptersRemaining ?? "n/a"} chapter(s) remaining
+                </p>
+              ))}
+              {quotaSummary.warnings.map((warning) => (
+                <p className="text-amber-100" key={warning}>
+                  {warning}
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      </div>
+
       <div className="mt-4 grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
         <section className={panelClassName}>
           <h3 className="text-sm font-semibold text-white">Budget policy</h3>
@@ -266,6 +450,9 @@ export function CostDashboard({
               </button>
             </div>
           </div>
+          <p className="mt-3 text-xs text-slate-500">
+            Price tiers: {priceTiers.length} editable deployment/token rows.
+          </p>
           <textarea
             className="mt-3 h-28 w-full rounded-md border border-white/10 bg-black/30 p-3 font-mono text-xs text-slate-200 outline-none focus:border-forge-blue/50"
             onChange={(event) => setImportJson(event.target.value)}
@@ -402,6 +589,24 @@ function InlineNumber({
         const parsed = Number(event.target.value);
         if (Number.isFinite(parsed) && parsed >= 0) onCommit(parsed);
       }}
+    />
+  );
+}
+
+function InlineOptionalNumber({
+  onCommit,
+  value
+}: {
+  onCommit: (value: number | null) => void;
+  value: number | null;
+}): JSX.Element {
+  return (
+    <input
+      className={fieldClassName}
+      defaultValue={value ?? ""}
+      inputMode="decimal"
+      onBlur={(event) => onCommit(parseOptionalNumber(event.target.value))}
+      placeholder="0.00"
     />
   );
 }

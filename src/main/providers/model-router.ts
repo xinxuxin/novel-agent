@@ -8,16 +8,19 @@ import type { RoutingSettings } from "@contracts/settings";
 import type { ProviderId } from "@shared/domain/model-routing";
 import type { QualityMode, TaskType } from "@shared/domain/model-routing";
 import type { ModelPriceRepository } from "@main/db/repositories/model-price-repository";
+import type { ModelPriceTierRepository } from "@main/db/repositories/model-price-tier-repository";
 import type { ModelProfileRepository } from "@main/db/repositories/model-profile-repository";
 import type { ProviderCredentialRepository } from "@main/db/repositories/provider-credential-repository";
 import type { ProviderHealthRepository } from "@main/db/repositories/provider-health-repository";
 import type { TaskRouteRepository } from "@main/db/repositories/task-route-repository";
+import { CostCalculator } from "@main/ai/cost-calculator";
 import { isPriceStale } from "./model-pricing";
 
 export interface ModelRouterOptions {
   credentials: ProviderCredentialRepository;
   modelProfiles: ModelProfileRepository;
   prices: ModelPriceRepository;
+  priceTiers?: ModelPriceTierRepository | undefined;
   routes: TaskRouteRepository;
   providerHealth?: ProviderHealthRepository | undefined;
   settings: RoutingSettings;
@@ -177,7 +180,11 @@ export class ModelRouter {
       .map((profile) => this.options.prices.findActive(profile.provider, profile.model))
       .filter((price): price is ModelPriceRecord => Boolean(price))
       .map((price) => ({
-        cost: routeCost(price, tokens),
+        cost: routeCost(
+          price,
+          tokens,
+          this.options.priceTiers?.list({ provider: price.provider, model: price.model }) ?? []
+        ),
         currency: price.currency
       }));
 
@@ -230,11 +237,33 @@ export class ModelRouter {
   }
 }
 
-function routeCost(price: ModelPriceRecord, tokens: ExpectedTokenEstimate): number {
-  return (
-    (tokens.inputTokens / 1_000_000) * price.inputPricePerMillion +
-    (tokens.outputTokens / 1_000_000) * price.outputPricePerMillion
-  );
+function routeCost(
+  price: ModelPriceRecord,
+  tokens: ExpectedTokenEstimate,
+  tiers: Array<{
+    id?: string | undefined;
+    deploymentMode?: string | null | undefined;
+    minInputTokens: number;
+    maxInputTokens?: number | null | undefined;
+    inputPricePerMillion: number;
+    outputPricePerMillion: number;
+    cachedInputPricePerMillion?: number | null | undefined;
+    cacheWritePricePerMillion?: number | null | undefined;
+    currency: string;
+    enabled?: boolean | undefined;
+  }>
+): number {
+  return new CostCalculator().calculateWithPriceSelection({
+    usage: tokens,
+    basePrice: {
+      inputPricePerMillion: price.inputPricePerMillion,
+      outputPricePerMillion: price.outputPricePerMillion,
+      cachedInputPricePerMillion: price.cachedInputPricePerMillion,
+      currency: price.currency
+    },
+    tiers,
+    estimated: true
+  }).cost.totalCost;
 }
 
 function emptyCostRange(): { minCost: number; maxCost: number; currency: string } {

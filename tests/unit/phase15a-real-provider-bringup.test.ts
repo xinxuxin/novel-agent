@@ -7,14 +7,7 @@ import { FakeProviderAdapter } from "@main/ai/adapters";
 import { AiGateway } from "@main/ai/ai-gateway";
 import { createDatabaseConnection } from "@main/db/connection";
 import { migrateDatabase } from "@main/db/migrate";
-import { BudgetPolicyRepository } from "@main/db/repositories/budget-policy-repository";
-import { CostRepository } from "@main/db/repositories/cost-repository";
-import { ModelPriceRepository } from "@main/db/repositories/model-price-repository";
-import { ModelProfileRepository } from "@main/db/repositories/model-profile-repository";
-import { ProviderCredentialRepository } from "@main/db/repositories/provider-credential-repository";
-import { ProviderHealthRepository } from "@main/db/repositories/provider-health-repository";
-import { SettingsRepository } from "@main/db/repositories/settings-repository";
-import { TaskRouteRepository } from "@main/db/repositories/task-route-repository";
+import { createRepositories } from "@main/db/service";
 import { importEnvCredentialsFromText } from "@main/providers/env-credential-import";
 import {
   ProviderSmokeService,
@@ -190,16 +183,7 @@ function createSmokeHarness(input: {
   tempDir = mkdtempSync(join(tmpdir(), "wenforge-phase15a-"));
   const connection = createDatabaseConnection(join(tempDir, "smoke.sqlite"));
   migrateDatabase(connection.sqlite);
-  const repositories = {
-    providerCredentials: new ProviderCredentialRepository(connection.db),
-    modelProfiles: new ModelProfileRepository(connection.db),
-    modelPrices: new ModelPriceRepository(connection.db),
-    taskRoutes: new TaskRouteRepository(connection.db),
-    providerHealth: new ProviderHealthRepository(connection.db),
-    settings: new SettingsRepository(connection.db),
-    cost: new CostRepository(connection.db),
-    budgets: new BudgetPolicyRepository(connection.db)
-  };
+  const repositories = createRepositories(connection.db);
   const credentials = new CredentialService({
     repository: repositories.providerCredentials,
     encryption: new SecretEncryptionService({

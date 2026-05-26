@@ -59,6 +59,8 @@ Every gateway run creates an `llm_runs` record before the adapter is called. By 
 
 Full prompts, responses, and manuscripts are not stored in run records by default. Live estimates use `TokenEstimator` and `CostCalculator`. Final costs use provider-reported usage when available.
 
+Phase 15d extends accounting with optional price tiers and usage calibration. The gateway still creates `llm_runs` before provider calls, but cost calculation can now use a matching `model_price_tiers` row when a provider/model has deployment-mode or token-band pricing. When a provider returns usage, WenForge updates per-provider/model calibration factors for future estimates. Calibration never exposes credentials and never rewrites historical provider-reported final costs.
+
 ## Tests
 
 Phase 4 unit tests cover:

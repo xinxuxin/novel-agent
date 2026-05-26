@@ -12,6 +12,7 @@ import type { StudioModeController } from "@main/app/studio-mode";
 import type { AiGateway } from "@main/ai/ai-gateway";
 import type { ProviderAdapter } from "@main/ai/provider-adapter";
 import { CostDashboardService, PricingRegistryService } from "@main/costs/cost-dashboard-service";
+import { CostForecastService } from "@main/costs/cost-forecast-service";
 import type { WenForgeDatabase } from "@main/db/connection";
 import type { RepositoryRegistry } from "@main/db/service";
 import { EvaluationService } from "@main/eval/evaluation-service";
@@ -168,6 +169,7 @@ function registerDataIpc(
   const pricingRegistryService = database
     ? new PricingRegistryService({ database, repositories })
     : null;
+  const costForecastService = database ? new CostForecastService({ repositories }) : null;
   const evaluationService = database ? new EvaluationService({ database, repositories }) : null;
   const importExportService = database
     ? new ImportExportService({
@@ -598,6 +600,12 @@ function registerDataIpc(
       request as Parameters<typeof repositories.modelPrices.upsert>[0]
     )
   );
+  registerIpcContract(IPC_CONTRACTS.modelPrices.listTiers, (request) =>
+    repositories.modelPriceTiers.list(request ?? {})
+  );
+  registerIpcContract(IPC_CONTRACTS.modelPrices.upsertTier, (request) =>
+    repositories.modelPriceTiers.upsert(request)
+  );
   registerIpcContract(IPC_CONTRACTS.taskRoutes.list, () => repositories.taskRoutes.list());
   registerIpcContract(IPC_CONTRACTS.taskRoutes.upsert, (request) =>
     repositories.taskRoutes.upsert(request as Parameters<typeof repositories.taskRoutes.upsert>[0])
@@ -608,6 +616,7 @@ function registerDataIpc(
       credentials: repositories.providerCredentials,
       modelProfiles: repositories.modelProfiles,
       prices: repositories.modelPrices,
+      priceTiers: repositories.modelPriceTiers,
       routes: repositories.taskRoutes,
       providerHealth: repositories.providerHealth,
       settings: routingSettings
@@ -625,6 +634,7 @@ function registerDataIpc(
       credentials: repositories.providerCredentials,
       modelProfiles: repositories.modelProfiles,
       prices: repositories.modelPrices,
+      priceTiers: repositories.modelPriceTiers,
       routes: repositories.taskRoutes,
       providerHealth: repositories.providerHealth,
       settings: routingSettings
@@ -695,6 +705,24 @@ function registerDataIpc(
       throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
     }
     return costDashboardService.exportCsv(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.costs.forecastChapters, (request) => {
+    if (!costForecastService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return costForecastService.forecastChapters(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.costs.compareQualityModes, (request) => {
+    if (!costForecastService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return costForecastService.compareQualityModes(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.costs.quotaSummary, (request) => {
+    if (!costForecastService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return costForecastService.getProviderQuotaSummary(request);
   });
   registerIpcContract(IPC_CONTRACTS.export.bookMarkdown, (request) => {
     if (!importExportService) {
@@ -808,6 +836,10 @@ function registerDataIpc(
         : { staleAfterDays: request.staleAfterDays }
     );
   });
+  registerIpcContract(IPC_CONTRACTS.pricing.listQuotas, () => repositories.providerQuotas.list());
+  registerIpcContract(IPC_CONTRACTS.pricing.upsertQuota, (request) =>
+    repositories.providerQuotas.upsert(request)
+  );
   registerIpcContract(IPC_CONTRACTS.providerHealth.list, () => repositories.providerHealth.list());
   registerIpcContract(IPC_CONTRACTS.providerHealth.reset, (request) => {
     repositories.providerHealth.reset(request?.provider);

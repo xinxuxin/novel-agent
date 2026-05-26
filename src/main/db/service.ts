@@ -11,14 +11,17 @@ import { CostRepository } from "./repositories/cost-repository";
 import { GenerationRepository } from "./repositories/generation-repository";
 import { ManuscriptRepository } from "./repositories/manuscript-repository";
 import { MemoryRepository } from "./repositories/memory-repository";
+import { ModelPriceTierRepository } from "./repositories/model-price-tier-repository";
 import { ModelPriceRepository } from "./repositories/model-price-repository";
 import { ModelProfileRepository } from "./repositories/model-profile-repository";
 import { ProjectRepository } from "./repositories/project-repository";
 import { ProviderCredentialRepository } from "./repositories/provider-credential-repository";
 import { ProviderHealthRepository } from "./repositories/provider-health-repository";
+import { ProviderQuotaRepository } from "./repositories/provider-quota-repository";
 import { SettingsRepository } from "./repositories/settings-repository";
 import { StoryBibleRepository } from "./repositories/story-bible-repository";
 import { TaskRouteRepository } from "./repositories/task-route-repository";
+import { UsageCalibrationRepository } from "./repositories/usage-calibration-repository";
 import { VolumeRepository } from "./repositories/volume-repository";
 import { createId } from "./id";
 import { nowIso } from "./repositories/types";
@@ -42,6 +45,9 @@ export interface RepositoryRegistry {
   budgetPolicies: BudgetPolicyRepository;
   modelProfiles: ModelProfileRepository;
   modelPrices: ModelPriceRepository;
+  modelPriceTiers: ModelPriceTierRepository;
+  usageCalibration: UsageCalibrationRepository;
+  providerQuotas: ProviderQuotaRepository;
   taskRoutes: TaskRouteRepository;
 }
 
@@ -71,6 +77,9 @@ export function createRepositories(db: WenForgeDatabase): RepositoryRegistry {
     budgetPolicies: new BudgetPolicyRepository(db),
     modelProfiles: new ModelProfileRepository(db),
     modelPrices: new ModelPriceRepository(db),
+    modelPriceTiers: new ModelPriceTierRepository(db),
+    usageCalibration: new UsageCalibrationRepository(db),
+    providerQuotas: new ProviderQuotaRepository(db),
     taskRoutes: new TaskRouteRepository(db)
   };
 }
@@ -264,6 +273,13 @@ const MODEL_SEEDS: Array<{
     recommendedTasks: ["draft_chapter", "story_bible"]
   },
   {
+    provider: "dashscope_qwen",
+    model: "qwen3-max",
+    alias: "qwen3-max",
+    displayName: "Qwen3-Max",
+    recommendedTasks: ["draft_chapter", "webnovel_style_rewrite"]
+  },
+  {
     provider: "moonshot_kimi",
     model: "kimi-k2.6",
     alias: "kimi-k2.6",
@@ -344,6 +360,7 @@ export function seedModelRoutingData(repositories: RepositoryRegistry): void {
     }
   }
 
+  seedEditablePriceTiers(repositories);
   const fallbackProfile = repositories.modelProfiles.find("openai", "gpt-5.4-mini");
   if (fallbackProfile) {
     for (const taskType of TASK_TYPES) {
@@ -370,4 +387,83 @@ export function seedModelRoutingData(repositories: RepositoryRegistry): void {
     }
   }
   applyPremiumWebnovelPreset(repositories);
+}
+
+function seedEditablePriceTiers(repositories: RepositoryRegistry): void {
+  const seeds: Array<{
+    provider: ProviderId;
+    model: string;
+    deploymentModes: Array<string | null>;
+    note: string;
+  }> = [
+    {
+      provider: "dashscope_qwen",
+      model: "qwen3.7-max",
+      deploymentModes: ["global"],
+      note:
+        "User must confirm in provider console. Editable Qwen3.7-Max placeholder tier; not authoritative."
+    },
+    {
+      provider: "dashscope_qwen",
+      model: "qwen3-max",
+      deploymentModes: ["global", "chinese_mainland", "international", "hong_kong", "eu"],
+      note:
+        "User must confirm in provider console. Editable Qwen3-Max regional/deployment placeholder tier; not authoritative."
+    },
+    {
+      provider: "moonshot_kimi",
+      model: "kimi-k2.6",
+      deploymentModes: ["global"],
+      note:
+        "User must confirm in provider console. Editable Kimi K2.6 placeholder tier; not authoritative."
+    },
+    {
+      provider: "deepseek",
+      model: "deepseek-v4-pro",
+      deploymentModes: ["global"],
+      note:
+        "User must confirm in provider console. Editable DeepSeek V4 Pro placeholder tier; not authoritative."
+    },
+    {
+      provider: "openai",
+      model: "gpt-5.5",
+      deploymentModes: ["global"],
+      note:
+        "User must confirm in provider console. Editable GPT-5.5 placeholder tier; not authoritative."
+    },
+    {
+      provider: "anthropic",
+      model: "claude-opus-4.7",
+      deploymentModes: ["global"],
+      note:
+        "User must confirm in provider console. Editable Claude Opus 4.7 placeholder tier; not authoritative."
+    }
+  ];
+
+  for (const seed of seeds) {
+    const price = repositories.modelPrices.findActive(seed.provider, seed.model);
+    if (!price) continue;
+    for (const deploymentMode of seed.deploymentModes) {
+      const exists = repositories.modelPriceTiers
+        .list({ provider: seed.provider, model: seed.model })
+        .some((tier) => tier.deploymentMode === deploymentMode);
+      if (exists) continue;
+      repositories.modelPriceTiers.upsert({
+        modelPriceId: price.id,
+        provider: seed.provider,
+        model: seed.model,
+        deploymentMode,
+        minInputTokens: 0,
+        maxInputTokens: null,
+        inputPricePerMillion: price.inputPricePerMillion,
+        outputPricePerMillion: price.outputPricePerMillion,
+        cachedInputPricePerMillion: price.cachedInputPricePerMillion,
+        cacheWritePricePerMillion: null,
+        currency: price.currency,
+        effectiveDate: price.effectiveDate,
+        sourceNote: seed.note,
+        enabled: true
+      });
+    }
+  }
 }

@@ -20,11 +20,17 @@ import {
 } from "@contracts/provider-check";
 import { crossCheckRequestSchema, crossCheckResultSchema } from "@contracts/cross-check";
 import {
+  costForecastRequestSchema,
+  costForecastSchema,
   costDashboardSummarySchema,
   costGroupSchema,
   costScopeRequestSchema,
   csvExportResultSchema,
+  modelPriceTierSchema,
   priceImportResultSchema,
+  providerQuotaNoteSchema,
+  providerQuotaSummarySchema,
+  qualityModeComparisonSchema,
   routePriceWarningSchema
 } from "@contracts/cost-dashboard";
 import {
@@ -1147,6 +1153,37 @@ export const IPC_CONTRACTS = {
         enabled: z.boolean().optional()
       }),
       modelPriceSchema
+    ),
+    listTiers: createContract(
+      "model-price-tiers:list",
+      z
+        .object({
+          provider: providerSchema.optional(),
+          model: z.string().trim().min(1).optional()
+        })
+        .optional(),
+      z.array(modelPriceTierSchema)
+    ),
+    upsertTier: createContract(
+      "model-price-tiers:upsert",
+      z.object({
+        id: z.string().optional(),
+        modelPriceId: z.string().min(1),
+        provider: providerSchema,
+        model: z.string().trim().min(1),
+        deploymentMode: z.string().trim().min(1).nullable().optional(),
+        minInputTokens: z.number().int().min(0),
+        maxInputTokens: z.number().int().min(0).nullable().optional(),
+        inputPricePerMillion: z.number().min(0),
+        outputPricePerMillion: z.number().min(0),
+        cachedInputPricePerMillion: z.number().min(0).nullable().optional(),
+        cacheWritePricePerMillion: z.number().min(0).nullable().optional(),
+        currency: z.string().trim().min(1).optional(),
+        effectiveDate: z.string().trim().min(1),
+        sourceNote: z.string().trim().min(1),
+        enabled: z.boolean().optional()
+      }),
+      modelPriceTierSchema
     )
   },
   taskRoutes: {
@@ -1230,7 +1267,22 @@ export const IPC_CONTRACTS = {
       costScopeRequestSchema,
       z.array(costGroupSchema)
     ),
-    exportCsv: createContract("costs:export-csv", costScopeRequestSchema, csvExportResultSchema)
+    exportCsv: createContract("costs:export-csv", costScopeRequestSchema, csvExportResultSchema),
+    forecastChapters: createContract(
+      "costs:forecast-chapters",
+      costForecastRequestSchema,
+      costForecastSchema
+    ),
+    compareQualityModes: createContract(
+      "costs:compare-quality-modes",
+      costForecastRequestSchema.omit({ qualityMode: true }),
+      qualityModeComparisonSchema
+    ),
+    quotaSummary: createContract(
+      "costs:quota-summary",
+      z.object({ forecast: costForecastSchema, providers: z.array(providerSchema).optional() }),
+      providerQuotaSummarySchema
+    )
   },
   export: {
     bookMarkdown: createContract(
@@ -1299,6 +1351,23 @@ export const IPC_CONTRACTS = {
       "pricing:route-warnings",
       z.object({ staleAfterDays: z.number().int().positive().optional() }).optional(),
       z.array(routePriceWarningSchema)
+    ),
+    listQuotas: createContract(
+      "pricing:quota-notes:list",
+      emptyRequestSchema,
+      z.array(providerQuotaNoteSchema)
+    ),
+    upsertQuota: createContract(
+      "pricing:quota-notes:upsert",
+      z.object({
+        provider: providerSchema,
+        creditBalance: z.number().min(0).nullable().optional(),
+        monthlyBudget: z.number().min(0).nullable().optional(),
+        freeQuotaRemaining: z.number().min(0).nullable().optional(),
+        refreshedAt: z.string().nullable().optional(),
+        notes: z.string().nullable().optional()
+      }),
+      providerQuotaNoteSchema
     )
   },
   providerHealth: {

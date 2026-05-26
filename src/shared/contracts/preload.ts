@@ -85,11 +85,17 @@ import type {
 } from "./story-bible";
 import type { BudgetPolicyRecord, UpdateBudgetPolicyInput } from "./budgets";
 import type {
+  CostForecast,
+  CostForecastRequest,
   CostDashboardSummary,
   CostGroup,
   CostScopeRequest,
   CsvExportResult,
+  ModelPriceTierDto,
   PriceImportResult,
+  ProviderQuotaNoteDto,
+  ProviderQuotaSummary,
+  QualityModeComparison,
   RoutePriceWarning
 } from "./cost-dashboard";
 import type {
@@ -343,6 +349,24 @@ export interface WenForgeApi {
           | "sourceNote"
         >
     ) => Promise<ModelPriceRecord>;
+    listTiers: (filter?: {
+      provider?: ModelPriceTierDto["provider"];
+      model?: string;
+    }) => Promise<ModelPriceTierDto[]>;
+    upsertTier: (
+      input: Partial<ModelPriceTierDto> &
+        Pick<
+          ModelPriceTierDto,
+          | "modelPriceId"
+          | "provider"
+          | "model"
+          | "minInputTokens"
+          | "inputPricePerMillion"
+          | "outputPricePerMillion"
+          | "effectiveDate"
+          | "sourceNote"
+        >
+    ) => Promise<ModelPriceTierDto>;
   };
   taskRoutes: {
     list: () => Promise<TaskRouteRecord[]>;
@@ -377,6 +401,14 @@ export interface WenForgeApi {
     getByRun: (request?: CostScopeRequest) => Promise<CostGroup[]>;
     getByModel: (request?: CostScopeRequest) => Promise<CostGroup[]>;
     exportCsv: (request?: CostScopeRequest) => Promise<CsvExportResult>;
+    forecastChapters: (request?: CostForecastRequest) => Promise<CostForecast>;
+    compareQualityModes: (
+      request?: Omit<CostForecastRequest, "qualityMode">
+    ) => Promise<QualityModeComparison>;
+    quotaSummary: (
+      forecast: CostForecast,
+      providers?: ProviderQuotaSummary["providers"][number]["provider"][]
+    ) => Promise<ProviderQuotaSummary>;
   };
   export: {
     bookMarkdown: (request: ExportBookMarkdownRequest) => Promise<ExportFilesResult>;
@@ -403,6 +435,10 @@ export interface WenForgeApi {
     exportJson: () => Promise<string>;
     markStale: (priceIds: string[], effectiveDate?: string) => Promise<ModelPriceRecord[]>;
     routeWarnings: (staleAfterDays?: number) => Promise<RoutePriceWarning[]>;
+    listQuotas: () => Promise<ProviderQuotaNoteDto[]>;
+    upsertQuota: (
+      input: Partial<ProviderQuotaNoteDto> & Pick<ProviderQuotaNoteDto, "provider">
+    ) => Promise<ProviderQuotaNoteDto>;
   };
   providerHealth: {
     list: () => Promise<ProviderHealthRecord[]>;

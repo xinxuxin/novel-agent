@@ -71,6 +71,14 @@ pnpm providers:report
 
 Reports must not contain raw API keys, Authorization headers, decrypted credential values, full prompts, full responses, full manuscripts, encrypted credential blobs, or sensitive local paths.
 
+## Usage Calibration
+
+Real provider checks and normal generation can improve future estimates when providers return token usage. WenForge stores only provider/model calibration factors, sample counts, error metrics, timestamps, run metadata, and hashes by default.
+
+Calibration does not require additional provider calls. It never changes already reported final costs unless a future explicit recalculation tool is added and confirmed by the user.
+
+Prices and tiers remain editable. Confirm current provider prices in the provider console before relying on forecasts, especially for regional or deployment-mode pricing.
+
 ## E2E Chapter Connectivity Check
 
 The optional short chapter check validates the provider-backed chapter workflow without changing canon:

@@ -23,10 +23,15 @@ import type {
 } from "@contracts/model-routing";
 import type { BudgetPolicyRecord } from "@contracts/budgets";
 import type {
+  CostForecast,
   CostDashboardSummary,
   CostGroup,
   CsvExportResult,
+  ModelPriceTierDto,
   PriceImportResult,
+  ProviderQuotaNoteDto,
+  ProviderQuotaSummary,
+  QualityModeComparison,
   RoutePriceWarning
 } from "@contracts/cost-dashboard";
 import type { CrossCheckRequest, CrossCheckResult } from "@contracts/cross-check";
@@ -707,6 +712,20 @@ export function createPreloadApi(
           IPC_CONTRACTS.modelPrices.upsert.channel,
           IPC_CONTRACTS.modelPrices.upsert.response,
           input
+        ),
+      listTiers: (filter) =>
+        invokeContract<ModelPriceTierDto[]>(
+          invoke,
+          IPC_CONTRACTS.modelPrices.listTiers.channel,
+          IPC_CONTRACTS.modelPrices.listTiers.response,
+          filter
+        ),
+      upsertTier: (input) =>
+        invokeContract<ModelPriceTierDto>(
+          invoke,
+          IPC_CONTRACTS.modelPrices.upsertTier.channel,
+          IPC_CONTRACTS.modelPrices.upsertTier.response,
+          input
         )
     },
     taskRoutes: {
@@ -829,6 +848,27 @@ export function createPreloadApi(
           IPC_CONTRACTS.costs.exportCsv.channel,
           IPC_CONTRACTS.costs.exportCsv.response,
           request
+        ),
+      forecastChapters: (request = {}) =>
+        invokeContract<CostForecast>(
+          invoke,
+          IPC_CONTRACTS.costs.forecastChapters.channel,
+          IPC_CONTRACTS.costs.forecastChapters.response,
+          request
+        ),
+      compareQualityModes: (request = {}) =>
+        invokeContract<QualityModeComparison>(
+          invoke,
+          IPC_CONTRACTS.costs.compareQualityModes.channel,
+          IPC_CONTRACTS.costs.compareQualityModes.response,
+          request
+        ),
+      quotaSummary: (forecast, providers) =>
+        invokeContract<ProviderQuotaSummary>(
+          invoke,
+          IPC_CONTRACTS.costs.quotaSummary.channel,
+          IPC_CONTRACTS.costs.quotaSummary.response,
+          { forecast, providers }
         )
     },
     export: {
@@ -960,6 +1000,19 @@ export function createPreloadApi(
           IPC_CONTRACTS.pricing.routeWarnings.channel,
           IPC_CONTRACTS.pricing.routeWarnings.response,
           typeof staleAfterDays === "undefined" ? undefined : { staleAfterDays }
+        ),
+      listQuotas: () =>
+        invokeContract<ProviderQuotaNoteDto[]>(
+          invoke,
+          IPC_CONTRACTS.pricing.listQuotas.channel,
+          IPC_CONTRACTS.pricing.listQuotas.response
+        ),
+      upsertQuota: (input) =>
+        invokeContract<ProviderQuotaNoteDto>(
+          invoke,
+          IPC_CONTRACTS.pricing.upsertQuota.channel,
+          IPC_CONTRACTS.pricing.upsertQuota.response,
+          input
         )
     },
     providerHealth: {
