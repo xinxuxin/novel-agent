@@ -55,6 +55,9 @@ interface ChapterWorkflowState extends Record<string, unknown> {
     | "finale";
   budgetMode: "strict" | "flexible";
   userInstruction: string | null;
+  sourceOutline: string | null;
+  allowStoryChanges: boolean;
+  desiredOutput: "outline" | "scene_cards" | "draft" | "final_manuscript";
   contextPack: ContextPreviewPack | null;
   routePlan: Array<{ node: ChapterWorkflowNode; taskType: LLMTaskType; model: string }>;
   costEstimate: WorkflowCostEstimate;
@@ -180,6 +183,9 @@ export class ChapterWorkflowRuntime {
       chapterImportance: input.chapterImportance ?? "normal",
       budgetMode: input.budgetMode ?? "strict",
       userInstruction: input.userInstruction ?? null,
+      sourceOutline: input.sourceOutline?.trim() ?? null,
+      allowStoryChanges: input.allowStoryChanges ?? false,
+      desiredOutput: input.desiredOutput ?? "final_manuscript",
       contextPack: null,
       routePlan: this.createRoutePlan(executionMode, input.qualityMode),
       costEstimate,
@@ -466,18 +472,38 @@ export class ChapterWorkflowRuntime {
 
   private async generateChapterOutline(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
     const chapter = this.options.repositories.chapters.get(state.chapterId);
-    const outline = {
-      chapter_promise: `${chapter?.title ?? "本章"}揭开一个具体威胁。`,
-      opening_hook: "雨夜钟楼背面出现不合常理的光。",
-      major_conflict: "主角必须在能力失控前确认雾灯来源。",
-      conflict_escalation: "旧案线索与眼前异象同时逼近。",
-      emotional_turn: "主角意识到逃避会让亲近的人暴露在危险中。",
-      payoff: "他确认雾灯不是自然现象。",
-      chapter_end_hook: "钟楼里传出本不该存在的第二个脚步声。",
-      scene_plan: ["雨夜抵达", "调查钟楼", "能力反噬", "发现第二脚步"],
-      continuity_dependencies: ["保留雨夜感知规则", "能力不能突然熟练"],
-      risks: ["不要让主角过早掌握全部真相"]
-    };
+    const outlineLines = outlineBeats(state.sourceOutline);
+    const outline = state.sourceOutline
+      ? {
+          source_outline: state.sourceOutline,
+          allow_story_changes: state.allowStoryChanges,
+          desired_output: state.desiredOutput,
+          chapter_promise: `${chapter?.title ?? "本章"}兑现用户大纲里的核心承诺。`,
+          opening_hook: outlineLines[0] ?? "用用户大纲的第一场作为开场钩子。",
+          major_conflict: outlineLines[1] ?? "围绕用户大纲的主要阻碍升级冲突。",
+          conflict_escalation: outlineLines[2] ?? "把大纲里的危险或秘密具体化。",
+          emotional_turn: "让主角在行动选择上发生明确变化。",
+          payoff: "兑现本章大纲中承诺的发现、爽点或危险证据。",
+          chapter_end_hook:
+            outlineLines.at(-1) ?? "以用户大纲指定的悬念或新问题作为章末钩子。",
+          scene_plan: outlineLines,
+          continuity_dependencies: ["保留用户大纲里的命名事实", "改动必须作为建议而非直接改 canon"],
+          risks: state.allowStoryChanges
+            ? ["允许增强桥段，但不能改变用户指定的主线结果"]
+            : ["不允许改动用户指定的关键设定和情节顺序"]
+        }
+      : {
+          chapter_promise: `${chapter?.title ?? "本章"}揭开一个具体威胁。`,
+          opening_hook: "雨夜钟楼背面出现不合常理的光。",
+          major_conflict: "主角必须在能力失控前确认雾灯来源。",
+          conflict_escalation: "旧案线索与眼前异象同时逼近。",
+          emotional_turn: "主角意识到逃避会让亲近的人暴露在危险中。",
+          payoff: "他确认雾灯不是自然现象。",
+          chapter_end_hook: "钟楼里传出本不该存在的第二个脚步声。",
+          scene_plan: ["雨夜抵达", "调查钟楼", "能力反噬", "发现第二脚步"],
+          continuity_dependencies: ["保留雨夜感知规则", "能力不能突然熟练"],
+          risks: ["不要让主角过早掌握全部真相"]
+        };
     const text = JSON.stringify(outline, null, 2);
     return this.withLlmArtifact(state, {
       node: "generate_chapter_outline",
@@ -491,34 +517,51 @@ export class ChapterWorkflowRuntime {
   }
 
   private async generateSceneCards(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
-    const sceneCards = [
-      {
-        scene_index: 1,
-        pov: "沈照",
-        setting: "雨夜钟楼背面",
-        participating_characters: ["沈照"],
-        goal: "确认雾灯异常来源",
-        obstacle: "雨声遮蔽脚步，能力感知不稳定",
-        conflict_beat: "雾灯亮起时钟声突然缺失",
-        new_information: "钟楼背面有新鲜水痕",
-        emotional_turn: "沈照从犹豫转为主动调查",
-        required_continuity_facts: ["雨夜增强感知但会消耗体力"],
-        handoff: "他听见楼内传来第二个脚步声"
-      },
-      {
-        scene_index: 2,
-        pov: "沈照",
-        setting: "钟楼内侧楼梯",
-        participating_characters: ["沈照"],
-        goal: "找到脚步声主人",
-        obstacle: "能力反噬让他分不清真实声音",
-        conflict_beat: "脚步声模仿他的节奏逼近",
-        new_information: "雾灯会回应他的恐惧",
-        emotional_turn: "他选择留下证据而不是逃跑",
-        required_continuity_facts: ["不能让主角完全掌控能力"],
-        handoff: "门后有人喊出他的名字"
-      }
-    ];
+    const outlineLines = outlineBeats(state.sourceOutline);
+    const sceneCards =
+      outlineLines.length > 0
+        ? outlineLines.map((beat, index) => ({
+            scene_index: index + 1,
+            pov: "按大纲主视角",
+            setting: inferSetting(beat),
+            participating_characters: inferCharacters(beat),
+            goal: beat,
+            obstacle: "把这一场的外部阻力和内心代价写清楚",
+            conflict_beat: `围绕“${beat}”制造可见冲突`,
+            new_information: "只揭示本场必须兑现的信息",
+            emotional_turn: "让人物态度或选择发生变化",
+            required_continuity_facts: ["保留用户大纲命名事实"],
+            handoff:
+              outlineLines[index + 1] ?? "以具体动作、证据或危险信号交给章末钩子"
+          }))
+        : [
+            {
+              scene_index: 1,
+              pov: "沈照",
+              setting: "雨夜钟楼背面",
+              participating_characters: ["沈照"],
+              goal: "确认雾灯异常来源",
+              obstacle: "雨声遮蔽脚步，能力感知不稳定",
+              conflict_beat: "雾灯亮起时钟声突然缺失",
+              new_information: "钟楼背面有新鲜水痕",
+              emotional_turn: "沈照从犹豫转为主动调查",
+              required_continuity_facts: ["雨夜增强感知但会消耗体力"],
+              handoff: "他听见楼内传来第二个脚步声"
+            },
+            {
+              scene_index: 2,
+              pov: "沈照",
+              setting: "钟楼内侧楼梯",
+              participating_characters: ["沈照"],
+              goal: "找到脚步声主人",
+              obstacle: "能力反噬让他分不清真实声音",
+              conflict_beat: "脚步声模仿他的节奏逼近",
+              new_information: "雾灯会回应他的恐惧",
+              emotional_turn: "他选择留下证据而不是逃跑",
+              required_continuity_facts: ["不能让主角完全掌控能力"],
+              handoff: "门后有人喊出他的名字"
+            }
+          ];
     const text = JSON.stringify(sceneCards, null, 2);
     return this.withLlmArtifact(state, {
       node: "generate_scene_cards",
@@ -532,19 +575,37 @@ export class ChapterWorkflowRuntime {
   }
 
   private async draftChapter(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
-    const draft = [
-      "雨从钟楼背面的檐角连成线，落在沈照肩上时，像一只只冰冷的手。",
-      "",
-      "他停在雾灯照不到的地方，听见缺了一拍的钟声。",
-      "",
-      "那不是回音。回音不会在他屏住呼吸之后，仍旧贴着楼梯往下走。",
-      "",
-      "沈照握紧手机，指节因为用力而发白。屏幕里没有信号，录音界面却跳出第二条声纹。",
-      "",
-      "下一秒，楼里的脚步声停住了。",
-      "",
-      "有人在门后，用和他一模一样的声音问：“你终于听见我了？”"
-    ].join("\n");
+    const outlineLines = outlineBeats(state.sourceOutline);
+    const draft =
+      outlineLines.length > 0
+        ? [
+            "雨声压低了整座城市的呼吸。",
+            "",
+            ...outlineLines.flatMap((beat, index) => [
+              `第${index + 1}场，${beat}`,
+              "沈照没有立刻相信自己的判断。他先看见水光里的倒影乱了一拍，才听见那道像从钟楼深处拖出来的倒计时。",
+              "危险没有解释自己的来处，只把他一步步推向更窄的选择。"
+            ]),
+            "",
+            state.allowStoryChanges
+              ? "他可以接受 agent 对桥段的强化，但主线仍被那枚失踪案编号牢牢钉住。"
+              : "他不能偏离大纲指定的主线，因为每一个名字和编号都可能在后文兑现。",
+            "",
+            "章末，门后的声音贴着锁孔响起，准确说出了母亲旧案日期。雾灯在同一秒闪了一下，墙上只剩那个失踪案编号。"
+          ].join("\n\n")
+        : [
+            "雨从钟楼背面的檐角连成线，落在沈照肩上时，像一只只冰冷的手。",
+            "",
+            "他停在雾灯照不到的地方，听见缺了一拍的钟声。",
+            "",
+            "那不是回音。回音不会在他屏住呼吸之后，仍旧贴着楼梯往下走。",
+            "",
+            "沈照握紧手机，指节因为用力而发白。屏幕里没有信号，录音界面却跳出第二条声纹。",
+            "",
+            "下一秒，楼里的脚步声停住了。",
+            "",
+            "有人在门后，用和他一模一样的声音问：“你终于听见我了？”"
+          ].join("\n");
     return this.withLlmArtifact(state, {
       node: "draft_chapter",
       taskType: "draft_chapter",
@@ -561,9 +622,11 @@ export class ChapterWorkflowRuntime {
         {
           severity: "medium",
           affected_entity: "沈照能力",
-          evidence_from_draft: "录音界面跳出第二条声纹",
+          evidence_from_draft: state.sourceOutline ? "失踪案编号与母亲旧案日期" : "录音界面跳出第二条声纹",
           conflicting_known_fact: "能力可以增强感知，但不能提供完整外部证据链",
-          suggested_repair: "保留录音异常，但让证据不完整，需要后续验证",
+          suggested_repair: state.sourceOutline
+            ? "保留编号和日期，但让它们成为后续验证线索，不直接揭开真相"
+            : "保留录音异常，但让证据不完整，需要后续验证",
           requires_human_review: true
         }
       ]
@@ -644,7 +707,7 @@ export class ChapterWorkflowRuntime {
       node: "revise_draft",
       taskType: "revise_chapter",
       artifactType: "revision",
-      title: "Revised draft",
+      title: state.desiredOutput === "final_manuscript" ? "Final proposed manuscript" : "Revised draft",
       contentText: finalText,
       extraState: { revisedMarkdown: finalText, revisionPlan }
     });
@@ -849,6 +912,11 @@ export class ChapterWorkflowRuntime {
             this.options.repositories.chapters.get(state.chapterId)?.targetWords ?? ""
           ),
           draftText: state.draftMarkdown ?? "",
+          sourceOutline: state.sourceOutline ?? "",
+          outlineChangePolicy: state.allowStoryChanges
+            ? "可以提出情节、设定、节奏强化建议，但最终文稿必须保留用户大纲的主线承诺。"
+            : "不得改动用户大纲指定的关键事实、情节顺序和章末钩子。",
+          desiredOutput: state.desiredOutput,
           auditFindings: JSON.stringify(
             {
               continuity: state.continuityAudit,
@@ -1155,4 +1223,25 @@ function parseJson(text: string): unknown {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function outlineBeats(sourceOutline: string | null): string[] {
+  if (!sourceOutline) return [];
+  return sourceOutline
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^[-*•\d.、\s]+/, "").trim())
+    .filter((line) => line.length > 0)
+    .slice(0, 8);
+}
+
+function inferSetting(beat: string): string {
+  const candidates = ["雨夜", "公交站", "钟楼", "旧楼", "宗门", "学院", "副本", "战场"];
+  return candidates.find((candidate) => beat.includes(candidate)) ?? "按用户大纲场景";
+}
+
+function inferCharacters(beat: string): string[] {
+  const names = Array.from(beat.matchAll(/[\u4e00-\u9fa5]{2,4}/g))
+    .map((match) => match[0])
+    .filter((word) => !["第一场", "第二场", "第三场", "章末钩子"].includes(word));
+  return names.slice(0, 3).length > 0 ? names.slice(0, 3) : ["按大纲人物"];
 }

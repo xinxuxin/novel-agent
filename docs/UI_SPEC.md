@@ -155,6 +155,24 @@ Implemented surfaces:
 
 The Phase 13 UI keeps graphite surfaces, thin borders, blue/violet/cyan accents, and conservative motion. It does not copy reference UI assets, screenshots, logos, or distinctive copy.
 
+## Phase 16 Outline-First Studio
+
+The default chapter workspace now opens on Generate rather than Manuscript. The primary surface is
+`Outline to manuscript`:
+
+- a prominent detailed-outline textarea
+- execution mode selector for mock agents or configured providers
+- quality selector including Premium Webnovel
+- desired output selector
+- permission toggle for whether agents may suggest plot or setting changes
+- a primary `Generate final manuscript from outline` action
+
+The top bar is quieter: Studio, Generate, Settings, and a compact More selector for Story Bible,
+Costs, Eval, and Data. The right panel keeps context/cost/route information available, but the
+center of gravity is the active writing task. Settings explicitly tells users to add API keys in
+Providers and that keys are stored in the encrypted credential store; decrypted keys are never shown
+to the renderer.
+
 ## Interaction Rules
 
 - Generated text, audits, rewrites, and state updates are visibly marked as draft/proposed.

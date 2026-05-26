@@ -25,15 +25,6 @@ interface WorkflowGeneratePanelProps {
   onWorkflowCostChange: (label: string, cost: number, warning: string) => void;
 }
 
-const WORKFLOW_ACTIONS = [
-  "Full Chapter Workflow",
-  "Generate Outline",
-  "Generate Scene Cards",
-  "Draft Chapter",
-  "Run Audits",
-  "Revise Current Draft"
-];
-
 const WORKFLOW_PREVIEW_TASKS: TaskType[] = [
   "chapter_outline",
   "scene_cards",
@@ -76,6 +67,11 @@ export function WorkflowGeneratePanel({
   const [qualityMode, setQualityMode] = useState<QualityMode>("balanced");
   const [modelProfiles, setModelProfiles] = useState<ModelProfileRecord[]>([]);
   const [routeOverrideModelProfileId, setRouteOverrideModelProfileId] = useState("");
+  const [sourceOutline, setSourceOutline] = useState("");
+  const [allowStoryChanges, setAllowStoryChanges] = useState(true);
+  const [desiredOutput, setDesiredOutput] = useState<
+    "outline" | "scene_cards" | "draft" | "final_manuscript"
+  >("final_manuscript");
   const latestRevision = useMemo(() => findLatestArtifact(detail, "revision"), [detail]);
   const latestDraft = useMemo(() => findLatestArtifact(detail, "draft"), [detail]);
   const displayArtifact = latestRevision ?? latestDraft;
@@ -135,6 +131,11 @@ export function WorkflowGeneratePanel({
 
   const startWorkflow = async (label: string): Promise<void> => {
     if (!activeProject || !activeBook || !activeChapter) return;
+    const outline = sourceOutline.trim() || activeChapter.summary?.trim() || "";
+    if (!outline) {
+      window.alert("Paste a detailed chapter outline before generating.");
+      return;
+    }
     const confirmed =
       executionMode === "mock"
         ? window.confirm(`${label} with the local mock workflow?`)
@@ -150,7 +151,10 @@ export function WorkflowGeneratePanel({
         qualityMode,
         executionMode,
         routeOverrideModelProfileId: routeOverrideModelProfileId || null,
-        userInstruction: label === "Full Chapter Workflow" ? null : label,
+        sourceOutline: outline,
+        allowStoryChanges,
+        desiredOutput,
+        userInstruction: buildOutlineInstruction(label, allowStoryChanges),
         targetTokenBudget: 4000,
         confirmed: true
       });
@@ -301,119 +305,197 @@ export function WorkflowGeneratePanel({
   };
 
   return (
-    <div className="h-full overflow-auto px-6 py-5">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <section className="rounded-lg border border-white/10 bg-black/25 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                Generation stream
-              </p>
-              <h3 className="mt-1 text-lg font-semibold text-white">
-                {detail ? `Run ${detail.run.status}` : "No workflow run yet"}
-              </h3>
-            </div>
-            <div className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-right">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Cost</p>
-              <p className="text-sm font-semibold text-forge-mint">
-                ${(detail?.costSummary.finalCost ?? 0).toFixed(6)}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 min-h-[260px] rounded-lg border border-white/10 bg-white/[0.025] p-5">
-            {displayArtifact ? (
-              <pre className="whitespace-pre-wrap text-sm leading-7 text-slate-200">
-                {displayArtifact.contentText}
-              </pre>
-            ) : (
-              <div>
-                <p className="max-w-2xl text-sm leading-7 text-slate-400">
-                  Run the local mock workflow to generate outline, scene cards, draft, audits,
-                  revision, and a human-gated settlement proposal. Generated text remains separate
-                  from canon until accepted.
+    <div className="h-full overflow-auto px-6 py-4">
+      <div className="grid gap-4">
+        <section className="space-y-4">
+          <div className="rounded-lg border border-forge-blue/25 bg-forge-blue/8 p-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-forge-blue">
+                  Outline to manuscript
                 </p>
-                <div className="mt-6 flex gap-2">
-                  {[0, 1, 2].map((item) => (
-                    <motion.span
-                      className="h-2 w-12 rounded-full bg-forge-blue/50"
-                      key={item}
-                      {...(reduceMotion
-                        ? {}
-                        : {
-                            animate: { opacity: [0.35, 1, 0.35] },
-                            transition: { duration: 1.2, repeat: Infinity, delay: item * 0.16 }
-                          })}
+                <h3 className="mt-1 text-lg font-semibold text-white">
+                  Paste your detailed outline. WenForge turns it into a proposed final manuscript.
+                </h3>
+                <label className="mt-3 block">
+                  <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                    Detailed chapter outline
+                  </span>
+                  <textarea
+                    className="mt-2 min-h-40 w-full resize-y rounded-lg border border-white/10 bg-black/35 p-4 text-sm leading-7 text-slate-100 outline-none placeholder:text-slate-600 focus:border-forge-blue/50"
+                    placeholder={`例：\n第一场：雨夜公交站，主角听见倒计时。\n第二场：倒计时指向即将出事的女孩。\n第三场：主角救人后能力失控。\n章末：女孩手腕出现同样符号。`}
+                    value={sourceOutline}
+                    onChange={(event) => setSourceOutline(event.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-black/24 p-3 text-xs text-slate-400">
+                <span className="font-medium uppercase tracking-[0.14em] text-slate-500">
+                  Agent path
+                </span>
+                <span className="mt-2 block text-slate-200">
+                  {"Outline -> Scenes -> Draft -> Audit -> Rewrite"}
+                </span>
+                <button
+                  className="mt-3 w-full rounded-lg border border-forge-blue/40 bg-forge-blue/18 px-4 py-2.5 text-sm font-semibold text-forge-blue transition hover:bg-forge-blue/25 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={busy || !activeChapter}
+                  onClick={() => void startWorkflow("Generate final manuscript from outline")}
+                  type="button"
+                >
+                  Generate final manuscript
+                </button>
+                <p className="mt-3 leading-5">
+                  Agents may suggest plot or setting edits when allowed, but canon changes still
+                  require your approval.
+                </p>
+                <div className="mt-4 space-y-3">
+                  <label className="block">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                      Execution
+                    </span>
+                    <select
+                      className="mt-1.5 h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-xs text-white outline-none focus:border-forge-blue/50"
+                      value={executionMode}
+                      onChange={(event) =>
+                        setExecutionMode(event.target.value as "mock" | "provider")
+                      }
+                    >
+                      <option value="mock">Mock agents</option>
+                      <option value="provider">Configured real providers</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                      Quality
+                    </span>
+                    <select
+                      className="mt-1.5 h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-xs text-white outline-none focus:border-forge-blue/50"
+                      value={qualityMode}
+                      onChange={(event) => setQualityMode(event.target.value as QualityMode)}
+                    >
+                      {QUALITY_MODES.map((mode) => (
+                        <option key={mode} value={mode}>
+                          {QUALITY_LABELS[mode]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                      Output
+                    </span>
+                    <select
+                      className="mt-1.5 h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-xs text-white outline-none focus:border-forge-blue/50"
+                      value={desiredOutput}
+                      onChange={(event) =>
+                        setDesiredOutput(
+                          event.target.value as
+                            | "outline"
+                            | "scene_cards"
+                            | "draft"
+                            | "final_manuscript"
+                        )
+                      }
+                    >
+                      <option value="final_manuscript">Final manuscript</option>
+                      <option value="draft">Draft only</option>
+                      <option value="scene_cards">Scene cards</option>
+                      <option value="outline">Refined outline</option>
+                    </select>
+                  </label>
+                  <label className="flex items-start gap-2 rounded-lg border border-white/10 bg-black/24 px-3 py-2 text-xs text-slate-300">
+                    <input
+                      checked={allowStoryChanges}
+                      className="mt-0.5 accent-forge-blue"
+                      onChange={(event) => setAllowStoryChanges(event.target.checked)}
+                      type="checkbox"
                     />
-                  ))}
+                    Allow plot or setting improvements
+                  </label>
+                  {executionMode === "provider" ? (
+                    <select
+                      className="h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-xs text-white outline-none focus:border-forge-blue/50"
+                      value={routeOverrideModelProfileId}
+                      onChange={(event) => setRouteOverrideModelProfileId(event.target.value)}
+                    >
+                      <option value="">Use task routes</option>
+                      {modelProfiles.map((profile) => (
+                        <option key={profile.id} value={profile.id}>
+                          {profile.displayName} · {profile.provider}/{profile.model}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <TimelineList detail={detail} />
-            <ArtifactList detail={detail} />
+          <div className="rounded-lg border border-white/10 bg-black/25 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                  Final proposed manuscript
+                </p>
+                <h3 className="mt-1 text-base font-semibold text-white">
+                  {detail ? `Run ${detail.run.status}` : "No workflow run yet"}
+                </h3>
+              </div>
+              <div className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-right">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Cost</p>
+                <p className="text-sm font-semibold text-forge-mint">
+                  ${(detail?.costSummary.finalCost ?? 0).toFixed(6)}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 min-h-[220px] rounded-lg border border-white/10 bg-white/[0.025] p-5">
+              {displayArtifact ? (
+                <pre className="whitespace-pre-wrap text-sm leading-7 text-slate-200">
+                  {displayArtifact.contentText}
+                </pre>
+              ) : (
+                <div>
+                  <p className="max-w-2xl text-sm leading-7 text-slate-400">
+                    Paste an outline above and run the outline-to-manuscript workflow. Generated
+                    text stays proposed until you save it as a manuscript version.
+                  </p>
+                  <div className="mt-6 flex gap-2">
+                    {[0, 1, 2].map((item) => (
+                      <motion.span
+                        className="h-2 w-12 rounded-full bg-forge-blue/50"
+                        key={item}
+                        {...(reduceMotion
+                          ? {}
+                          : {
+                              animate: { opacity: [0.35, 1, 0.35] },
+                              transition: { duration: 1.2, repeat: Infinity, delay: item * 0.16 }
+                            })}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <TimelineList detail={detail} />
+              <ArtifactList detail={detail} />
+            </div>
           </div>
         </section>
 
         <section className="space-y-3">
-          <div className="rounded-lg border border-white/10 bg-graphite-900/60 px-4 py-3">
-            <label className="block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-              Execution
-            </label>
-            <select
-              className="mt-2 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-forge-blue/50"
-              value={executionMode}
-              onChange={(event) => setExecutionMode(event.target.value as "mock" | "provider")}
-            >
-              <option value="mock">Mock provider</option>
-              <option value="provider">Configured providers</option>
-            </select>
-            {executionMode === "provider" ? (
-              <select
-                className="mt-2 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-forge-blue/50"
-                value={qualityMode}
-                onChange={(event) => setQualityMode(event.target.value as QualityMode)}
-              >
-                {QUALITY_MODES.map((mode) => (
-                  <option key={mode} value={mode}>
-                    {QUALITY_LABELS[mode]}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-            {executionMode === "provider" ? (
-              <select
-                className="mt-2 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-forge-blue/50"
-                value={routeOverrideModelProfileId}
-                onChange={(event) => setRouteOverrideModelProfileId(event.target.value)}
-              >
-                <option value="">Use task routes</option>
-                {modelProfiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.displayName} · {profile.provider}/{profile.model}
-                  </option>
-                ))}
-              </select>
-            ) : null}
+          <div className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
+            <h4 className="text-sm font-semibold text-white">Agent plan</h4>
+            <ol className="mt-3 space-y-2 text-xs leading-5 text-slate-400">
+              <li>1. Planner parses your detailed outline.</li>
+              <li>2. Setting and continuity agents flag safe changes.</li>
+              <li>3. Webnovel rhythm agent strengthens hook and pacing.</li>
+              <li>4. Draft/rewrite agents produce the final proposed manuscript.</li>
+              <li>5. Human gate decides whether to save or set canon.</li>
+            </ol>
           </div>
-          {WORKFLOW_ACTIONS.map((label) => (
-            <button
-              className="w-full rounded-lg border border-white/10 bg-graphite-900/60 px-4 py-3 text-left text-sm text-slate-200 hover:border-forge-blue/35 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={busy || !activeChapter}
-              key={label}
-              onClick={() => void startWorkflow(label)}
-              type="button"
-            >
-              {label}
-              <span className="mt-1 block text-xs text-slate-500">
-                {executionMode === "mock"
-                  ? "Mock workflow, persisted artifacts"
-                  : "Provider workflow with preflight estimate"}
-              </span>
-            </button>
-          ))}
           <div className="rounded-lg border border-forge-violet/25 bg-forge-violet/10 p-3">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-forge-violet">
               Cross-check workflow
@@ -551,7 +633,7 @@ function HumanGateControls({
           onClick={() => void onAcceptRevision()}
           type="button"
         >
-          Save Revision As Non-Canonical Version
+          Save as manuscript version
         </button>
         <button
           className="w-full rounded-md border border-forge-amber/30 bg-forge-amber/10 px-3 py-2 text-left text-xs text-forge-amber disabled:cursor-not-allowed disabled:opacity-50"
@@ -627,4 +709,11 @@ function findLatestArtifact(
 ): WorkflowArtifactRecord | null {
   const artifacts = detail?.artifacts.filter((artifact) => artifact.artifactType === artifactType);
   return artifacts?.at(-1) ?? null;
+}
+
+function buildOutlineInstruction(label: string, allowStoryChanges: boolean): string {
+  const changePolicy = allowStoryChanges
+    ? "可以提出并吸收情节或设定强化，但必须保留用户大纲的主线承诺。"
+    : "不得改动用户大纲的关键设定、情节顺序和章末钩子。";
+  return `${label}\n${changePolicy}\n最终输出必须是可保存的中文正文草稿，不要直接覆盖 canon。`;
 }

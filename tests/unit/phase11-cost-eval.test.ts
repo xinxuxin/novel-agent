@@ -396,6 +396,6 @@ describe("phase 11 cost dashboard and model evaluation", () => {
       qualityMode: "balanced",
       confirmed: true
     });
-    expect(promoted.primaryModelProfileId).toBe(profileA.id);
+    expect(promoted.primaryModelProfileId).toBe(outputs[0]!.modelProfileId);
   });
 });

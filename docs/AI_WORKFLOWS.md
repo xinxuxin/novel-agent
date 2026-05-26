@@ -217,3 +217,29 @@ Phase 15c adds an optional short provider-backed chapter connectivity check for 
 - it writes normal `llm_runs`, generated artifacts, review cards, and settlement proposal records
 - it stops before canonical manuscript update and before story bible mutation
 - reports include IDs, counts, provider/model metadata, token/cost fields, and redacted errors only
+
+## Phase 16 Outline-To-Manuscript Flow
+
+Phase 16 makes the primary chapter workflow outline-driven. The expected user input is a detailed
+chapter outline in natural language, not a rigid JSON document. A useful outline can include:
+
+- scene-by-scene beats
+- required characters, locations, props, powers, and clues
+- the intended emotional turn
+- facts that must not change
+- places where the user allows agents to strengthen plot, setting, or hooks
+- target ending hook
+
+The Generate tab sends this outline through typed IPC as `sourceOutline`, along with
+`allowStoryChanges` and `desiredOutput`. The main-process workflow then:
+
+1. Treats the outline as the authoritative brief.
+2. Generates a refined chapter outline and scene cards.
+3. Drafts Chinese manuscript text from the outline.
+4. Audits continuity and webnovel rhythm.
+5. Revises into a `Final proposed manuscript`.
+6. Pauses at the human gate.
+
+Generated output remains proposed. Saving creates a non-canonical manuscript version, and setting
+that version canonical still requires explicit confirmation. Story bible/state updates remain
+settlement proposals until separately accepted.

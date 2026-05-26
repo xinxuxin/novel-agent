@@ -417,6 +417,10 @@ export function SettingsPanel(): JSX.Element {
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Settings</p>
           <h2 className="mt-1 text-xl font-semibold text-white">Providers, Models, Routing</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+            Add API keys in Providers. Keys go into the encrypted credential store, and the
+            renderer only sees redacted credential status.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {data.credentials.length === 0 ? (

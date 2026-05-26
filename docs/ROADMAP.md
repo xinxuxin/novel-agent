@@ -233,3 +233,14 @@ Deferred from Phase 14: signed/notarized public installers, final branded icons,
 - Add optional EPUB export if dependency and formatting risk stay low.
 - Replace placeholder build icons with final WenForge assets.
 - Add platform signing/notarization and release checksums before public distribution.
+
+## Phase 16: Outline-Driven Writing UX (Complete)
+
+- [x] Add explicit `sourceOutline`, `allowStoryChanges`, and `desiredOutput` fields to the chapter generation request contract.
+- [x] Thread detailed outlines through the main-process workflow state and mock/provider prompt assembly.
+- [x] Make mock outline, scene-card, draft, audit, revision, and settlement artifacts visibly derive from the supplied outline.
+- [x] Replace the Generate tab with an outline-first surface and a clear `Generate final manuscript from outline` action.
+- [x] Default the chapter workspace to Generate so the first screen answers “what do I paste and what happens next?”
+- [x] Declutter the top navigation and move secondary workspaces behind a compact More selector.
+- [x] Clarify Settings API key setup, encrypted storage, and renderer secret isolation.
+- [x] Add regression tests for outline-driven workflow behavior, UI copy, and shell/settings clarity.

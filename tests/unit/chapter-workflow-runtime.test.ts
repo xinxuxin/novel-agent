@@ -124,6 +124,43 @@ describe("chapter_generation_v1 workflow runtime", () => {
     );
   });
 
+  it("uses a detailed source outline as the brief for the proposed final manuscript", async () => {
+    const { repositories, runtime, project, book, volume, chapter } = createWorkflowFixture();
+    const sourceOutline = [
+      "第一场：雨夜公交站，沈照听见来自钟楼的倒计时。",
+      "第二场：他跟着倒计时进入钟楼，看见雾灯照出失踪案编号。",
+      "第三场：门后有人用他的声音说出母亲旧案日期，章末钩子必须落在编号上。"
+    ].join("\n");
+
+    const paused = await runtime.startChapterWorkflow({
+      projectId: project.id,
+      bookId: book.id,
+      volumeId: volume.id,
+      chapterId: chapter.id,
+      qualityMode: "balanced",
+      executionMode: "mock",
+      sourceOutline,
+      allowStoryChanges: true,
+      desiredOutput: "final_manuscript",
+      userInstruction: "保留失踪案编号，允许强化钩子但不要改主线。",
+      targetTokenBudget: 4000,
+      confirmed: true
+    });
+
+    const detail = runtime.getRun(paused.id);
+    const outline = detail?.artifacts.find((artifact) => artifact.artifactType === "outline");
+    const revision = detail?.artifacts.find((artifact) => artifact.artifactType === "revision");
+
+    expect(outline?.contentText).toContain("失踪案编号");
+    expect(outline?.contentText).toContain("allow_story_changes");
+    expect(revision?.title).toBe("Final proposed manuscript");
+    expect(revision?.contentText).toContain("失踪案编号");
+    expect(revision?.contentText).toContain("母亲旧案日期");
+    expect(repositories.manuscripts.getCanonical(chapter.id)?.contentMarkdown).toBe(
+      "沈照在雨夜停在钟楼背面，雾灯还没有亮。"
+    );
+  });
+
   it("resumes after approval, persists settlement proposals, and requires confirmation for canon", async () => {
     const { repositories, runtime, project, book, volume, chapter } = createWorkflowFixture();
     const paused = await runtime.startChapterWorkflow({
@@ -261,6 +298,9 @@ describe("chapter_generation_v1 workflow runtime", () => {
         chapterId: "chapter-1",
         qualityMode: "balanced",
         executionMode: "mock",
+        sourceOutline: "第一场：主角觉醒。第二场：章末钩子。",
+        allowStoryChanges: false,
+        desiredOutput: "final_manuscript",
         confirmed: true
       }).success
     ).toBe(true);

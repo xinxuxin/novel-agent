@@ -96,7 +96,7 @@ export function App(): JSX.Element {
   const [costSummary, setCostSummary] = useState<CostSummary | null>(null);
   const [routeResolution, setRouteResolution] = useState<ModelRouteResolution | null>(null);
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>("chapter");
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("manuscript");
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("generate");
   const [activeRunLabel, setActiveRunLabel] = useState("No active run");
   const [activeRunCost, setActiveRunCost] = useState(0);
   const [sessionCost, setSessionCost] = useState(0);
@@ -756,59 +756,48 @@ export function App(): JSX.Element {
             />
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
-                workspaceView === "chapter"
+                workspaceView === "chapter" && activeTab !== "generate"
                   ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
                   : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
               }`}
-              onClick={() => setWorkspaceView("chapter")}
+              onClick={() => {
+                setWorkspaceView("chapter");
+                setActiveTab("manuscript");
+              }}
               type="button"
             >
               Studio
             </button>
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
-                workspaceView === "storyBible"
+                workspaceView === "chapter" && activeTab === "generate"
                   ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
                   : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
               }`}
-              onClick={() => setWorkspaceView("storyBible")}
+              onClick={() => {
+                setWorkspaceView("chapter");
+                setActiveTab("generate");
+              }}
               type="button"
             >
-              Bible
+              Generate
             </button>
-            <button
-              className={`rounded-md border px-3 py-1.5 text-xs transition ${
-                workspaceView === "costs"
-                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
-                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
-              }`}
-              onClick={() => setWorkspaceView("costs")}
-              type="button"
+            <select
+              aria-label="Open secondary workspace"
+              className="h-8 rounded-md border border-white/10 bg-black/30 px-2 text-xs text-slate-300 outline-none hover:border-forge-violet/40 focus:border-forge-blue/50"
+              onChange={(event) => {
+                const nextView = event.target.value as WorkspaceView | "";
+                if (nextView) setWorkspaceView(nextView);
+                event.target.value = "";
+              }}
+              value=""
             >
-              Costs
-            </button>
-            <button
-              className={`rounded-md border px-3 py-1.5 text-xs transition ${
-                workspaceView === "eval"
-                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
-                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
-              }`}
-              onClick={() => setWorkspaceView("eval")}
-              type="button"
-            >
-              Eval
-            </button>
-            <button
-              className={`rounded-md border px-3 py-1.5 text-xs transition ${
-                workspaceView === "data"
-                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
-                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
-              }`}
-              onClick={() => setWorkspaceView("data")}
-              type="button"
-            >
-              Data
-            </button>
+              <option value="">More</option>
+              <option value="storyBible">Story Bible</option>
+              <option value="costs">Costs</option>
+              <option value="eval">Eval</option>
+              <option value="data">Data</option>
+            </select>
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
                 workspaceView === "settings"
@@ -1268,19 +1257,20 @@ function ChapterWorkspace({
     { id: "timeline", label: "Timeline" },
     { id: "versions", label: "Versions" }
   ];
+  const generateFocused = activeTab === "generate";
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-white/10 px-6 py-4">
+      <div className={`border-b border-white/10 px-6 ${generateFocused ? "py-3" : "py-4"}`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
               Active chapter
             </p>
-            <h2 className="mt-1 truncate text-xl font-semibold text-white">
+            <h2 className={`${generateFocused ? "mt-0.5 text-lg" : "mt-1 text-xl"} truncate font-semibold text-white`}>
               {activeChapter?.title ?? "No chapter selected"}
             </h2>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className={`${generateFocused ? "mt-1.5" : "mt-2"} flex flex-wrap items-center gap-2`}>
               {activeChapter ? <StatusBadge status={activeChapter.status} /> : null}
               {canonical ? (
                 <span className="rounded-full border border-forge-mint/30 bg-forge-mint/10 px-3 py-1 text-xs text-forge-mint">
@@ -1303,7 +1293,7 @@ function ChapterWorkspace({
               ) : null}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className={`flex flex-wrap gap-2 ${generateFocused ? "hidden 2xl:flex" : ""}`}>
             <button
               className="rounded-md border border-white/10 px-3 py-2 text-xs text-slate-300 hover:border-forge-blue/40 hover:text-white"
               onClick={onEditTargetWords}
@@ -1350,7 +1340,7 @@ function ChapterWorkspace({
             </button>
           ))}
         </div>
-        {qualityState ? (
+        {qualityState && !generateFocused ? (
           <div className="mt-4">
             <QualityStatePanel state={qualityState} onPrimaryAction={onQualityStateAction} />
           </div>

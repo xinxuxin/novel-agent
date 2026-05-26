@@ -69,6 +69,9 @@ export const chapterGenerationStartRequestSchema = z.object({
   budgetMode: z.enum(["strict", "flexible"]).optional(),
   routeOverrideModelProfileId: z.string().min(1).nullable().optional(),
   userInstruction: z.string().nullable().optional(),
+  sourceOutline: z.string().trim().min(1).nullable().optional(),
+  allowStoryChanges: z.boolean().optional(),
+  desiredOutput: z.enum(["outline", "scene_cards", "draft", "final_manuscript"]).optional(),
   targetTokenBudget: z.number().int().positive().optional(),
   costWarningThreshold: z.number().min(0).optional(),
   confirmed: z.boolean().optional()
