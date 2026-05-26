@@ -27,6 +27,8 @@ export const diagnosticBundleSchema = z.object({
   recentErrors: z.array(z.string()),
   logs: z.array(z.string()),
   settings: z.unknown(),
+  providerCheckSummary: z.unknown(),
+  costAccountingSummary: z.unknown(),
   manuscriptsIncluded: z.boolean(),
   createdAt: z.string()
 });

@@ -23,7 +23,7 @@
 - [ ] Confirm renderer has no direct provider `fetch` calls.
 - [ ] Confirm exported diagnostic bundles contain no API keys, Authorization headers, encrypted secret payloads, prompts, or manuscripts by default.
 - [ ] Confirm `.env.local`, `.env.*.local`, local key files, and `reports/` are ignored.
-- [ ] Confirm CI does not run `pnpm providers:smoke` or set `RUN_REAL_PROVIDER_TESTS=true`.
+- [ ] Confirm CI does not run `pnpm providers:check`, `pnpm e2e:provider-chapter-check`, or set `RUN_REAL_PROVIDER_CHECKS=true`.
 
 ## Data
 
@@ -43,7 +43,8 @@
 - [ ] Review quality gate blocks canonical approval when blocking findings exist.
 - [ ] Cost dashboard opens.
 - [ ] Settings Advanced can copy a redacted diagnostics bundle.
-- [ ] Settings Providers can run a confirmed tiny smoke test for configured providers.
+- [ ] Settings Providers can run a confirmed tiny provider connectivity check for configured providers.
+- [ ] Settings Advanced can run a confirmed, budget-capped provider chapter connectivity check without changing canon.
 - [ ] `pnpm providers:report` writes a redacted report under ignored `reports/`.
 
 ## Distribution

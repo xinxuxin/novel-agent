@@ -25,14 +25,14 @@ The provider returned a rate-limit response.
 - Lower concurrent generation/evaluation work.
 - Prefer mock mode for local workflow testing.
 
-### Provider Smoke Test Skipped
+### Provider Connectivity Check Skipped
 
-Real provider smoke tests are opt-in.
+Real provider connectivity checks are opt-in.
 
-- Set `RUN_REAL_PROVIDER_TESTS=true` for CLI smoke tests.
+- Set `RUN_REAL_PROVIDER_CHECKS=true` for CLI provider checks.
 - Do not set it in CI.
 - Confirm `.env.local` exists for local CLI tests.
-- In the app UI, save an encrypted credential and confirm the smoke-test warning.
+- In the app UI, save an encrypted credential and confirm the provider-check warning.
 
 ### Provider Not Implemented
 
@@ -101,6 +101,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm providers:check
 pnpm providers:report
 ```
 

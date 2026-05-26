@@ -45,11 +45,13 @@ pnpm test:smoke
 pnpm db:generate
 pnpm db:migrate
 pnpm db:studio
+pnpm providers:check
+pnpm e2e:provider-chapter-check
 ```
 
 `pnpm test:smoke` launches the built Electron output, so run `pnpm build` first.
 
-Real provider smoke tests are disabled by default. They require a local `.env.local` and `RUN_REAL_PROVIDER_TESTS=true`; CI never runs real providers.
+Real provider connectivity checks are disabled by default. They require explicit local opt-in with `RUN_REAL_PROVIDER_CHECKS=true`, a small budget cap, and configured provider credentials. CI never runs real providers.
 
 ## Documentation
 

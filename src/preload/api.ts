@@ -32,6 +32,10 @@ import type {
 import type { CrossCheckRequest, CrossCheckResult } from "@contracts/cross-check";
 import type { ProviderSmokeResult } from "@contracts/provider-smoke";
 import type {
+  ProviderChapterCheckResult,
+  ProviderCheckReportRecord
+} from "@contracts/provider-check";
+import type {
   BackupRecord,
   BackupRestoreResult,
   BackupSettings,
@@ -993,6 +997,21 @@ export function createPreloadApi(
           invoke,
           IPC_CONTRACTS.providerSmoke.report.channel,
           IPC_CONTRACTS.providerSmoke.report.response
+        ),
+      latestReport: () =>
+        invokeContract<ProviderCheckReportRecord | null>(
+          invoke,
+          IPC_CONTRACTS.providerSmoke.latestReport.channel,
+          IPC_CONTRACTS.providerSmoke.latestReport.response
+        )
+    },
+    providerChapterCheck: {
+      run: (request) =>
+        invokeContract<ProviderChapterCheckResult>(
+          invoke,
+          IPC_CONTRACTS.providerChapterCheck.run.channel,
+          IPC_CONTRACTS.providerChapterCheck.run.response,
+          request
         )
     },
     crossCheck: {

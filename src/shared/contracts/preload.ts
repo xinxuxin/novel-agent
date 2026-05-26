@@ -5,6 +5,11 @@ import type {
   ProviderSmokeRunAllRequest,
   ProviderSmokeRunRequest
 } from "./provider-smoke";
+import type {
+  ProviderChapterCheckRequest,
+  ProviderChapterCheckResult,
+  ProviderCheckReportRecord
+} from "./provider-check";
 import type { CrossCheckRequest, CrossCheckResult } from "./cross-check";
 import type {
   AIStreamEvent,
@@ -407,6 +412,10 @@ export interface WenForgeApi {
     run: (request: ProviderSmokeRunRequest) => Promise<ProviderSmokeResult>;
     runAll: (request: ProviderSmokeRunAllRequest) => Promise<ProviderSmokeResult[]>;
     report: () => Promise<ProviderSmokeResult[]>;
+    latestReport: () => Promise<ProviderCheckReportRecord | null>;
+  };
+  providerChapterCheck: {
+    run: (request: ProviderChapterCheckRequest) => Promise<ProviderChapterCheckResult>;
   };
   crossCheck: {
     run: (request: CrossCheckRequest) => Promise<CrossCheckResult>;

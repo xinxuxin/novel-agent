@@ -5,14 +5,14 @@ import Database from "better-sqlite3";
 import { app, safeStorage } from "electron";
 
 const PROVIDERS = [
-  ["openai", "OPENAI_API_KEY", "OpenAI local smoke key"],
-  ["anthropic", "ANTHROPIC_API_KEY", "Anthropic local smoke key"],
-  ["gemini", "GEMINI_API_KEY", "Gemini local smoke key"],
-  ["deepseek", "DEEPSEEK_API_KEY", "DeepSeek local smoke key"],
-  ["dashscope_qwen", "DASHSCOPE_API_KEY", "DashScope/Qwen local smoke key"],
-  ["moonshot_kimi", "MOONSHOT_API_KEY", "Moonshot/Kimi local smoke key"],
-  ["xai", "XAI_API_KEY", "xAI local smoke key"],
-  ["openrouter", "OPENROUTER_API_KEY", "OpenRouter local smoke key"]
+  ["openai", "OPENAI_API_KEY", "OpenAI local provider key"],
+  ["anthropic", "ANTHROPIC_API_KEY", "Anthropic local provider key"],
+  ["gemini", "GEMINI_API_KEY", "Gemini local provider key"],
+  ["deepseek", "DEEPSEEK_API_KEY", "DeepSeek local provider key"],
+  ["dashscope_qwen", "DASHSCOPE_API_KEY", "DashScope/Qwen local provider key"],
+  ["moonshot_kimi", "MOONSHOT_API_KEY", "Moonshot/Kimi local provider key"],
+  ["xai", "XAI_API_KEY", "xAI local provider key"],
+  ["openrouter", "OPENROUTER_API_KEY", "OpenRouter local provider key"]
 ];
 
 if (process.env.CI) {

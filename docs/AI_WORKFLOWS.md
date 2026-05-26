@@ -206,3 +206,14 @@ Execution shape:
 5. The renderer shows the cross-check summary as reviewable generated artifacts. Human approval is still required before any downstream manuscript or state changes.
 
 Every cross-check requires confirmation because it can call multiple providers in parallel. Preflight blocks missing credentials and budget overages before provider calls or `llm_runs` are created.
+
+## Phase 15c Provider Chapter Check
+
+Phase 15c adds an optional short provider-backed chapter connectivity check for local QA:
+
+- it requires `RUN_REAL_PROVIDER_CHECKS=true` for CLI use and explicit confirmation in the UI
+- it uses a small budget cap from `REAL_E2E_CHECK_BUDGET_USD`
+- it runs context preview, outline, scene cards, draft, suspense/rhythm audit, continuity audit, revision, non-canonical version save, and settlement proposal creation
+- it writes normal `llm_runs`, generated artifacts, review cards, and settlement proposal records
+- it stops before canonical manuscript update and before story bible mutation
+- reports include IDs, counts, provider/model metadata, token/cost fields, and redacted errors only

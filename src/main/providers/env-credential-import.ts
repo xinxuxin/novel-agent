@@ -24,25 +24,25 @@ const ENV_PROVIDER_MAP: Array<{
   envKey: string;
   displayName: string;
 }> = [
-  { provider: "openai", envKey: "OPENAI_API_KEY", displayName: "OpenAI local smoke key" },
-  { provider: "anthropic", envKey: "ANTHROPIC_API_KEY", displayName: "Anthropic local smoke key" },
-  { provider: "gemini", envKey: "GEMINI_API_KEY", displayName: "Gemini local smoke key" },
-  { provider: "deepseek", envKey: "DEEPSEEK_API_KEY", displayName: "DeepSeek local smoke key" },
+  { provider: "openai", envKey: "OPENAI_API_KEY", displayName: "OpenAI local provider key" },
+  { provider: "anthropic", envKey: "ANTHROPIC_API_KEY", displayName: "Anthropic local provider key" },
+  { provider: "gemini", envKey: "GEMINI_API_KEY", displayName: "Gemini local provider key" },
+  { provider: "deepseek", envKey: "DEEPSEEK_API_KEY", displayName: "DeepSeek local provider key" },
   {
     provider: "dashscope_qwen",
     envKey: "DASHSCOPE_API_KEY",
-    displayName: "DashScope/Qwen local smoke key"
+    displayName: "DashScope/Qwen local provider key"
   },
   {
     provider: "moonshot_kimi",
     envKey: "MOONSHOT_API_KEY",
-    displayName: "Moonshot/Kimi local smoke key"
+    displayName: "Moonshot/Kimi local provider key"
   },
-  { provider: "xai", envKey: "XAI_API_KEY", displayName: "xAI local smoke key" },
+  { provider: "xai", envKey: "XAI_API_KEY", displayName: "xAI local provider key" },
   {
     provider: "openrouter",
     envKey: "OPENROUTER_API_KEY",
-    displayName: "OpenRouter local smoke key"
+    displayName: "OpenRouter local provider key"
   }
 ];
 

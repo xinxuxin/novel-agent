@@ -1,7 +1,9 @@
 const SECRET_PATTERNS = [
   /Authorization:\s*Bearer\s+[^\s"'}]+/gi,
-  /\b(sk|ak|xai|or|kimi|qwen|gemini|deepseek)-[A-Za-z0-9._-]{8,}\b/g,
-  /\b(api[_-]?key|access[_-]?token|secret)\s*[:=]\s*["']?[^"'\s,}]+/gi
+  /\bBearer\s+[A-Za-z0-9._-]{12,}\b/gi,
+  /\b(sk|ak|xai|or|kimi|qwen|gemini|deepseek)-[A-Za-z0-9._-]{8,}\b/gi,
+  /\bAIza[A-Za-z0-9_-]{12,}\b/g,
+  /\b(api[_-]?key|access[_-]?token|secret|credential)\s*[:=]\s*["']?[^"'\s,}]+/gi
 ];
 
 export class RedactionService {

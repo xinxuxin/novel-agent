@@ -13,6 +13,11 @@ import {
   providerSmokeRunAllRequestSchema,
   providerSmokeRunRequestSchema
 } from "@contracts/provider-smoke";
+import {
+  providerChapterCheckRequestSchema,
+  providerChapterCheckResultSchema,
+  providerCheckReportRecordSchema
+} from "@contracts/provider-check";
 import { crossCheckRequestSchema, crossCheckResultSchema } from "@contracts/cross-check";
 import {
   costDashboardSummarySchema,
@@ -1319,6 +1324,18 @@ export const IPC_CONTRACTS = {
       "provider-smoke:report",
       emptyRequestSchema,
       z.array(providerSmokeResultSchema)
+    ),
+    latestReport: createContract(
+      "provider-check:latest-report",
+      emptyRequestSchema,
+      providerCheckReportRecordSchema.nullable()
+    )
+  },
+  providerChapterCheck: {
+    run: createContract(
+      "provider-chapter-check:run",
+      providerChapterCheckRequestSchema,
+      providerChapterCheckResultSchema
     )
   },
   crossCheck: {
@@ -1738,6 +1755,8 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.providerSmoke.run,
   IPC_CONTRACTS.providerSmoke.runAll,
   IPC_CONTRACTS.providerSmoke.report,
+  IPC_CONTRACTS.providerSmoke.latestReport,
+  IPC_CONTRACTS.providerChapterCheck.run,
   IPC_CONTRACTS.crossCheck.run,
   IPC_CONTRACTS.reviews.listByGenerationRun,
   IPC_CONTRACTS.reviews.updateStatus,

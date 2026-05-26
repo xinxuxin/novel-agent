@@ -6,6 +6,9 @@ coverage/
 playwright-report/
 test-results/
 reports/
+diagnostics-local/
+provider-check-output/
+local-provider-checks/
 *.tsbuildinfo
 .DS_Store
 .env.local

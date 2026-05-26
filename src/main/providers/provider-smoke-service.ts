@@ -20,6 +20,7 @@ export interface ProviderSmokeRunRequest {
 
 export interface ProviderSmokeResult {
   provider: ProviderId;
+  model: string | null;
   configured: boolean;
   tested: boolean;
   status: ProviderSmokeStatus;
@@ -32,6 +33,7 @@ export interface ProviderSmokeResult {
   testedAt: string | null;
   latencyMs: number | null;
   estimatedCost: number | null;
+  finalCost: number | null;
   runIds: string[];
 }
 
@@ -72,6 +74,7 @@ export class ProviderSmokeService {
       request.provider
     )[0];
     const baseResult = this.createBaseResult(request.provider, {
+      model: modelProfile?.model ?? null,
       configured: Boolean(credential && modelProfile),
       streamingSupported: Boolean(adapter?.capabilities.streaming),
       nonStreamingSupported: Boolean(adapter)
@@ -150,6 +153,7 @@ export class ProviderSmokeService {
         testedAt: new Date().toISOString(),
         latencyMs: Date.now() - startedAt,
         estimatedCost: finalCost,
+        finalCost,
         runIds
       };
     } catch (error) {
@@ -250,6 +254,7 @@ export class ProviderSmokeService {
   private createBaseResult(
     provider: ProviderId,
     input: {
+      model?: string | null;
       configured: boolean;
       streamingSupported: boolean;
       nonStreamingSupported: boolean;
@@ -257,6 +262,7 @@ export class ProviderSmokeService {
   ): ProviderSmokeResult {
     return {
       provider,
+      model: input.model ?? null,
       configured: input.configured,
       tested: false,
       status: "skipped",
@@ -269,6 +275,7 @@ export class ProviderSmokeService {
       testedAt: null,
       latencyMs: null,
       estimatedCost: null,
+      finalCost: null,
       runIds: []
     };
   }
@@ -291,11 +298,14 @@ export function shouldRunRealProviderSmoke(env: Record<string, string | undefine
   if (env.CI) {
     return false;
   }
-  return env.RUN_REAL_PROVIDER_TESTS?.toLowerCase() === "true";
+  return (
+    env.RUN_REAL_PROVIDER_TESTS?.toLowerCase() === "true" ||
+    env.RUN_REAL_PROVIDER_CHECKS?.toLowerCase() === "true"
+  );
 }
 
 export function parseProviderSmokeBudget(env: Record<string, string | undefined>): number {
-  const parsed = Number(env.REAL_PROVIDER_TEST_BUDGET_USD ?? "2");
+  const parsed = Number(env.REAL_PROVIDER_TEST_BUDGET_USD ?? env.REAL_PROVIDER_CHECK_BUDGET_USD);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 2;
 }
 

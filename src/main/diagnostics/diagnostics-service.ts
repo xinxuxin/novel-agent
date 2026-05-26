@@ -11,6 +11,8 @@ export interface DiagnosticsBundleInput {
   recentErrors?: string[];
   logs?: string[];
   settings?: unknown;
+  providerCheckSummary?: unknown;
+  costAccountingSummary?: unknown;
   includeManuscripts?: boolean;
   createdAt?: string;
 }
@@ -25,6 +27,8 @@ export interface DiagnosticsBundle {
   recentErrors: string[];
   logs: string[];
   settings: unknown;
+  providerCheckSummary: unknown;
+  costAccountingSummary: unknown;
   manuscriptsIncluded: boolean;
   createdAt: string;
 }
@@ -44,6 +48,8 @@ export function exportDiagnosticsBundle(input: DiagnosticsBundleInput): Diagnost
     recentErrors: (input.recentErrors ?? []).map((error) => redaction.redact(error)),
     logs: (input.logs ?? []).map((line) => redaction.redact(line)),
     settings: redactJson(input.settings ?? {}, redaction),
+    providerCheckSummary: redactJson(input.providerCheckSummary ?? [], redaction),
+    costAccountingSummary: redactJson(input.costAccountingSummary ?? {}, redaction),
     manuscriptsIncluded: Boolean(input.includeManuscripts),
     createdAt: input.createdAt ?? new Date().toISOString()
   };

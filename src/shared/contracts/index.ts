@@ -12,6 +12,11 @@ export type {
   ProviderSmokeRunAllRequest,
   ProviderSmokeRunRequest
 } from "./provider-smoke";
+export type {
+  ProviderChapterCheckRequest,
+  ProviderChapterCheckResult,
+  ProviderCheckReportRecord
+} from "./provider-check";
 export { CROSS_CHECK_TYPES } from "./cross-check";
 export type {
   CrossCheckArtifactSummary,

@@ -160,17 +160,17 @@ Evaluation runs are counted like other local model runs. Phase 11 mock eval outp
 
 Provider tokenizers differ. WenForge should treat local token counts as estimates unless provider usage is returned. Chinese text estimation should be calibrated against provider-reported usage over time per provider/model.
 
-## Phase 15a Smoke Budgets
+## Phase 15a/15c Provider Check Budgets
 
-Real provider smoke tests are intentionally capped:
+Real provider connectivity checks are intentionally capped:
 
-- CLI smoke uses `REAL_PROVIDER_TEST_BUDGET_USD`, default `$2`.
-- Settings -> Providers smoke tests use a tiny per-call budget.
-- Each smoke request uses `maxOutputTokens <= 80`.
+- CLI checks use `REAL_PROVIDER_CHECK_BUDGET_USD`, default `$2`.
+- Settings -> Providers connection checks use a tiny per-call budget.
+- Each provider check request uses `maxOutputTokens <= 80`.
 - If provider usage is unavailable, final cost remains estimated.
-- Every smoke call creates an `llm_runs` row, so spend is visible in cost summaries.
+- Every check call creates an `llm_runs` row, so spend is visible in cost summaries.
 
-Provider reports are redacted and do not include prompts, responses, manuscripts, or secrets.
+The optional provider chapter check uses `REAL_E2E_CHECK_BUDGET_USD`, default `$3`, and blocks before provider calls when the route estimate exceeds the cap. Reports are redacted and do not include prompts, responses, manuscripts, or secrets.
 
 ## Phase 15b Multi-Model Cost Controls
 

@@ -145,6 +145,7 @@ export function SettingsPanel(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [providerCheckBudget, setProviderCheckBudget] = useState("0.05");
   const [credentialDraft, setCredentialDraft] = useState({
     provider: "openai" as ProviderId,
     displayName: PROVIDER_LABELS.openai,
@@ -253,7 +254,7 @@ export function SettingsPanel(): JSX.Element {
   };
 
   const confirmSmokeCost = (): boolean =>
-    window.confirm("This will make a real API call and may cost money.");
+    window.confirm("This will make a real API call and may cost a small amount. Continue?");
 
   const runProviderSmoke = async (provider: ProviderId): Promise<void> => {
     if (!confirmSmokeCost()) {
@@ -264,14 +265,14 @@ export function SettingsPanel(): JSX.Element {
       const result = await window.wenforge.providerSmoke.run({
         provider,
         confirmed: true,
-        budgetCapUsd: 0.05
+        budgetCapUsd: Number(providerCheckBudget || "0.05")
       });
       await refresh();
       setData((current) => ({
         ...current,
         providerSmoke: upsertSmokeResult(current.providerSmoke, result)
       }));
-      setNotice("Provider smoke test finished.");
+      setNotice("Provider connection check finished.");
     } catch (nextError) {
       setError(readError(nextError));
     }
@@ -285,14 +286,14 @@ export function SettingsPanel(): JSX.Element {
       setError(null);
       const results = await window.wenforge.providerSmoke.runAll({
         confirmed: true,
-        budgetCapUsd: 0.05
+        budgetCapUsd: Number(providerCheckBudget || "0.05")
       });
       await refresh();
       setData((current) => ({
         ...current,
         providerSmoke: mergeSmokeResults(current.providerSmoke, results)
       }));
-      setNotice("Configured provider smoke tests finished.");
+      setNotice("Configured provider connection checks finished.");
     } catch (nextError) {
       setError(readError(nextError));
     }
@@ -468,6 +469,7 @@ export function SettingsPanel(): JSX.Element {
             credentials={data.credentials}
             providerHealth={data.providerHealth}
             smokeByProvider={smokeByProvider}
+            providerCheckBudget={providerCheckBudget}
             onCredentialDraftChange={setCredentialDraft}
             onDeleteCredential={(credential) =>
               runAction(async () => {
@@ -490,6 +492,7 @@ export function SettingsPanel(): JSX.Element {
             onRunProviderSmoke={(provider) => {
               void runProviderSmoke(provider);
             }}
+            onProviderCheckBudgetChange={setProviderCheckBudget}
           />
         ) : null}
         {!loading && activeTab === "models" ? (
@@ -561,12 +564,14 @@ function ProvidersTab({
   credentials,
   providerHealth,
   smokeByProvider,
+  providerCheckBudget,
   onCredentialDraftChange,
   onDeleteCredential,
   onSaveCredential,
   onTestCredential,
   onRunAllProviderSmoke,
-  onRunProviderSmoke
+  onRunProviderSmoke,
+  onProviderCheckBudgetChange
 }: {
   credentialDraft: {
     provider: ProviderId;
@@ -577,12 +582,14 @@ function ProvidersTab({
   credentials: ProviderCredentialDto[];
   providerHealth: ProviderHealthRecord[];
   smokeByProvider: Map<ProviderId, ProviderSmokeResult>;
+  providerCheckBudget: string;
   onCredentialDraftChange: (draft: typeof credentialDraft) => void;
   onDeleteCredential: (credential: ProviderCredentialDto) => void;
   onSaveCredential: () => Promise<void>;
   onTestCredential: (credential: ProviderCredentialDto) => void;
   onRunAllProviderSmoke: () => void;
   onRunProviderSmoke: (provider: ProviderId) => void;
+  onProviderCheckBudgetChange: (value: string) => void;
 }): JSX.Element {
   return (
     <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
@@ -651,13 +658,22 @@ function ProvidersTab({
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
         <div className="flex items-center justify-between gap-3">
           <SectionTitle title="Configured Providers" />
-          <button
-            className={secondaryButtonClassName}
-            onClick={onRunAllProviderSmoke}
-            type="button"
-          >
-            Run all configured providers
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              aria-label="Provider check budget cap"
+              className={`${fieldClassName} w-28`}
+              inputMode="decimal"
+              value={providerCheckBudget}
+              onChange={(event) => onProviderCheckBudgetChange(event.target.value)}
+            />
+            <button
+              className={secondaryButtonClassName}
+              onClick={onRunAllProviderSmoke}
+              type="button"
+            >
+              Check all configured providers
+            </button>
+          </div>
         </div>
         <div className="mt-4 overflow-hidden rounded-lg border border-white/10">
           {credentials.length === 0 ? <EmptyState text="No provider credentials saved." /> : null}
@@ -685,7 +701,8 @@ function ProvidersTab({
                     <span>Streaming: {smoke ? yesNo(smoke.streamingSupported) : "Unknown"}</span>
                     <span>Usage: {smoke ? yesNo(smoke.usageParsed) : "Unknown"}</span>
                     <span>Latency: {formatLatency(smoke?.latencyMs ?? null)}</span>
-                    <span>Cost: {formatUsd(smoke?.estimatedCost ?? null)}</span>
+                    <span>Estimated cost: {formatUsd(smoke?.estimatedCost ?? null)}</span>
+                    <span>Final cost: {formatUsd(smoke?.finalCost ?? null)}</span>
                   </div>
                   {(smoke?.error ?? health?.errorMessage) ? (
                     <p className="mt-2 rounded-md border border-red-400/20 bg-red-400/5 px-2 py-1 text-xs text-red-200">
@@ -706,7 +723,7 @@ function ProvidersTab({
                     onClick={() => onRunProviderSmoke(credential.provider)}
                     type="button"
                   >
-                    Run provider smoke test
+                    Check provider connection
                   </button>
                   <button
                     className="rounded-lg border border-red-400/25 px-3 py-2 text-xs text-red-200 transition hover:bg-red-400/10"
@@ -1298,6 +1315,11 @@ function AdvancedTab({
   const [ping, setPing] = useState<string>("Not checked");
   const [bundle, setBundle] = useState<DiagnosticBundle | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [latestReport, setLatestReport] = useState<string | null>(null);
+  const [chapterCheckStatus, setChapterCheckStatus] = useState("Idle");
+  const [chapterCheckBudget, setChapterCheckBudget] = useState("0.25");
+  const [chapterCheckConfirmation, setChapterCheckConfirmation] = useState("");
+  const [chapterCheckReport, setChapterCheckReport] = useState<string | null>(null);
   const loadBundle = async (): Promise<DiagnosticBundle> => {
     const nextBundle = await window.wenforge.diagnostics.exportBundle();
     setBundle(nextBundle);
@@ -1307,6 +1329,27 @@ function AdvancedTab({
     const nextBundle = bundle ?? (await loadBundle());
     await navigator.clipboard?.writeText(JSON.stringify(nextBundle, null, 2));
     setCopyStatus("Copied redacted diagnostic bundle.");
+  };
+  const loadLatestProviderReport = async (): Promise<void> => {
+    const report = await window.wenforge.providerSmoke.latestReport();
+    setLatestReport(report ? `${report.path}\n\n${report.content}` : "No provider check report found.");
+  };
+  const runProviderChapterCheck = async (): Promise<void> => {
+    if (chapterCheckConfirmation !== "RUN REAL SMOKE") {
+      setChapterCheckStatus("Type RUN REAL SMOKE to confirm.");
+      return;
+    }
+    if (!window.confirm("This will make real API calls and may cost a small amount. Continue?")) {
+      return;
+    }
+    setChapterCheckStatus("Running provider chapter check...");
+    const result = await window.wenforge.providerChapterCheck.run({
+      confirmed: true,
+      budgetCapUsd: Number(chapterCheckBudget || "0.25"),
+      qualityMode: "balanced"
+    });
+    setChapterCheckStatus(`${result.status} · ${formatUsd(result.finalCost)}`);
+    setChapterCheckReport(result.reportMarkdown);
   };
 
   return (
@@ -1370,10 +1413,64 @@ function AdvancedTab({
               onClick={() => void copyBundle()}
               type="button"
             >
-              Copy redacted diagnostic info
+            Copy redacted diagnostic info
+            </button>
+            <button
+              className={secondaryButtonClassName}
+              onClick={() => void loadLatestProviderReport()}
+              type="button"
+            >
+              Open latest provider check report
             </button>
           </div>
           {copyStatus ? <p className="text-xs text-forge-mint">{copyStatus}</p> : null}
+          {latestReport ? (
+            <pre className="max-h-48 overflow-auto rounded-lg border border-white/10 bg-black/30 p-3 text-xs text-slate-400">
+              {latestReport}
+            </pre>
+          ) : null}
+        </div>
+      </section>
+      <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
+        <SectionTitle title="Provider Chapter Check" />
+        <div className="mt-4 space-y-3">
+          <p className="text-sm text-slate-400">
+            Runs the short chapter workflow with configured provider routes, saves generated output
+            as non-canonical, and leaves story bible updates as proposals.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FieldLabel label="Max budget USD">
+              <input
+                className={fieldClassName}
+                inputMode="decimal"
+                value={chapterCheckBudget}
+                onChange={(event) => setChapterCheckBudget(event.target.value)}
+              />
+            </FieldLabel>
+            <FieldLabel label="Typed confirmation">
+              <input
+                className={fieldClassName}
+                placeholder="RUN REAL SMOKE"
+                value={chapterCheckConfirmation}
+                onChange={(event) => setChapterCheckConfirmation(event.target.value)}
+              />
+            </FieldLabel>
+          </div>
+          <button
+            className={primaryButtonClassName}
+            onClick={() => void runProviderChapterCheck().catch((nextError: unknown) => {
+              setChapterCheckStatus(readError(nextError));
+            })}
+            type="button"
+          >
+            Run provider chapter connectivity check
+          </button>
+          <StatusTile label="Status" value={chapterCheckStatus} />
+          {chapterCheckReport ? (
+            <pre className="max-h-56 overflow-auto rounded-lg border border-white/10 bg-black/30 p-3 text-xs text-slate-400">
+              {chapterCheckReport}
+            </pre>
+          ) : null}
         </div>
       </section>
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">

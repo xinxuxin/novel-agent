@@ -5,7 +5,7 @@ import {
 } from "../src/main/providers/provider-smoke-service";
 
 if (!shouldRunRealProviderSmoke(process.env)) {
-  console.log("Real provider smoke tests skipped. Set RUN_REAL_PROVIDER_TESTS=true outside CI.");
+  console.log("Provider connectivity checks skipped. Set RUN_REAL_PROVIDER_CHECKS=true outside CI.");
   process.exit(0);
 }
 

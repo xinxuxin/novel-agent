@@ -145,6 +145,7 @@ describe("phase 15a real provider bring-up safety", () => {
     const report = renderProviderConformanceReport([
       {
         provider: "openai",
+        model: "smoke-model",
         configured: true,
         tested: true,
         status: "failed",
@@ -157,6 +158,7 @@ describe("phase 15a real provider bring-up safety", () => {
         testedAt: "2026-05-25T00:00:00.000Z",
         latencyMs: null,
         estimatedCost: null,
+        finalCost: null,
         runIds: []
       }
     ]);

@@ -33,6 +33,8 @@ describe("preload API", () => {
             recentErrors: [],
             logs: [],
             settings: {},
+            providerCheckSummary: [],
+            costAccountingSummary: {},
             manuscriptsIncluded: false,
             createdAt: "2026-05-25T00:00:00.000Z"
           }
@@ -71,6 +73,7 @@ describe("preload API", () => {
       "pricing",
       "privacy",
       "projects",
+      "providerChapterCheck",
       "providerHealth",
       "providerSmoke",
       "reviews",
@@ -86,7 +89,13 @@ describe("preload API", () => {
     expect(Object.keys(api.window).sort()).toEqual(["close", "minimize", "toggleStudioMode"]);
     expect(Object.keys(api.settings).sort()).toEqual(["getTheme", "setTheme"]);
     expect(Object.keys(api.diagnostics).sort()).toEqual(["exportBundle", "ping"]);
-    expect(Object.keys(api.providerSmoke).sort()).toEqual(["report", "run", "runAll"]);
+    expect(Object.keys(api.providerSmoke).sort()).toEqual([
+      "latestReport",
+      "report",
+      "run",
+      "runAll"
+    ]);
+    expect(Object.keys(api.providerChapterCheck).sort()).toEqual(["run"]);
     expect(Object.keys(api.crossCheck).sort()).toEqual(["run"]);
     expect(await api.app.getVersion()).toBe("0.1.0");
     expect(await api.app.getPlatform()).toBe("darwin");

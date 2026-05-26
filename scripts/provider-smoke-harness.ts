@@ -80,6 +80,9 @@ export function createProviderSmokeHarness(env: Record<string, string>) {
   return {
     connection,
     repositories,
+    credentialService,
+    aiGateway,
+    adapters,
     service: new ProviderSmokeService({
       repositories,
       aiGateway,

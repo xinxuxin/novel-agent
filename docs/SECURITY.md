@@ -162,6 +162,20 @@ Real-provider validation is opt-in:
 
 Automated tests continue to use fake providers only.
 
+## Phase 15c Provider Connectivity Diagnostics
+
+Phase 15c reframes real-provider validation as ordinary desktop-app configuration QA:
+
+- `RUN_REAL_PROVIDER_CHECKS=true` is required for CLI provider checks and E2E chapter checks; CI always skips them.
+- `pnpm providers:check` uses tiny prompts, `temperature = 0`, `maxOutputTokens <= 80`, and `REAL_PROVIDER_CHECK_BUDGET_USD` with a default `$2` cap.
+- Settings -> Providers requires user confirmation before any real provider connection check.
+- Every provider check goes through the main-process AI gateway and creates normal `llm_runs`.
+- Reports under `reports/provider-checks/` and `reports/e2e-provider-checks/` are redacted before writing.
+- Diagnostics now include provider check summaries and cost summaries, but omit raw keys, decrypted credentials, encrypted credential blobs, full prompts, full responses, and manuscripts by default.
+- The short provider chapter check saves generated output as non-canonical and only creates settlement proposals; it does not mutate canonical manuscripts or story bible records.
+
+This phase does not add penetration testing, vulnerability scanning, network exploration, credential collection, or checks against systems not configured by the user.
+
 ## Phase 15b Multi-Model Safety
 
 Premium Webnovel cross-checks do not change the provider security boundary:

@@ -74,19 +74,21 @@ Phase 4 unit tests cover:
 - Prompt/response text excluded from run records.
 - Prompt/response hashes stored.
 
-## Phase 15a Smoke Validation
+## Phase 15a/15c Provider Connectivity Validation
 
-Phase 15a adds a provider smoke layer around the existing gateway. Smoke calls still use `AiGateway`, so each model call creates an `llm_runs` row before the adapter runs and stores prompt/response hashes by default.
+Phase 15a adds a provider bring-up layer around the existing gateway. Phase 15c exposes it as privacy-safe provider connectivity checks. Checks still use `AiGateway`, so each model call creates an `llm_runs` row before the adapter runs and stores prompt/response hashes by default.
 
-The smoke layer adds stricter bring-up limits:
+The check layer adds stricter bring-up limits:
 
 - explicit user confirmation in Settings -> Providers
 - no real calls in CI
-- opt-in `RUN_REAL_PROVIDER_TESTS=true` for CLI smoke runs
-- global CLI budget from `REAL_PROVIDER_TEST_BUDGET_USD`
+- opt-in `RUN_REAL_PROVIDER_CHECKS=true` for CLI provider checks
+- global CLI budget from `REAL_PROVIDER_CHECK_BUDGET_USD`
 - tiny JSON prompt
 - `temperature = 0`
 - `maxOutputTokens <= 80`
 - redacted provider conformance reports
+
+The optional E2E provider chapter check also uses the normal gateway for every model node. It stops before canonical manuscript updates and story bible mutations, and reports only IDs/counts, costs, provider/model metadata, and redacted errors.
 
 Anthropic and Gemini remain safe `provider_not_implemented` adapters until reliable provider-specific support is added.

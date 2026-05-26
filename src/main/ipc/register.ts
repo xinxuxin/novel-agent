@@ -15,6 +15,7 @@ import { CostDashboardService, PricingRegistryService } from "@main/costs/cost-d
 import type { WenForgeDatabase } from "@main/db/connection";
 import type { RepositoryRegistry } from "@main/db/service";
 import { EvaluationService } from "@main/eval/evaluation-service";
+import { ProviderChapterCheckService } from "@main/e2e/provider-chapter-check-service";
 import { BackupService } from "@main/files/backup-service";
 import { ImportExportService } from "@main/files/import-export-service";
 import { ContextBuilder } from "@main/context/context-builder";
@@ -28,6 +29,7 @@ import {
   importPremiumWebnovelPreset
 } from "@main/providers/premium-webnovel-preset";
 import { ProviderSmokeService } from "@main/providers/provider-smoke-service";
+import { readLatestProviderCheckReport } from "@main/providers/provider-check-service";
 import { ReviewSettlementService } from "@main/review/review-settlement-service";
 import { ChapterWorkflowRuntime } from "@main/workflows/chapter-workflow-runtime";
 import { CrossCheckService } from "@main/workflows/cross-check-service";
@@ -114,6 +116,14 @@ export function registerIpc({
             backup: repositories.settings.get("backup_settings")
           }
         : {},
+      providerCheckSummary:
+        repositories?.providerCredentials.list().map((credential) => ({
+          provider: credential.provider,
+          configured: credential.isConfigured,
+          lastStatus: credential.lastStatus,
+          lastTestedAt: credential.lastTestedAt
+        })) ?? [],
+      costAccountingSummary: repositories?.cost.summarizeRuns({}) ?? {},
       includeManuscripts: request?.includeManuscripts === true
     })
   );
@@ -179,6 +189,17 @@ function registerDataIpc(
           repositories,
           aiGateway,
           adapters: providerAdapters
+        })
+      : null;
+  const providerChapterCheckService =
+    aiGateway && database
+      ? new ProviderChapterCheckService({
+          database,
+          repositories,
+          aiGateway,
+          credentialService,
+          privacy: getPrivacySettings(repositories),
+          appVersion: app.getVersion()
         })
       : null;
   const crossCheckService =
@@ -817,6 +838,25 @@ function registerDataIpc(
     IPC_CONTRACTS.providerSmoke.report,
     () => providerSmokeService?.buildUntestedReport() ?? []
   );
+  registerIpcContract(IPC_CONTRACTS.providerSmoke.latestReport, () =>
+    readLatestProviderCheckReport()
+  );
+  registerIpcContract(IPC_CONTRACTS.providerChapterCheck.run, (request) => {
+    if (!providerChapterCheckService) {
+      throw new SafeIpcError(
+        "PROVIDER_CHAPTER_CHECK_UNAVAILABLE",
+        "Provider chapter check service is unavailable"
+      );
+    }
+    requireConfirmation(request.confirmed);
+    return providerChapterCheckService.run(
+      withoutUndefined({
+        budgetCapUsd: request.budgetCapUsd,
+        qualityMode: request.qualityMode,
+        confirmed: true
+      }) as Parameters<typeof providerChapterCheckService.run>[0]
+    );
+  });
   registerIpcContract(IPC_CONTRACTS.crossCheck.run, (request) => {
     if (!crossCheckService) {
       throw new SafeIpcError("CROSS_CHECK_UNAVAILABLE", "Cross-check service is unavailable");

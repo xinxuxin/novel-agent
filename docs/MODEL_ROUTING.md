@@ -138,11 +138,11 @@ Promotion updates `task_model_routes.primary_model_profile_id`; it does not copy
 
 The Costs workspace also reports route price warnings for routes whose primary model is missing an active price row or uses a stale price.
 
-## Phase 15a Provider Conformance
+## Phase 15a/15c Provider Connectivity
 
-Provider smoke tests are not routing benchmarks. They validate whether a configured credential/model pair can complete a tiny request through the adapter and gateway.
+Provider connectivity checks are not routing benchmarks. They validate whether a configured credential/model pair can complete a tiny request through the adapter and gateway.
 
-The conformance report records:
+The provider check report records:
 
 - configured true/false
 - tested true/false
@@ -152,7 +152,9 @@ The conformance report records:
 - fallback eligibility
 - redacted errors
 
-Successful smoke tests update provider health and credential tested status. Route selection still depends on editable model profiles, prices, task routes, and budget policy.
+Successful checks update provider health and credential tested status. Route selection still depends on editable model profiles, prices, task routes, and budget policy.
+
+The optional provider chapter check uses the same routes as a normal short workflow and should be treated as QA only. It creates `llm_runs`, generated artifacts, review cards, and settlement proposals, but does not make a generated manuscript canonical and does not apply story bible changes.
 
 ## Phase 15b Premium Webnovel Preset
 

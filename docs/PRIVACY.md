@@ -60,10 +60,10 @@ Backups and project packages may contain manuscripts and story bible facts. They
 
 The structured main-process logger rotates local logs and redacts secrets before writing. Debug logging is opt-in and still goes through redaction. Manuscript logging remains off by default and should be enabled only for short local troubleshooting sessions.
 
-## Real Provider Smoke Tests
+## Real Provider Connectivity Checks
 
-Real provider smoke tests are local developer checks. They use `.env.local` only when explicitly opted in with `RUN_REAL_PROVIDER_TESTS=true`; `.env.local` is gitignored and should never be shared.
+Real provider connectivity checks are local developer/user checks. They use Settings -> Providers for normal app use, or `.env.local` only when explicitly opted in with `RUN_REAL_PROVIDER_CHECKS=true`; `.env.local` is gitignored and should never be shared.
 
-Smoke prompts are intentionally tiny and ask for a small JSON pong response. They still create `llm_runs`, but default privacy settings store hashes, token/cost fields, status, and safe errors rather than full prompt or response text.
+Check prompts are intentionally tiny and ask for a small JSON pong response. They still create `llm_runs`, but default privacy settings store hashes, token/cost fields, status, and safe errors rather than full prompt or response text.
 
-Provider conformance reports are redacted Markdown files under ignored `reports/`. They should not contain API keys or full prompts/responses.
+Provider check and E2E chapter check reports are redacted Markdown files under ignored `reports/`. They should not contain API keys, Authorization headers, decrypted credentials, encrypted secret blobs, full prompts, full responses, or full manuscripts.

@@ -6,6 +6,7 @@ export const providerSmokeStatusSchema = z.enum(["skipped", "passed", "failed", 
 
 export const providerSmokeResultSchema = z.object({
   provider: z.enum(PROVIDERS),
+  model: z.string().nullable(),
   configured: z.boolean(),
   tested: z.boolean(),
   status: providerSmokeStatusSchema,
@@ -18,6 +19,7 @@ export const providerSmokeResultSchema = z.object({
   testedAt: z.string().nullable(),
   latencyMs: z.number().nullable(),
   estimatedCost: z.number().nullable(),
+  finalCost: z.number().nullable(),
   runIds: z.array(z.string())
 });
 export type ProviderSmokeResult = z.infer<typeof providerSmokeResultSchema>;
