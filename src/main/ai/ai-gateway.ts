@@ -8,7 +8,7 @@ import type {
   TokenUsage
 } from "@contracts/ai";
 import { toModelProviderId } from "@contracts/ai";
-import type { ModelPriceRecord } from "@contracts/model-routing";
+import type { ModelPriceRecord, ModelProfileRecord } from "@contracts/model-routing";
 import type { ModelPriceTierRecord } from "@contracts/model-routing";
 import { DEFAULT_ROUTING_SETTINGS } from "@contracts/settings";
 import type { RoutingSettings } from "@contracts/settings";
@@ -20,6 +20,8 @@ import { SafeIpcError } from "@main/ipc/safe-ipc-error";
 import { RedactionService } from "@main/security/redaction-service";
 import { CostCalculator } from "./cost-calculator";
 import { hashMessages, sha256Hex } from "./hash";
+import { applyParameterRetryPatch, ModelParameterPolicy } from "./model-parameter-policy";
+import type { NormalizedProviderParams } from "./model-parameter-policy";
 import type { ProviderAdapter, ProviderAdapterConfig } from "./provider-adapter";
 import { ProviderAdapterError } from "./provider-adapter";
 import { TokenEstimator } from "./token-estimator";
@@ -40,6 +42,7 @@ interface ResolvedRequest {
   config: ProviderAdapterConfig;
   temperature: number | undefined;
   maxOutputTokens: number | undefined;
+  normalizedParams: NormalizedProviderParams;
   warnings: string[];
 }
 
@@ -53,6 +56,7 @@ export class AiGateway {
   private readonly tokenEstimator: TokenEstimator;
   private readonly costCalculator: CostCalculator;
   private readonly calibrationService: UsageCalibrationService;
+  private readonly parameterPolicy = new ModelParameterPolicy();
   private readonly redaction = new RedactionService();
   private readonly activeRuns = new Map<string, ActiveRun>();
 
@@ -74,7 +78,11 @@ export class AiGateway {
     }
     adapter.validateConfig(resolved.config);
 
-    const inputTokensEstimated = this.tokenEstimator.estimateMessages(request.messages);
+    const effectiveMessages = this.applyParameterPromptInstructions(
+      request.messages,
+      resolved.normalizedParams
+    );
+    const inputTokensEstimated = this.tokenEstimator.estimateMessages(effectiveMessages);
     const initialCost = this.calculateCost(
       {
         inputTokens: inputTokensEstimated,
@@ -95,7 +103,7 @@ export class AiGateway {
       inputTokensEstimated,
       estimatedCostLive: initialCost.totalCost,
       currency: initialCost.currency,
-      promptHash: hashMessages(request.messages)
+      promptHash: hashMessages(effectiveMessages)
     });
 
     const abortController = new AbortController();
@@ -104,6 +112,7 @@ export class AiGateway {
       ...request,
       provider: resolved.provider,
       model: resolved.model,
+      messages: effectiveMessages,
       temperature: request.temperature ?? resolved.temperature,
       maxOutputTokens: request.maxOutputTokens ?? resolved.maxOutputTokens
     };
@@ -168,7 +177,11 @@ export class AiGateway {
     }
     adapter.validateConfig(resolved.config);
 
-    const inputTokensEstimated = this.tokenEstimator.estimateMessages(request.messages);
+    const effectiveMessages = this.applyParameterPromptInstructions(
+      request.messages,
+      resolved.normalizedParams
+    );
+    const inputTokensEstimated = this.tokenEstimator.estimateMessages(effectiveMessages);
     const initialCost = this.calculateCost(
       {
         inputTokens: inputTokensEstimated,
@@ -189,7 +202,7 @@ export class AiGateway {
       inputTokensEstimated,
       estimatedCostLive: initialCost.totalCost,
       currency: initialCost.currency,
-      promptHash: hashMessages(request.messages)
+      promptHash: hashMessages(effectiveMessages)
     });
 
     const startedAt = Date.now();
@@ -199,6 +212,7 @@ export class AiGateway {
           ...request,
           provider: resolved.provider,
           model: resolved.model,
+          messages: effectiveMessages,
           temperature: request.temperature ?? resolved.temperature,
           maxOutputTokens: request.maxOutputTokens ?? resolved.maxOutputTokens
         },
@@ -243,6 +257,7 @@ export class AiGateway {
       };
     } catch (error) {
       const providerError = this.normalizeError(adapter, error);
+      const parameterError = this.parameterPolicy.classifyParameterError(providerError.message);
       const finalCost = this.calculateCost(
         { inputTokens: inputTokensEstimated, outputTokens: 0 },
         resolved.price,
@@ -256,10 +271,128 @@ export class AiGateway {
         estimatedCostLive: finalCost.totalCost,
         finalCost: finalCost.totalCost,
         latencyMs: Date.now() - startedAt,
+        errorCode: parameterError.retryable ? "provider_parameter_error" : providerError.code,
+        errorMessage: providerError.message
+      });
+      if (parameterError.retryable && resolved.config.normalizedParams) {
+        return this.retryGenerateTextAfterParameterError({
+          adapter,
+          request,
+          resolved,
+          effectiveMessages,
+          inputTokensEstimated,
+          initialCost,
+          removeParams: parameterError.removeParams
+        });
+      }
+      throw new ProviderAdapterError(providerError, { cause: error });
+    }
+  }
+
+  private async retryGenerateTextAfterParameterError(input: {
+    adapter: ProviderAdapter;
+    request: StreamRequest;
+    resolved: ResolvedRequest;
+    effectiveMessages: StreamRequest["messages"];
+    inputTokensEstimated: number;
+    initialCost: CostBreakdown;
+    removeParams: string[];
+  }): Promise<{
+    runId: string;
+    provider: AIProviderId;
+    model: string;
+    response: NormalizedProviderResponse;
+    usageSource: "estimated" | "provider" | "mixed";
+    finalCost: CostBreakdown;
+    latencyMs: number;
+  }> {
+    const patchedParams = applyParameterRetryPatch(
+      input.resolved.config.normalizedParams as NormalizedProviderParams,
+      input.removeParams
+    );
+    const patchedConfig = {
+      ...input.resolved.config,
+      normalizedParams: patchedParams
+    };
+    const retryRun = this.options.repositories.cost.createLlmRun({
+      generationRunId: input.request.generationRunId ?? null,
+      provider: input.resolved.provider,
+      model: input.resolved.model,
+      taskType: input.request.taskType,
+      projectId: input.request.projectId ?? null,
+      bookId: input.request.bookId ?? null,
+      chapterId: input.request.chapterId ?? null,
+      inputTokensEstimated: input.inputTokensEstimated,
+      estimatedCostLive: input.initialCost.totalCost,
+      currency: input.initialCost.currency,
+      promptHash: hashMessages(input.effectiveMessages)
+    });
+    const startedAt = Date.now();
+    try {
+      const response = await input.adapter.generateText(
+        {
+          ...input.request,
+          provider: input.resolved.provider,
+          model: input.resolved.model,
+          messages: input.effectiveMessages,
+          maxOutputTokens: patchedParams.effectiveMaxOutputTokens
+        },
+        new AbortController().signal,
+        patchedConfig
+      );
+      const outputTokensEstimated = this.tokenEstimator.estimateText(response.text);
+      const usage = response.usage ?? {
+        inputTokens: input.inputTokensEstimated,
+        outputTokens: outputTokensEstimated
+      };
+      const usageSource = response.usage ? "provider" : "estimated";
+      const finalCost = this.calculateCost(
+        usage,
+        input.resolved.price,
+        input.resolved.priceTiers,
+        !response.usage
+      );
+      const latencyMs = Date.now() - startedAt;
+      this.options.repositories.cost.finishRun(retryRun.id, {
+        status: "succeeded",
+        outputTokensEstimatedLive: outputTokensEstimated,
+        inputTokensReported: response.usage?.inputTokens ?? null,
+        outputTokensReported: response.usage?.outputTokens ?? null,
+        cachedInputTokensReported: response.usage?.cachedInputTokens ?? null,
+        usageSource,
+        estimatedCostLive: finalCost.totalCost,
+        finalCost: finalCost.totalCost,
+        latencyMs,
+        responseHash: sha256Hex(response.text)
+      });
+      return {
+        runId: retryRun.id,
+        provider: input.resolved.provider,
+        model: input.resolved.model,
+        response,
+        usageSource,
+        finalCost,
+        latencyMs
+      };
+    } catch (retryError) {
+      const providerError = this.normalizeError(input.adapter, retryError);
+      const finalCost = this.calculateCost(
+        { inputTokens: input.inputTokensEstimated, outputTokens: 0 },
+        input.resolved.price,
+        input.resolved.priceTiers,
+        true
+      );
+      this.options.repositories.cost.finishRun(retryRun.id, {
+        status: "failed",
+        outputTokensEstimatedLive: 0,
+        usageSource: "estimated",
+        estimatedCostLive: finalCost.totalCost,
+        finalCost: finalCost.totalCost,
+        latencyMs: Date.now() - startedAt,
         errorCode: providerError.code,
         errorMessage: providerError.message
       });
-      throw new ProviderAdapterError(providerError, { cause: error });
+      throw new ProviderAdapterError(providerError, { cause: retryError });
     }
   }
 
@@ -415,16 +548,44 @@ export class AiGateway {
     }
   }
 
+  private applyParameterPromptInstructions(
+    messages: StreamRequest["messages"],
+    params: NormalizedProviderParams
+  ): StreamRequest["messages"] {
+    if (params.promptInstructions.length === 0) {
+      return messages;
+    }
+    const instruction = [
+      "模型参数兼容提示：",
+      ...params.promptInstructions,
+      `创作强度：${params.creativityIntent}。`
+    ].join("\n");
+    const firstSystemIndex = messages.findIndex((message) => message.role === "system");
+    if (firstSystemIndex >= 0) {
+      return messages.map((message, index) =>
+        index === firstSystemIndex
+          ? { ...message, content: `${message.content}\n\n${instruction}` }
+          : message
+      );
+    }
+    return [{ role: "system", content: instruction }, ...messages];
+  }
+
   private resolveRequest(request: StreamRequest): ResolvedRequest {
     if (request.provider === "fake") {
+      const normalizedParams = this.createNormalizedParams(request, {
+        provider: "fake",
+        model: request.model ?? "fake-story-model"
+      });
       return {
         provider: "fake",
         model: request.model ?? "fake-story-model",
         price: null,
         priceTiers: [],
-        config: {},
+        config: { normalizedParams },
         temperature: request.temperature,
-        maxOutputTokens: request.maxOutputTokens,
+        maxOutputTokens: request.maxOutputTokens ?? normalizedParams.effectiveMaxOutputTokens,
+        normalizedParams,
         warnings: ["fake_provider"]
       };
     }
@@ -438,6 +599,12 @@ export class AiGateway {
       if (!credential) {
         throw new SafeIpcError("MISSING_CREDENTIAL", "No configured credential is available");
       }
+      const profile = this.options.repositories.modelProfiles.find(providerId, request.model);
+      const normalizedParams = this.createNormalizedParams(request, {
+        provider: request.provider,
+        model: request.model,
+        profile
+      });
       return {
         provider: request.provider,
         model: request.model,
@@ -446,9 +613,10 @@ export class AiGateway {
           provider: providerId,
           model: request.model
         }),
-        config: { apiKey: credential.apiKey, baseUrl: credential.baseUrl },
+        config: { apiKey: credential.apiKey, baseUrl: credential.baseUrl, normalizedParams },
         temperature: request.temperature,
-        maxOutputTokens: request.maxOutputTokens,
+        maxOutputTokens: request.maxOutputTokens ?? normalizedParams.effectiveMaxOutputTokens,
+        normalizedParams,
         warnings: []
       };
     }
@@ -479,6 +647,12 @@ export class AiGateway {
       throw new SafeIpcError("MISSING_CREDENTIAL", "No configured credential is available");
     }
 
+    const normalizedParams = this.createNormalizedParams(request, {
+      provider: resolved.modelProfile.provider,
+      model: resolved.modelProfile.model,
+      profile: resolved.modelProfile,
+      route: resolved.route ?? undefined
+    });
     return {
       provider: resolved.modelProfile.provider,
       model: resolved.modelProfile.model,
@@ -487,11 +661,55 @@ export class AiGateway {
         provider: resolved.modelProfile.provider,
         model: resolved.modelProfile.model
       }),
-      config: { apiKey: credential.apiKey, baseUrl: credential.baseUrl },
+      config: { apiKey: credential.apiKey, baseUrl: credential.baseUrl, normalizedParams },
       temperature: request.temperature ?? resolved.route?.temperature,
-      maxOutputTokens: request.maxOutputTokens ?? resolved.route?.maxOutputTokens,
-      warnings: resolved.warnings
+      maxOutputTokens:
+        request.maxOutputTokens ??
+        resolved.route?.maxOutputTokens ??
+        normalizedParams.effectiveMaxOutputTokens,
+      normalizedParams,
+      warnings: [
+        ...resolved.warnings,
+        ...normalizedParams.warnings,
+        ...normalizedParams.omittedParams.map((param) => `omitted ${param.name}: ${param.reason}`)
+      ]
     };
+  }
+
+  private createNormalizedParams(
+    request: StreamRequest,
+    input: {
+      provider: AIProviderId;
+      model: string;
+      profile?: ModelProfileRecord | null | undefined;
+      route?: { creativityIntent?: string; contextBudgetMode?: string; maxOutputTokens?: number } | undefined;
+    }
+  ): NormalizedProviderParams {
+    const profile = input.profile ?? null;
+    const outputTokenBudget =
+      request.maxOutputTokens ?? input.route?.maxOutputTokens ?? profile?.maxOutputTokens ?? undefined;
+    return this.parameterPolicy.normalize({
+      provider: input.provider,
+      model: input.model,
+      taskType: request.taskType,
+      endpointFamily: profile?.endpointFamily,
+      outputTokenBudget,
+      contextWindow: profile?.contextWindow,
+      contextBudgetMode:
+        request.contextBudgetMode ?? normalizeContextBudgetMode(input.route?.contextBudgetMode),
+      creativityIntent: request.creativityIntent ?? normalizeCreativityIntent(input.route?.creativityIntent),
+      requestedTemperature: request.temperature ?? profile?.defaultTemperature,
+      supportsTemperature: profile?.supportsTemperature,
+      supportsTopP: profile?.supportsTopP,
+      supportsTopK: profile?.supportsTopK,
+      supportsFrequencyPenalty: profile?.supportsFrequencyPenalty,
+      supportsPresencePenalty: profile?.supportsPresencePenalty,
+      supportsStop: profile?.supportsStop,
+      supportsReasoningEffort: profile?.supportsReasoningEffort,
+      supportsAdaptiveThinking: profile?.supportsAdaptiveThinking,
+      supportsManualThinkingBudget: profile?.supportsManualThinkingBudget,
+      maxOutputParamName: profile?.maxOutputParamName
+    });
   }
 
   private calculateCost(
@@ -557,4 +775,16 @@ export class AiGateway {
       message: this.redaction.redact(normalized.message)
     };
   }
+}
+
+function normalizeCreativityIntent(value: unknown) {
+  return value === "deterministic" || value === "creative" || value === "wild" || value === "balanced"
+    ? value
+    : undefined;
+}
+
+function normalizeContextBudgetMode(value: unknown) {
+  return value === "conservative" || value === "balanced" || value === "manual" || value === "max_safe"
+    ? value
+    : undefined;
 }

@@ -78,6 +78,8 @@ export const streamRequestSchema = z.object({
   generationRunId: z.string().nullable().optional(),
   messages: z.array(chatMessageSchema).min(1),
   temperature: z.number().min(0).max(2).optional(),
+  creativityIntent: z.enum(["deterministic", "balanced", "creative", "wild"]).optional(),
+  contextBudgetMode: z.enum(["conservative", "balanced", "max_safe", "manual"]).optional(),
   maxOutputTokens: z.number().int().positive().optional(),
   options: streamRunOptionsSchema.optional()
 });
@@ -151,6 +153,36 @@ export const modelProfileForAiSchema = z.object({
   supportsTools: z.boolean(),
   supportsVision: z.boolean(),
   supportsPromptCaching: z.boolean(),
+  supportsTemperature: z.boolean(),
+  supportsTopP: z.boolean(),
+  supportsTopK: z.boolean(),
+  supportsFrequencyPenalty: z.boolean(),
+  supportsPresencePenalty: z.boolean(),
+  supportsStop: z.boolean(),
+  supportsReasoningEffort: z.boolean(),
+  supportsAdaptiveThinking: z.boolean(),
+  supportsManualThinkingBudget: z.boolean(),
+  maxOutputParamName: z.enum([
+    "max_tokens",
+    "max_completion_tokens",
+    "max_output_tokens",
+    "output_token_limit",
+    "generation_config_max_output_tokens"
+  ]),
+  endpointFamily: z.enum([
+    "openai_chat_completions",
+    "openai_responses",
+    "anthropic_messages",
+    "gemini_generate_content",
+    "openai_compatible",
+    "dashscope_openai_compatible",
+    "moonshot_openai_compatible",
+    "deepseek_openai_compatible",
+    "xai_openai_compatible",
+    "openrouter_openai_compatible"
+  ]),
+  supportsResponsesApi: z.boolean(),
+  supportsChatCompletions: z.boolean(),
   defaultTemperature: z.number(),
   enabled: z.boolean()
 });

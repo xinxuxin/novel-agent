@@ -143,6 +143,12 @@ import type {
   QualityGateResult,
   SettlementPreview
 } from "./review-settlement";
+import type {
+  ChapterPlanRecord,
+  OutlineSourceRecord,
+  OutlineVersionRecord,
+  PlanEditProposalRecord
+} from "./planning";
 
 export type WenForgePlatform =
   | "aix"
@@ -227,6 +233,56 @@ export interface WenForgeApi {
     reorder: (bookId: string, orderedChapterIds: string[]) => Promise<void>;
     setStatus: (id: string, status: string) => Promise<ChapterRecord | null>;
     delete: (id: string, confirmed: boolean) => Promise<boolean>;
+  };
+  planning: {
+    outlineSources: {
+      list: (bookId: string) => Promise<OutlineSourceRecord[]>;
+      create: (input: {
+        projectId: string;
+        bookId: string;
+        sourceType: "paste" | "file" | "manual" | "imported";
+        title: string;
+        originalText: string;
+        parsedAt?: string | null;
+        parserModel?: string | null;
+      }) => Promise<OutlineSourceRecord>;
+    };
+    outlineVersions: {
+      list: (bookId: string) => Promise<OutlineVersionRecord[]>;
+      create: (input: {
+        bookId: string;
+        parentVersionId?: string | null;
+        title: string;
+        contentJson: string;
+        contentMarkdown: string;
+        sourceId?: string | null;
+        isActive?: boolean;
+      }) => Promise<OutlineVersionRecord>;
+      setActive: (bookId: string, id: string) => Promise<OutlineVersionRecord | null>;
+    };
+    chapterPlans: {
+      list: (bookId: string) => Promise<ChapterPlanRecord[]>;
+      getAccepted: (chapterId: string) => Promise<ChapterPlanRecord | null>;
+      upsert: (input: Partial<ChapterPlanRecord> & Pick<ChapterPlanRecord, "bookId" | "chapterIndex" | "title">) => Promise<ChapterPlanRecord>;
+    };
+    proposals: {
+      list: (bookId: string) => Promise<PlanEditProposalRecord[]>;
+      create: (input: {
+        bookId: string;
+        targetType: "outline" | "volume" | "chapter" | "scene" | "beat" | "manuscript";
+        targetId: string;
+        instruction: string;
+        beforeJson: string;
+        afterJson: string;
+        patchJson?: string | null;
+        rationale: string;
+        modelProvider?: string | null;
+        modelName?: string | null;
+        llmRunId?: string | null;
+      }) => Promise<PlanEditProposalRecord>;
+      accept: (id: string) => Promise<PlanEditProposalRecord | null>;
+      reject: (id: string) => Promise<PlanEditProposalRecord | null>;
+    };
   };
   manuscripts: {
     listVersions: (chapterId: string) => Promise<ManuscriptVersionRecord[]>;

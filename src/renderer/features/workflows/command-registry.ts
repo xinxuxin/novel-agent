@@ -8,13 +8,22 @@ export const REQUIRED_COMMAND_IDS = [
   "set-canonical",
   "open-settings",
   "open-story-bible",
+  "open-planning-lab",
   "show-cost-dashboard",
   "open-data-workspace",
   "generate-outline",
   "draft-chapter",
   "run-audit",
   "show-review",
-  "apply-settlement"
+  "apply-settlement",
+  "refine-selected-outline",
+  "expand-chapter-to-target",
+  "compress-chapter-to-target",
+  "strengthen-chapter-hook",
+  "generate-alternative-endings",
+  "draft-from-accepted-scene-cards",
+  "regenerate-scene-cards-only",
+  "apply-accepted-plan"
 ] as const;
 
 export const COMMAND_CATEGORIES = [
@@ -128,6 +137,14 @@ export const STUDIO_COMMANDS: StudioCommand[] = [
     scope: { requiresChapter: true }
   },
   {
+    id: "open-planning-lab",
+    label: "打开规划实验室",
+    category: "生成",
+    description: "编辑大纲、章节计划和场景卡",
+    keywords: ["planning", "outline", "计划", "大纲", "场景"],
+    scope: { requiresBook: true }
+  },
+  {
     id: "generate-outline",
     label: "生成大纲",
     category: "生成",
@@ -167,6 +184,75 @@ export const STUDIO_COMMANDS: StudioCommand[] = [
     keywords: ["settlement", "state", "canon", "结算", "设定"],
     requiresConfirmation: true,
     scope: { requiresChapter: true, requiresSettlementProposal: true }
+  },
+  {
+    id: "refine-selected-outline",
+    label: "细化选中大纲",
+    category: "生成",
+    description: "在规划实验室生成大纲修改提案",
+    keywords: ["refine", "outline", "细化", "大纲"],
+    scope: { requiresBook: true },
+    placeholder: true
+  },
+  {
+    id: "expand-chapter-to-target",
+    label: "扩写到目标字数",
+    category: "章节",
+    description: "为当前章节生成扩写提案",
+    keywords: ["expand", "target", "扩写", "字数"],
+    scope: { requiresChapter: true },
+    placeholder: true
+  },
+  {
+    id: "compress-chapter-to-target",
+    label: "压缩到目标字数",
+    category: "章节",
+    description: "为当前章节生成压缩提案",
+    keywords: ["compress", "shorten", "压缩", "字数"],
+    scope: { requiresChapter: true },
+    placeholder: true
+  },
+  {
+    id: "strengthen-chapter-hook",
+    label: "增强章节钩子",
+    category: "章节",
+    description: "生成更强的开场或章末钩子提案",
+    keywords: ["hook", "悬念", "钩子"],
+    scope: { requiresChapter: true },
+    placeholder: true
+  },
+  {
+    id: "generate-alternative-endings",
+    label: "生成备选结尾",
+    category: "生成",
+    description: "生成多个章末结尾变体",
+    keywords: ["ending", "variant", "结尾", "变体"],
+    scope: { requiresChapter: true },
+    placeholder: true
+  },
+  {
+    id: "draft-from-accepted-scene-cards",
+    label: "按已接受场景卡起草",
+    category: "生成",
+    description: "跳过计划重建，直接进入起草",
+    keywords: ["scene cards", "draft", "场景卡", "起草"],
+    scope: { requiresChapter: true }
+  },
+  {
+    id: "regenerate-scene-cards-only",
+    label: "只重建场景卡",
+    category: "生成",
+    description: "保留章节计划，只重建场景卡",
+    keywords: ["scene", "regenerate", "场景", "重建"],
+    scope: { requiresChapter: true }
+  },
+  {
+    id: "apply-accepted-plan",
+    label: "应用已接受计划",
+    category: "生成",
+    description: "让主工作流使用当前已接受计划",
+    keywords: ["accepted plan", "计划", "应用"],
+    scope: { requiresChapter: true }
   },
   {
     id: "open-story-bible",

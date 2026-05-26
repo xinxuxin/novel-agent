@@ -24,6 +24,7 @@ import { EvalDashboard } from "@features/evaluation/EvalDashboard";
 import { createSimpleDiff, manuscriptStats } from "@features/editor/manuscript-utils";
 import { ModelRouteCard } from "@features/model-router/ModelRouteCard";
 import { OnboardingPanel } from "@features/onboarding/OnboardingPanel";
+import { PlanningLab } from "@features/planning/PlanningLab";
 import type {
   OnboardingBookMode,
   OnboardingSettingsPatch
@@ -46,7 +47,7 @@ import type {
 } from "@contracts/workflow";
 import { useUiStore } from "@renderer/stores/ui-store";
 
-type WorkspaceView = "chapter" | "storyBible" | "costs" | "eval" | "data" | "settings";
+type WorkspaceView = "chapter" | "planning" | "storyBible" | "costs" | "eval" | "data" | "settings";
 type WorkspaceTab = "manuscript" | "generate" | "review" | "timeline" | "versions";
 
 const CHAPTER_STATUSES = [
@@ -671,6 +672,7 @@ export function App(): JSX.Element {
       "set-canonical": () => void saveManualVersion(true),
       "open-settings": () => setWorkspaceView("settings"),
       "open-story-bible": () => setWorkspaceView("storyBible"),
+      "open-planning-lab": () => setWorkspaceView("planning"),
       "open-data-workspace": () => setWorkspaceView("data"),
       "generate-outline": () => {
         setWorkspaceView("chapter");
@@ -694,7 +696,27 @@ export function App(): JSX.Element {
       "apply-settlement": () => {
         setWorkspaceView("chapter");
         setActiveTab("review");
-      }
+      },
+      "refine-selected-outline": () => setWorkspaceView("planning"),
+      "expand-chapter-to-target": () => {
+        setWorkspaceView("chapter");
+        setActiveTab("generate");
+      },
+      "compress-chapter-to-target": () => {
+        setWorkspaceView("chapter");
+        setActiveTab("generate");
+      },
+      "strengthen-chapter-hook": () => setWorkspaceView("planning"),
+      "generate-alternative-endings": () => setWorkspaceView("planning"),
+      "draft-from-accepted-scene-cards": () => {
+        setWorkspaceView("chapter");
+        setActiveTab("generate");
+      },
+      "regenerate-scene-cards-only": () => {
+        setWorkspaceView("chapter");
+        setActiveTab("generate");
+      },
+      "apply-accepted-plan": () => setWorkspaceView("planning")
     };
     actions[commandId]();
   };
@@ -714,7 +736,8 @@ export function App(): JSX.Element {
     setSelectedChapterId(chapter.id);
     setWorkspaceView("chapter");
   };
-  const showInspector = !compact && !(workspaceView === "chapter" && activeTab === "generate");
+  const showInspector =
+    !compact && workspaceView !== "planning" && !(workspaceView === "chapter" && activeTab === "generate");
 
   return (
     <main className="min-h-screen overflow-hidden bg-transparent p-3 text-slate-100">
@@ -771,6 +794,17 @@ export function App(): JSX.Element {
             </button>
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
+                workspaceView === "planning"
+                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
+                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
+              }`}
+              onClick={() => setWorkspaceView("planning")}
+              type="button"
+            >
+              规划
+            </button>
+            <button
+              className={`rounded-md border px-3 py-1.5 text-xs transition ${
                 workspaceView === "chapter" && activeTab === "generate"
                   ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
                   : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
@@ -794,6 +828,7 @@ export function App(): JSX.Element {
               value=""
             >
               <option value="">更多</option>
+              <option value="planning">规划实验室</option>
               <option value="storyBible">故事圣经</option>
               <option value="costs">成本</option>
               <option value="eval">评测</option>
@@ -887,6 +922,14 @@ export function App(): JSX.Element {
                 projects={projects}
                 reducedMotion={Boolean(reduceMotion)}
                 sessionCost={sessionCost}
+              />
+            ) : workspaceView === "planning" ? (
+              <PlanningLab
+                book={activeBook}
+                chapters={chapters}
+                onSelectChapter={selectChapter}
+                project={activeProject}
+                selectedChapter={activeChapter}
               />
             ) : workspaceView === "settings" ? (
               <div className="h-full overflow-auto">

@@ -218,6 +218,40 @@ Phase 15c adds an optional short provider-backed chapter connectivity check for 
 - it stops before canonical manuscript update and before story bible mutation
 - reports include IDs, counts, provider/model metadata, token/cost fields, and redacted errors only
 
+## Phase 18 Planning-First Workflow Repair
+
+Phase 18 separates planning edits from the full generation graph.
+
+Writers can now import or paste a detailed outline into Planning Lab. WenForge preserves the raw outline as an immutable `outline_sources` record, creates editable outline versions, and lets the user maintain accepted chapter plans before spending tokens on a full workflow.
+
+The full chapter workflow now consumes accepted planning records when available:
+
+- accepted outline version
+- accepted chapter plan
+- target/min/max word count
+- chapter promise
+- opening hook
+- main conflict
+- emotional turn
+- payoff
+- chapter-end hook
+- continuity dependencies
+- user notes
+
+If an accepted plan exists, the workflow should not regenerate it unless the user chooses a regeneration mode. Planning Lab proposals and variants remain non-destructive; they become workflow inputs only after acceptance.
+
+Supported workflow entry points are now:
+
+- use existing accepted plans
+- refine selected outline or chapter plan
+- regenerate scene cards only
+- draft from accepted scene cards
+- revise current manuscript only
+- run audits only
+- settle state only
+
+Plan Chat and Chapter Chat are proposal generators. They can target a whole book outline, volume, chapter plan, scene card, manuscript version, selected text, or review issue, but accepted changes still create versioned records or non-canonical manuscript versions first.
+
 ## Phase 16 Outline-To-Manuscript Flow
 
 Phase 16 makes the primary chapter workflow outline-driven. The expected user input is a detailed

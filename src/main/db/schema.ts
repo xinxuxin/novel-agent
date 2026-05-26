@@ -58,6 +58,10 @@ export const chapters = sqliteTable(
     title: text("title").notNull(),
     status: text("status").notNull().default("planned"),
     targetWords: integer("target_words").notNull().default(3000),
+    minWords: integer("min_words"),
+    maxWords: integer("max_words"),
+    lockWordCount: integer("lock_word_count", { mode: "boolean" }).notNull().default(false),
+    wordCountPriority: text("word_count_priority").notNull().default("normal"),
     currentWords: integer("current_words").notNull().default(0),
     summary: text("summary"),
     outlineJson: text("outline_json"),
@@ -86,6 +90,93 @@ export const scenes = sqliteTable("scenes", {
   outcome: text("outcome"),
   handoff: text("handoff"),
   rawCardJson: text("raw_card_json"),
+  targetWords: integer("target_words"),
+  beatListJson: text("beat_list_json").notNull().default("[]"),
+  userNotes: text("user_notes"),
+  status: text("status").notNull().default("draft"),
+  sourcePlanId: text("source_plan_id"),
+  variantGroupId: text("variant_group_id"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const outlineSources = sqliteTable("outline_sources", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  bookId: text("book_id").notNull(),
+  sourceType: text("source_type").notNull(),
+  title: text("title").notNull(),
+  originalText: text("original_text").notNull(),
+  parsedAt: text("parsed_at"),
+  parserModel: text("parser_model"),
+  createdAt: text("created_at").notNull()
+});
+
+export const outlineVersions = sqliteTable("outline_versions", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  parentVersionId: text("parent_version_id"),
+  title: text("title").notNull(),
+  contentJson: text("content_json").notNull(),
+  contentMarkdown: text("content_markdown").notNull(),
+  sourceId: text("source_id"),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull()
+});
+
+export const volumePlans = sqliteTable("volume_plans", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  outlineVersionId: text("outline_version_id"),
+  volumeId: text("volume_id"),
+  title: text("title").notNull(),
+  volumeIndex: integer("volume_index").notNull(),
+  summary: text("summary"),
+  majorTurningPointsJson: text("major_turning_points_json").notNull().default("[]"),
+  unresolvedHooksJson: text("unresolved_hooks_json").notNull().default("[]"),
+  status: text("status").notNull().default("draft"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const chapterPlans = sqliteTable("chapter_plans", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  volumeId: text("volume_id"),
+  chapterId: text("chapter_id"),
+  outlineVersionId: text("outline_version_id"),
+  chapterIndex: integer("chapter_index").notNull(),
+  title: text("title").notNull(),
+  targetWords: integer("target_words").notNull().default(3000),
+  minWords: integer("min_words"),
+  maxWords: integer("max_words"),
+  chapterPromise: text("chapter_promise"),
+  openingHook: text("opening_hook"),
+  mainConflict: text("main_conflict"),
+  emotionalTurn: text("emotional_turn"),
+  payoff: text("payoff"),
+  endingHook: text("ending_hook"),
+  continuityDependenciesJson: text("continuity_dependencies_json").notNull().default("[]"),
+  userNotes: text("user_notes"),
+  status: text("status").notNull().default("draft"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const planEditProposals = sqliteTable("plan_edit_proposals", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  instruction: text("instruction").notNull(),
+  beforeJson: text("before_json").notNull(),
+  afterJson: text("after_json").notNull(),
+  patchJson: text("patch_json"),
+  rationale: text("rationale").notNull(),
+  modelProvider: text("model_provider"),
+  modelName: text("model_name"),
+  llmRunId: text("llm_run_id"),
+  status: text("status").notNull().default("proposed"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull()
 });
@@ -611,6 +702,11 @@ export const schema = {
   volumes,
   chapters,
   scenes,
+  outlineSources,
+  outlineVersions,
+  volumePlans,
+  chapterPlans,
+  planEditProposals,
   manuscriptVersions,
   generatedArtifacts,
   storyBibleEntries,

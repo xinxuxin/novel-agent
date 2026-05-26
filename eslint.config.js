@@ -2,9 +2,9 @@ import js from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
-import tseslint from "typescript-eslint";
+import tsParser from "@typescript-eslint/parser";
 
-export default tseslint.config(
+export default [
   {
     ignores: [
       "node_modules/**",
@@ -17,7 +17,21 @@ export default tseslint.config(
     ]
   },
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  {
+    files: ["**/*.{ts,tsx}"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaFeatures: { jsx: true },
+        ecmaVersion: "latest",
+        sourceType: "module"
+      }
+    },
+    rules: {
+      "no-undef": "off",
+      "no-unused-vars": "off"
+    }
+  },
   {
     files: [
       "src/main/**/*.ts",
@@ -62,4 +76,4 @@ export default tseslint.config(
       ]
     }
   }
-);
+];

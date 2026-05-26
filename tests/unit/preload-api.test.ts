@@ -70,6 +70,7 @@ describe("preload API", () => {
       "modelPrices",
       "modelProfiles",
       "modelRoutes",
+      "planning",
       "pricing",
       "privacy",
       "projects",

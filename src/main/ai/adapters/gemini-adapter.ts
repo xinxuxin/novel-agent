@@ -49,7 +49,7 @@ export class GeminiAdapter implements ProviderAdapter {
       {
         method: "POST",
         headers: geminiHeaders(config),
-        body: JSON.stringify(toGeminiBody(request)),
+        body: JSON.stringify(toGeminiBody(request, config)),
         signal: abortSignal
       }
     );
@@ -104,7 +104,7 @@ export class GeminiAdapter implements ProviderAdapter {
       {
         method: "POST",
         headers: geminiHeaders(config),
-        body: JSON.stringify(toGeminiBody(request)),
+        body: JSON.stringify(toGeminiBody(request, config)),
         signal: abortSignal
       }
     );
@@ -189,20 +189,40 @@ export class GeminiAdapter implements ProviderAdapter {
   }
 }
 
-function toGeminiBody(request: StreamRequest): Record<string, unknown> {
+function toGeminiBody(request: StreamRequest, config: ProviderAdapterConfig): Record<string, unknown> {
   const systemInstruction = request.messages
     .filter((message) => message.role === "system")
     .map((message) => message.content)
     .join("\n\n");
+  const params = geminiGenerationConfig(config, request);
   return {
     contents: normalizeGeminiContents(request.messages.filter((message) => message.role !== "system")),
     ...(systemInstruction
       ? { systemInstruction: { parts: [{ text: systemInstruction }] } }
       : {}),
-    generationConfig: {
-      temperature: request.temperature,
-      maxOutputTokens: request.maxOutputTokens
-    }
+    generationConfig: params
+  };
+}
+
+function geminiGenerationConfig(
+  config: ProviderAdapterConfig,
+  request: StreamRequest
+): Record<string, unknown> {
+  if (!config.normalizedParams) {
+    return {
+      ...(typeof request.temperature === "number" ? { temperature: request.temperature } : {}),
+      ...(typeof request.maxOutputTokens === "number" ? { maxOutputTokens: request.maxOutputTokens } : {})
+    };
+  }
+  const params = config.normalizedParams.bodyParams;
+  return {
+    ...(typeof params.temperature === "number" ? { temperature: params.temperature } : {}),
+    ...(typeof params.generation_config_max_output_tokens === "number"
+      ? { maxOutputTokens: params.generation_config_max_output_tokens }
+      : {}),
+    ...(typeof params.output_token_limit === "number"
+      ? { maxOutputTokens: params.output_token_limit }
+      : {})
   };
 }
 

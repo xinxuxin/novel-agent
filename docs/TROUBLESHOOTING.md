@@ -43,6 +43,42 @@ Provider checks use the encrypted credential, the configured base URL, and the m
 - For custom endpoints, verify the base URL points to the provider API root.
 - Do not add guessed endpoints; provider-specific adapters should follow reliable provider docs and tests.
 
+### Anthropic Temperature Deprecated
+
+Some Claude models reject sampling parameters and may return an error such as `temperature is deprecated for this model`.
+
+WenForge Phase 18 normalizes Anthropic requests through the model profile:
+
+- Claude Opus 4.7 omits `temperature`, `top_p`, and `top_k`.
+- Creative or deterministic intent is expressed through prompt instruction.
+- The output limit is sent as `max_tokens`.
+
+If the error persists, open Settings -> Models, confirm the model endpoint family is `anthropic_messages`, then reset capabilities to known defaults.
+
+### OpenAI Unsupported max_tokens
+
+Newer OpenAI models may reject `max_tokens` and ask for `max_completion_tokens` or `max_output_tokens`.
+
+WenForge Phase 18 chooses the output field from the editable model profile:
+
+- Chat Completions GPT-5.x profiles send `max_completion_tokens`.
+- Responses API profiles send `max_output_tokens`.
+- WenForge never sends `max_tokens` and `max_completion_tokens` together.
+
+If a provider rejects a known parameter before streaming starts, WenForge records the failed attempt, removes the rejected parameter, retries once, and shows a safe compatibility message.
+
+### Reset Learned Model Capabilities
+
+If a model profile was edited incorrectly or learned a bad capability from an error:
+
+- open Settings -> Models
+- select the affected provider/model profile
+- review endpoint family and max output parameter name
+- reset capabilities to known defaults
+- rerun a tiny provider connectivity check with a budget cap
+
+Do not paste API keys into support tickets or logs.
+
 ### Context Length Exceeded
 
 The selected model could not fit the assembled context.

@@ -154,6 +154,85 @@
       "version": "1.0.0",
       "language": "zh-CN",
       "taskType": "suspense_hook_audit"
+    },
+    {
+      "id": "plan-chat-edit",
+      "file": "plan-chat-edit.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "chapter_outline"
+    },
+    {
+      "id": "outline-refine-selected",
+      "file": "outline-refine-selected.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "chapter_outline"
+    },
+    {
+      "id": "volume-plan-refine",
+      "file": "volume-plan-refine.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "volume_outline"
+    },
+    {
+      "id": "chapter-plan-refine",
+      "file": "chapter-plan-refine.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "chapter_outline",
+      "outputSchema": "chapter-outline"
+    },
+    {
+      "id": "scene-card-refine",
+      "file": "scene-card-refine.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "scene_cards",
+      "outputSchema": "scene-card"
+    },
+    {
+      "id": "selected-text-rewrite",
+      "file": "selected-text-rewrite.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "webnovel_style_rewrite"
+    },
+    {
+      "id": "chapter-expand-to-target",
+      "file": "chapter-expand-to-target.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "revise_chapter"
+    },
+    {
+      "id": "chapter-compress-to-target",
+      "file": "chapter-compress-to-target.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "revise_chapter"
+    },
+    {
+      "id": "chapter-rewrite-with-constraints",
+      "file": "chapter-rewrite-with-constraints.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "revise_chapter"
+    },
+    {
+      "id": "hook-variants",
+      "file": "hook-variants.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "suspense_hook_audit"
+    },
+    {
+      "id": "ending-variants",
+      "file": "ending-variants.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "suspense_hook_audit"
     }
   ],
   "schemas": [

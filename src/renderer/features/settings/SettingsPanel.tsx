@@ -909,10 +909,10 @@ function ModelsTab({
         </button>
       </section>
       <div className="overflow-hidden rounded-xl border border-white/10">
-        <TableHeader columns="grid-cols-[150px_1fr_130px_100px_110px_130px_90px]" />
+        <TableHeader columns="grid-cols-[130px_1fr_170px_150px_180px_90px]" />
         {profiles.map((profile) => (
           <div
-            className="grid grid-cols-[150px_1fr_130px_100px_110px_130px_90px] items-center gap-3 border-t border-white/10 px-3 py-3 text-sm"
+            className="grid grid-cols-[130px_1fr_170px_150px_180px_90px] items-center gap-3 border-t border-white/10 px-3 py-3 text-sm"
             key={profile.id}
           >
             <span className="text-slate-300">{PROVIDER_LABELS[profile.provider]}</span>
@@ -921,14 +921,20 @@ function ModelsTab({
               <span className="ml-2 text-xs text-slate-500">{profile.model}</span>
             </span>
             <span className="text-xs text-forge-violet">{profile.alias ?? "No alias"}</span>
-            <span className="text-slate-400">{profile.contextWindow ?? "Unset"}</span>
-            <span className="text-slate-400">{profile.maxOutputTokens ?? "Unset"}</span>
+            <span className="text-xs text-slate-400">
+              {profile.endpointFamily}
+              <br />
+              {profile.maxOutputParamName}
+            </span>
             <span className="text-xs text-slate-500">
               {[
                 profile.supportsStreaming ? "stream" : null,
                 profile.supportsJson ? "json" : null,
                 profile.supportsTools ? "tools" : null,
-                profile.supportsVision ? "vision" : null
+                profile.supportsVision ? "vision" : null,
+                profile.supportsTemperature ? "temp" : null,
+                profile.supportsReasoningEffort ? "reasoning" : null,
+                profile.supportsAdaptiveThinking ? "adaptive" : null
               ]
                 .filter(Boolean)
                 .join(" · ") || "base"}
@@ -1135,7 +1141,7 @@ function RoutingTab({
     });
     return (
       <div
-        className="grid gap-3 border-b border-white/10 px-3 py-3 text-sm last:border-b-0 lg:grid-cols-[150px_1fr_92px_108px_auto]"
+        className="grid gap-3 border-b border-white/10 px-3 py-3 text-sm last:border-b-0 lg:grid-cols-[150px_1fr_130px_120px_auto]"
         key={route.id}
       >
         <div>
@@ -1155,17 +1161,20 @@ function RoutingTab({
             </option>
           ))}
         </select>
-        <input
+        <select
           className={fieldClassName}
-          defaultValue={String(route.temperature)}
-          inputMode="decimal"
-          onBlur={(event) => {
-            const temperature = Number(event.target.value);
-            if (!Number.isNaN(temperature)) {
-              void onUpdateRoute(route, { temperature });
-            }
+          value={route.creativityIntent}
+          onChange={(event) => {
+            void onUpdateRoute(route, {
+              creativityIntent: event.target.value as TaskRouteRecord["creativityIntent"]
+            });
           }}
-        />
+        >
+          <option value="deterministic">稳定</option>
+          <option value="balanced">均衡</option>
+          <option value="creative">创作</option>
+          <option value="wild">大胆</option>
+        </select>
         <input
           className={fieldClassName}
           defaultValue={String(route.maxOutputTokens)}

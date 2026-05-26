@@ -69,8 +69,7 @@ export class GenericOpenAICompatibleAdapter implements ProviderAdapter {
       body: JSON.stringify({
         model: request.model,
         messages: request.messages,
-        temperature: request.temperature,
-        max_tokens: request.maxOutputTokens,
+        ...openAiCompatibleBodyParams(config, request),
         stream: true,
         stream_options: { include_usage: true }
       }),
@@ -153,8 +152,7 @@ export class GenericOpenAICompatibleAdapter implements ProviderAdapter {
       body: JSON.stringify({
         model: request.model,
         messages: request.messages,
-        temperature: request.temperature,
-        max_tokens: request.maxOutputTokens,
+        ...openAiCompatibleBodyParams(config ?? {}, request),
         stream: false
       }),
       signal: abortSignal
@@ -260,6 +258,33 @@ export class GenericOpenAICompatibleAdapter implements ProviderAdapter {
   private baseUrl(config: ProviderAdapterConfig): string {
     return (config.baseUrl ?? this.options.defaultBaseUrl).replace(/\/+$/, "");
   }
+}
+
+function openAiCompatibleBodyParams(
+  config: ProviderAdapterConfig,
+  request: StreamRequest
+): Record<string, unknown> {
+  if (config.normalizedParams) {
+    return filterRequestBodyParams(config.normalizedParams.bodyParams);
+  }
+  return {
+    ...(typeof request.temperature === "number" ? { temperature: request.temperature } : {}),
+    ...(typeof request.maxOutputTokens === "number" ? { max_tokens: request.maxOutputTokens } : {})
+  };
+}
+
+function filterRequestBodyParams(params: Record<string, unknown>): Record<string, unknown> {
+  const allowed = new Set([
+    "temperature",
+    "top_p",
+    "frequency_penalty",
+    "presence_penalty",
+    "stop",
+    "max_tokens",
+    "max_completion_tokens",
+    "max_output_tokens"
+  ]);
+  return Object.fromEntries(Object.entries(params).filter(([name]) => allowed.has(name)));
 }
 
 function extractDelta(value: unknown): string {

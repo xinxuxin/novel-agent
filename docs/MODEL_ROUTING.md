@@ -27,9 +27,12 @@ Model profiles are DB-backed and editable. Each row includes:
 - provider
 - model
 - display name
+- endpoint family
+- maximum output token parameter name
 - context window
 - max output tokens
 - streaming, JSON, tools, vision, and prompt-caching capability flags
+- sampling/reasoning capability flags such as temperature, top-p, top-k, stop, reasoning effort, adaptive thinking, and manual thinking budget
 - default temperature
 - recommended tasks
 - enabled status
@@ -50,7 +53,8 @@ Routes are stored by:
 - quality mode: `economy`, `balanced`, or `premium`
 - primary model profile
 - two optional fallback model profiles
-- temperature
+- creativity intent: `deterministic`, `balanced`, `creative`, or `wild`
+- context budget mode: `conservative`, `balanced`, `max_safe`, or `manual`
 - max output tokens
 - optional budget cap per call
 - enabled status
@@ -206,3 +210,21 @@ Forecasting never calls a provider, never reads decrypted credentials, and never
 The v2 model evaluation suite can compare GPT-5.5, Claude Opus 4.7, Qwen3.7-Max, Kimi K2.6, and DeepSeek V4 Pro on WenForge-specific tasks. It produces route recommendations for daily drafting, key chapters, hook review, continuity review, state settlement, value-first routing, and quality-first routing.
 
 Recommendations are advisory until the user confirms an application. Applying a recommendation updates the selected `task_model_routes` row only; it does not modify manuscripts, story bible facts, memory, or provider credentials.
+
+## Phase 18 Parameter Normalization
+
+Phase 18 replaces ordinary-user temperature tuning with model-aware parameter normalization.
+
+Before every provider request, `ModelParameterPolicy` combines the selected model profile, endpoint family, route intent, and output/context budgets. It returns provider-safe request parameters, omitted unsupported parameters, warnings, and prompt instructions that replace unsupported sampling controls.
+
+Important defaults:
+
+- WenForge routes default to `contextBudgetMode = max_safe`.
+- Drafting and webnovel rewrite default to `creative`.
+- Continuity audit, state settlement, and summarization default to `deterministic`.
+- OpenAI GPT-5.x chat-completions profiles use `max_completion_tokens` instead of `max_tokens`.
+- OpenAI Responses API profiles use `max_output_tokens`.
+- Claude Opus 4.7 omits `temperature`, `top_p`, and `top_k` and uses `max_tokens`.
+- DeepSeek, Qwen, Kimi, xAI, OpenRouter, and generic OpenAI-compatible profiles use the editable max-output parameter configured on the model profile.
+
+Known provider parameter errors are classified as `provider_parameter_error`. If no stream output has started, WenForge can retry once with the rejected parameter removed and records both attempts in `llm_runs`.

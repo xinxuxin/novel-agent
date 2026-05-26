@@ -184,6 +184,26 @@ Generate 视图改为中文写作台：
 - 生成结果仍显示为候选稿；保存版本和设为正式正文仍是分开的人工动作。
 - 顶栏、章节树、状态、成本、模型路线和设置入口优先使用中文。
 
+## Phase 18 规划实验室与参数可视化
+
+新增 `规划` 工作区，用于在完整生成前微调大纲和章节计划：
+
+- 原始大纲源面板：粘贴或多文件导入，原文作为不可变来源保存。
+- 可编辑大纲版本：保留解析后的 Markdown/JSON，支持激活版本。
+- 章节计划编辑器：标题、目标字数、最小/最大字数、章节承诺、开篇钩子、主要冲突、情绪转折、爽点兑现、章末钩子、备注。
+- 计划聊天：输入局部修改要求，生成变更提案而不是直接覆盖计划。
+- 提案抽屉：展示 before/after、理由、状态，并提供接受/拒绝。
+
+章节工作流的预检应显示将使用的计划版本、字数范围、上下文模式、模型、预估成本，以及是否会修改正式正文。默认必须显示不会修改正式正文，除非用户进入单独确认步骤。
+
+设置 > 模型 增加能力信息：
+
+- endpoint family
+- max output parameter name
+- temperature/top-p/top-k/JSON/streaming/tools/reasoning/adaptive thinking 能力标签
+
+设置 > 路由 不再要求普通用户调 temperature，而是显示创造性意图：稳定、均衡、创作、大胆。生成预检显示最终生效参数和被省略的不兼容参数。
+
 ## Interaction Rules
 
 - Generated text, audits, rewrites, and state updates are visibly marked as draft/proposed.

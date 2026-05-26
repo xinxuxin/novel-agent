@@ -84,3 +84,23 @@ The skill package now includes original WenForge templates for:
 - Chinese webnovel market-fit audit
 
 These prompts are concise, schema-oriented, and written from scratch. Runtime prompts must not mention conceptual reference repositories or expose provider secrets.
+
+## Phase 18 Planning And Micro-Edit Templates
+
+The skill package now includes original WenForge templates for planning and partial rewrite work:
+
+- plan chat edit
+- selected outline refinement
+- volume plan refinement
+- chapter plan refinement
+- scene card refinement
+- selected text rewrite
+- chapter expansion to target length
+- chapter compression to target length
+- chapter rewrite with constraints
+- hook variants
+- ending variants
+
+Planning prompts return structured proposals and must preserve canon unless the user explicitly asks for a story change. Selected-text rewrite prompts return replacement text only so the UI can show a clean diff.
+
+Prompt assembly should pass accepted plan fields, target/min/max word counts, selected scope, user instruction, relevant story bible, and privacy-safe context. Prompt previews remain redacted and disabled by default.

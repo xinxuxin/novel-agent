@@ -24,6 +24,7 @@ export default defineConfig({
     globals: true,
     include: ["tests/**/*.test.ts", "src/**/*.test.ts"],
     exclude: ["references/repos/**", "node_modules/**", "out/**", "dist/**"],
+    pool: "forks",
     testTimeout: 30_000,
     hookTimeout: 30_000
   }

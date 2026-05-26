@@ -47,7 +47,7 @@ export class AnthropicAdapter implements ProviderAdapter {
     const response = await this.fetchImpl(`${baseUrl(config)}/messages`, {
       method: "POST",
       headers: anthropicHeaders(config),
-      body: JSON.stringify(toAnthropicBody(request, true)),
+      body: JSON.stringify(toAnthropicBody(request, true, config)),
       signal: abortSignal
     });
 
@@ -104,7 +104,7 @@ export class AnthropicAdapter implements ProviderAdapter {
     const response = await this.fetchImpl(`${baseUrl(config)}/messages`, {
       method: "POST",
       headers: anthropicHeaders(config),
-      body: JSON.stringify(toAnthropicBody(request, false)),
+      body: JSON.stringify(toAnthropicBody(request, false, config)),
       signal: abortSignal
     });
 
@@ -178,7 +178,11 @@ export class AnthropicAdapter implements ProviderAdapter {
   }
 }
 
-function toAnthropicBody(request: StreamRequest, stream: boolean): Record<string, unknown> {
+function toAnthropicBody(
+  request: StreamRequest,
+  stream: boolean,
+  config: ProviderAdapterConfig
+): Record<string, unknown> {
   const system = request.messages
     .filter((message) => message.role === "system")
     .map((message) => message.content)
@@ -186,14 +190,24 @@ function toAnthropicBody(request: StreamRequest, stream: boolean): Record<string
   const messages = normalizeAnthropicMessages(
     request.messages.filter((message) => message.role !== "system")
   );
+  const params = config.normalizedParams
+    ? filterAnthropicParams(config.normalizedParams.bodyParams)
+    : {
+        max_tokens: request.maxOutputTokens ?? 1024,
+        ...(typeof request.temperature === "number" ? { temperature: request.temperature } : {})
+      };
   return {
     model: request.model,
-    max_tokens: request.maxOutputTokens ?? 1024,
-    temperature: request.temperature,
+    ...params,
     stream,
     ...(system ? { system } : {}),
     messages
   };
+}
+
+function filterAnthropicParams(params: Record<string, unknown>): Record<string, unknown> {
+  const allowed = new Set(["max_tokens", "temperature", "top_p", "top_k", "stop_sequences"]);
+  return Object.fromEntries(Object.entries(params).filter(([name]) => allowed.has(name)));
 }
 
 function normalizeAnthropicMessages(messages: ChatMessage[]): Array<{

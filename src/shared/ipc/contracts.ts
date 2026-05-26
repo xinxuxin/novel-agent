@@ -193,6 +193,10 @@ const chapterSchema = z.object({
   title: z.string(),
   status: z.string(),
   targetWords: z.number(),
+  minWords: z.number().nullable(),
+  maxWords: z.number().nullable(),
+  lockWordCount: z.boolean(),
+  wordCountPriority: z.enum(["loose", "normal", "strict"]),
   currentWords: z.number(),
   summary: z.string().nullable(),
   outlineJson: z.string().nullable(),
@@ -215,6 +219,69 @@ const manuscriptVersionSchema = z.object({
   characterCount: z.number(),
   createdAt: z.string()
 });
+const outlineSourceSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  bookId: z.string(),
+  sourceType: z.enum(["paste", "file", "manual", "imported"]),
+  title: z.string(),
+  originalText: z.string(),
+  parsedAt: z.string().nullable(),
+  parserModel: z.string().nullable(),
+  createdAt: z.string()
+});
+const outlineVersionSchema = z.object({
+  id: z.string(),
+  bookId: z.string(),
+  parentVersionId: z.string().nullable(),
+  title: z.string(),
+  contentJson: z.string(),
+  contentMarkdown: z.string(),
+  sourceId: z.string().nullable(),
+  isActive: z.boolean(),
+  createdAt: z.string()
+});
+const planStatusSchema = z.enum(["draft", "proposed", "accepted", "archived"]);
+const chapterPlanSchema = z.object({
+  id: z.string(),
+  bookId: z.string(),
+  volumeId: z.string().nullable(),
+  chapterId: z.string().nullable(),
+  outlineVersionId: z.string().nullable(),
+  chapterIndex: z.number(),
+  title: z.string(),
+  targetWords: z.number(),
+  minWords: z.number().nullable(),
+  maxWords: z.number().nullable(),
+  chapterPromise: z.string().nullable(),
+  openingHook: z.string().nullable(),
+  mainConflict: z.string().nullable(),
+  emotionalTurn: z.string().nullable(),
+  payoff: z.string().nullable(),
+  endingHook: z.string().nullable(),
+  continuityDependenciesJson: z.string(),
+  userNotes: z.string().nullable(),
+  status: planStatusSchema,
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+const planEditProposalSchema = z.object({
+  id: z.string(),
+  bookId: z.string(),
+  targetType: z.enum(["outline", "volume", "chapter", "scene", "beat", "manuscript"]),
+  targetId: z.string(),
+  instruction: z.string(),
+  beforeJson: z.string(),
+  afterJson: z.string(),
+  patchJson: z.string().nullable(),
+  rationale: z.string(),
+  modelProvider: z.string().nullable(),
+  modelName: z.string().nullable(),
+  llmRunId: z.string().nullable(),
+  status: z.enum(["proposed", "accepted", "rejected", "archived"]),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
 const storyBibleEntrySchema = z.object({
   id: z.string(),
   bookId: z.string(),
@@ -231,6 +298,27 @@ const storyBibleEntrySchema = z.object({
 const providerSchema = z.enum(PROVIDERS);
 const taskTypeSchema = z.enum(TASK_TYPES);
 const qualityModeSchema = z.enum(QUALITY_MODES);
+const creativityIntentSchema = z.enum(["deterministic", "balanced", "creative", "wild"]);
+const contextBudgetModeSchema = z.enum(["conservative", "balanced", "max_safe", "manual"]);
+const maxOutputParamNameSchema = z.enum([
+  "max_tokens",
+  "max_completion_tokens",
+  "max_output_tokens",
+  "output_token_limit",
+  "generation_config_max_output_tokens"
+]);
+const endpointFamilySchema = z.enum([
+  "openai_chat_completions",
+  "openai_responses",
+  "anthropic_messages",
+  "gemini_generate_content",
+  "openai_compatible",
+  "dashscope_openai_compatible",
+  "moonshot_openai_compatible",
+  "deepseek_openai_compatible",
+  "xai_openai_compatible",
+  "openrouter_openai_compatible"
+]);
 const privacySettingsSchema = z.object({
   storeFullPrompts: z.boolean(),
   storeFullResponses: z.boolean(),
@@ -479,6 +567,19 @@ const modelProfileSchema = z.object({
   supportsTools: z.boolean(),
   supportsVision: z.boolean(),
   supportsPromptCaching: z.boolean(),
+  supportsTemperature: z.boolean(),
+  supportsTopP: z.boolean(),
+  supportsTopK: z.boolean(),
+  supportsFrequencyPenalty: z.boolean(),
+  supportsPresencePenalty: z.boolean(),
+  supportsStop: z.boolean(),
+  supportsReasoningEffort: z.boolean(),
+  supportsAdaptiveThinking: z.boolean(),
+  supportsManualThinkingBudget: z.boolean(),
+  maxOutputParamName: maxOutputParamNameSchema,
+  endpointFamily: endpointFamilySchema,
+  supportsResponsesApi: z.boolean(),
+  supportsChatCompletions: z.boolean(),
   defaultTemperature: z.number(),
   recommendedTasksJson: z.string(),
   enabled: z.boolean(),
@@ -509,6 +610,8 @@ const taskRouteSchema = z.object({
   fallbackModelProfileId1: z.string().nullable(),
   fallbackModelProfileId2: z.string().nullable(),
   temperature: z.number(),
+  creativityIntent: creativityIntentSchema,
+  contextBudgetMode: contextBudgetModeSchema,
   maxOutputTokens: z.number(),
   budgetCapPerCall: z.number().nullable(),
   enabled: z.boolean(),
@@ -777,7 +880,11 @@ export const IPC_CONTRACTS = {
         volumeId: z.string().min(1).nullable().optional(),
         chapterIndex: z.number().int().positive(),
         title: z.string().trim().min(1),
-        targetWords: z.number().int().positive().optional()
+        targetWords: z.number().int().positive().optional(),
+        minWords: z.number().int().positive().nullable().optional(),
+        maxWords: z.number().int().positive().nullable().optional(),
+        lockWordCount: z.boolean().optional(),
+        wordCountPriority: z.enum(["loose", "normal", "strict"]).optional()
       }),
       chapterSchema
     ),
@@ -789,6 +896,10 @@ export const IPC_CONTRACTS = {
         title: z.string().trim().min(1).optional(),
         status: z.string().optional(),
         targetWords: z.number().int().positive().optional(),
+        minWords: z.number().int().positive().nullable().optional(),
+        maxWords: z.number().int().positive().nullable().optional(),
+        lockWordCount: z.boolean().optional(),
+        wordCountPriority: z.enum(["loose", "normal", "strict"]).optional(),
         summary: z.string().nullable().optional(),
         outlineJson: z.string().nullable().optional()
       }),
@@ -805,6 +916,124 @@ export const IPC_CONTRACTS = {
       chapterSchema.nullable()
     ),
     delete: createContract("chapters:delete", confirmedDeleteSchema, z.boolean())
+  },
+  planning: {
+    outlineSources: {
+      list: createContract(
+        "planning:outline-sources:list",
+        z.object({ bookId: z.string().min(1) }),
+        z.array(outlineSourceSchema)
+      ),
+      create: createContract(
+        "planning:outline-sources:create",
+        z.object({
+          projectId: z.string().min(1),
+          bookId: z.string().min(1),
+          sourceType: z.enum(["paste", "file", "manual", "imported"]),
+          title: z.string().trim().min(1),
+          originalText: z.string().min(1),
+          parsedAt: z.string().nullable().optional(),
+          parserModel: z.string().nullable().optional()
+        }),
+        outlineSourceSchema
+      )
+    },
+    outlineVersions: {
+      list: createContract(
+        "planning:outline-versions:list",
+        z.object({ bookId: z.string().min(1) }),
+        z.array(outlineVersionSchema)
+      ),
+      create: createContract(
+        "planning:outline-versions:create",
+        z.object({
+          bookId: z.string().min(1),
+          parentVersionId: z.string().nullable().optional(),
+          title: z.string().trim().min(1),
+          contentJson: z.string().min(1),
+          contentMarkdown: z.string(),
+          sourceId: z.string().nullable().optional(),
+          isActive: z.boolean().optional()
+        }),
+        outlineVersionSchema
+      ),
+      setActive: createContract(
+        "planning:outline-versions:set-active",
+        z.object({ bookId: z.string().min(1), id: z.string().min(1) }),
+        outlineVersionSchema.nullable()
+      )
+    },
+    chapterPlans: {
+      list: createContract(
+        "planning:chapter-plans:list",
+        z.object({ bookId: z.string().min(1) }),
+        z.array(chapterPlanSchema)
+      ),
+      getAccepted: createContract(
+        "planning:chapter-plans:get-accepted",
+        z.object({ chapterId: z.string().min(1) }),
+        chapterPlanSchema.nullable()
+      ),
+      upsert: createContract(
+        "planning:chapter-plans:upsert",
+        z.object({
+          id: z.string().optional(),
+          bookId: z.string().min(1),
+          volumeId: z.string().nullable().optional(),
+          chapterId: z.string().nullable().optional(),
+          outlineVersionId: z.string().nullable().optional(),
+          chapterIndex: z.number().int().positive(),
+          title: z.string().trim().min(1),
+          targetWords: z.number().int().positive().optional(),
+          minWords: z.number().int().positive().nullable().optional(),
+          maxWords: z.number().int().positive().nullable().optional(),
+          chapterPromise: z.string().nullable().optional(),
+          openingHook: z.string().nullable().optional(),
+          mainConflict: z.string().nullable().optional(),
+          emotionalTurn: z.string().nullable().optional(),
+          payoff: z.string().nullable().optional(),
+          endingHook: z.string().nullable().optional(),
+          continuityDependenciesJson: z.string().optional(),
+          userNotes: z.string().nullable().optional(),
+          status: planStatusSchema.optional()
+        }),
+        chapterPlanSchema
+      )
+    },
+    proposals: {
+      list: createContract(
+        "planning:proposals:list",
+        z.object({ bookId: z.string().min(1) }),
+        z.array(planEditProposalSchema)
+      ),
+      create: createContract(
+        "planning:proposals:create",
+        z.object({
+          bookId: z.string().min(1),
+          targetType: z.enum(["outline", "volume", "chapter", "scene", "beat", "manuscript"]),
+          targetId: z.string().min(1),
+          instruction: z.string().min(1),
+          beforeJson: z.string().min(1),
+          afterJson: z.string().min(1),
+          patchJson: z.string().nullable().optional(),
+          rationale: z.string().min(1),
+          modelProvider: z.string().nullable().optional(),
+          modelName: z.string().nullable().optional(),
+          llmRunId: z.string().nullable().optional()
+        }),
+        planEditProposalSchema
+      ),
+      accept: createContract(
+        "planning:proposals:accept",
+        entityIdSchema,
+        planEditProposalSchema.nullable()
+      ),
+      reject: createContract(
+        "planning:proposals:reject",
+        entityIdSchema,
+        planEditProposalSchema.nullable()
+      )
+    }
   },
   manuscripts: {
     listVersions: createContract(
@@ -1140,6 +1369,19 @@ export const IPC_CONTRACTS = {
         supportsTools: z.boolean().optional(),
         supportsVision: z.boolean().optional(),
         supportsPromptCaching: z.boolean().optional(),
+        supportsTemperature: z.boolean().optional(),
+        supportsTopP: z.boolean().optional(),
+        supportsTopK: z.boolean().optional(),
+        supportsFrequencyPenalty: z.boolean().optional(),
+        supportsPresencePenalty: z.boolean().optional(),
+        supportsStop: z.boolean().optional(),
+        supportsReasoningEffort: z.boolean().optional(),
+        supportsAdaptiveThinking: z.boolean().optional(),
+        supportsManualThinkingBudget: z.boolean().optional(),
+        maxOutputParamName: maxOutputParamNameSchema.optional(),
+        endpointFamily: endpointFamilySchema.optional(),
+        supportsResponsesApi: z.boolean().optional(),
+        supportsChatCompletions: z.boolean().optional(),
         defaultTemperature: z.number().min(0).max(2).optional(),
         recommendedTasks: z.array(taskTypeSchema).optional(),
         recommendedTasksJson: z.string().optional(),
@@ -1219,6 +1461,8 @@ export const IPC_CONTRACTS = {
         fallbackModelProfileId1: z.string().nullable().optional(),
         fallbackModelProfileId2: z.string().nullable().optional(),
         temperature: z.number().min(0).max(2),
+        creativityIntent: creativityIntentSchema.optional(),
+        contextBudgetMode: contextBudgetModeSchema.optional(),
         maxOutputTokens: z.number().int().positive(),
         budgetCapPerCall: z.number().min(0).nullable().optional(),
         enabled: z.boolean().optional()
@@ -1756,6 +2000,18 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.chapters.reorder,
   IPC_CONTRACTS.chapters.setStatus,
   IPC_CONTRACTS.chapters.delete,
+  IPC_CONTRACTS.planning.outlineSources.list,
+  IPC_CONTRACTS.planning.outlineSources.create,
+  IPC_CONTRACTS.planning.outlineVersions.list,
+  IPC_CONTRACTS.planning.outlineVersions.create,
+  IPC_CONTRACTS.planning.outlineVersions.setActive,
+  IPC_CONTRACTS.planning.chapterPlans.list,
+  IPC_CONTRACTS.planning.chapterPlans.getAccepted,
+  IPC_CONTRACTS.planning.chapterPlans.upsert,
+  IPC_CONTRACTS.planning.proposals.list,
+  IPC_CONTRACTS.planning.proposals.create,
+  IPC_CONTRACTS.planning.proposals.accept,
+  IPC_CONTRACTS.planning.proposals.reject,
   IPC_CONTRACTS.manuscripts.listVersions,
   IPC_CONTRACTS.manuscripts.getVersion,
   IPC_CONTRACTS.manuscripts.getCanonical,

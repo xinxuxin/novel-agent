@@ -6,7 +6,7 @@ The product direction is a dark command-center writing studio with a popover lau
 
 ## Current Status
 
-Phases 1-14 are implemented through the local-first studio shell, SQLite data foundation, secure credential metadata, AI gateway, story bible memory, WenForge-native skill package, mock/provider workflow runtime, review and settlement flows, cost/eval dashboards, safe import/export/backup tooling, first-launch onboarding/palette/popover polish, and security/diagnostics/packaging preparation. Native signing and public release publishing remain planned follow-up work.
+Phases 1-18 are implemented through the local-first studio shell, SQLite data foundation, secure credential metadata, AI gateway, story bible memory, WenForge-native skill package, mock/provider workflow runtime, review and settlement flows, cost/eval dashboards, safe import/export/backup tooling, first-launch onboarding/palette/popover polish, security/diagnostics/packaging preparation, provider connectivity diagnostics, outline-driven Chinese writing UX, Planning Lab, and model-aware provider parameter normalization. Native signing and public release publishing remain planned follow-up work.
 
 ## Planned Stack
 
@@ -62,6 +62,8 @@ Real provider connectivity checks are disabled by default. They require explicit
 - [Privacy](docs/PRIVACY.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Real Provider Setup](docs/REAL_PROVIDER_SETUP.md)
+- [Planning Lab](docs/PLANNING_LAB.md)
+- [Model Parameter Policy](docs/MODEL_PARAMETER_POLICY.md)
 - [Release Guide](docs/RELEASE.md)
 - [Release Checklist](docs/RELEASE_CHECKLIST.md)
 - [Cost Tracking](docs/COST_TRACKING.md)

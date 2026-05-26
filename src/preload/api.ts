@@ -77,6 +77,12 @@ import type {
   SettlementPreview
 } from "@contracts/review-settlement";
 import type {
+  ChapterPlanRecord,
+  OutlineSourceRecord,
+  OutlineVersionRecord,
+  PlanEditProposalRecord
+} from "@contracts/planning";
+import type {
   CharacterInput,
   CharacterRecord,
   ForeshadowingInput,
@@ -411,6 +417,100 @@ export function createPreloadApi(
           IPC_CONTRACTS.chapters.delete.response,
           { id, confirmed }
         )
+    },
+    planning: {
+      outlineSources: {
+        list: (bookId) =>
+          invokeContract<OutlineSourceRecord[]>(
+            invoke,
+            IPC_CONTRACTS.planning.outlineSources.list.channel,
+            IPC_CONTRACTS.planning.outlineSources.list.response,
+            { bookId }
+          ),
+        create: (input) =>
+          invokeContract<OutlineSourceRecord>(
+            invoke,
+            IPC_CONTRACTS.planning.outlineSources.create.channel,
+            IPC_CONTRACTS.planning.outlineSources.create.response,
+            input
+          )
+      },
+      outlineVersions: {
+        list: (bookId) =>
+          invokeContract<OutlineVersionRecord[]>(
+            invoke,
+            IPC_CONTRACTS.planning.outlineVersions.list.channel,
+            IPC_CONTRACTS.planning.outlineVersions.list.response,
+            { bookId }
+          ),
+        create: (input) =>
+          invokeContract<OutlineVersionRecord>(
+            invoke,
+            IPC_CONTRACTS.planning.outlineVersions.create.channel,
+            IPC_CONTRACTS.planning.outlineVersions.create.response,
+            input
+          ),
+        setActive: (bookId, id) =>
+          invokeContract<OutlineVersionRecord | null>(
+            invoke,
+            IPC_CONTRACTS.planning.outlineVersions.setActive.channel,
+            IPC_CONTRACTS.planning.outlineVersions.setActive.response,
+            { bookId, id }
+          )
+      },
+      chapterPlans: {
+        list: (bookId) =>
+          invokeContract<ChapterPlanRecord[]>(
+            invoke,
+            IPC_CONTRACTS.planning.chapterPlans.list.channel,
+            IPC_CONTRACTS.planning.chapterPlans.list.response,
+            { bookId }
+          ),
+        getAccepted: (chapterId) =>
+          invokeContract<ChapterPlanRecord | null>(
+            invoke,
+            IPC_CONTRACTS.planning.chapterPlans.getAccepted.channel,
+            IPC_CONTRACTS.planning.chapterPlans.getAccepted.response,
+            { chapterId }
+          ),
+        upsert: (input) =>
+          invokeContract<ChapterPlanRecord>(
+            invoke,
+            IPC_CONTRACTS.planning.chapterPlans.upsert.channel,
+            IPC_CONTRACTS.planning.chapterPlans.upsert.response,
+            input
+          )
+      },
+      proposals: {
+        list: (bookId) =>
+          invokeContract<PlanEditProposalRecord[]>(
+            invoke,
+            IPC_CONTRACTS.planning.proposals.list.channel,
+            IPC_CONTRACTS.planning.proposals.list.response,
+            { bookId }
+          ),
+        create: (input) =>
+          invokeContract<PlanEditProposalRecord>(
+            invoke,
+            IPC_CONTRACTS.planning.proposals.create.channel,
+            IPC_CONTRACTS.planning.proposals.create.response,
+            input
+          ),
+        accept: (id) =>
+          invokeContract<PlanEditProposalRecord | null>(
+            invoke,
+            IPC_CONTRACTS.planning.proposals.accept.channel,
+            IPC_CONTRACTS.planning.proposals.accept.response,
+            { id }
+          ),
+        reject: (id) =>
+          invokeContract<PlanEditProposalRecord | null>(
+            invoke,
+            IPC_CONTRACTS.planning.proposals.reject.channel,
+            IPC_CONTRACTS.planning.proposals.reject.response,
+            { id }
+          )
+      }
     },
     manuscripts: {
       listVersions: (chapterId) =>

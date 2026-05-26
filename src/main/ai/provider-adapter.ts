@@ -6,6 +6,7 @@ import type {
   StreamRequest,
   TokenUsage
 } from "@contracts/ai";
+import type { NormalizedProviderParams } from "./model-parameter-policy";
 
 export interface ProviderAdapterCapabilities {
   streaming: boolean;
@@ -19,6 +20,7 @@ export interface ProviderAdapterConfig {
   apiKey?: string | undefined;
   baseUrl?: string | null | undefined;
   headers?: Record<string, string> | undefined;
+  normalizedParams?: NormalizedProviderParams | undefined;
 }
 
 export interface ProviderStreamCallbacks {

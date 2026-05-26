@@ -254,3 +254,22 @@ Deferred from Phase 14: signed/notarized public installers, final branded icons,
 - [x] Replace explanatory workflow copy with live workflow stages: 读取大纲 → 拆场景 → 起草正文 → 节奏审稿 → 连贯性审稿 → 改写成终稿 → 人工确认.
 - [x] Localize the most visible shell, chapter tree, status badges, cost meter, route card, and Settings entry points to Chinese.
 - [x] Add tests for outline file extraction, drag/drop UI affordance, and Chinese workflow labels.
+
+## Phase 18: Flexible Outline Editing And Model Parameter Normalization (Complete)
+
+- [x] Add Planning Lab as a separate workspace for raw outline sources, editable outline versions, chapter plan editing, and plan proposals.
+- [x] Preserve pasted/file outline text as immutable `outline_sources` and store normalized editable `outline_versions`.
+- [x] Add `volume_plans`, `chapter_plans`, `plan_edit_proposals`, and scene planning fields through safe migrations.
+- [x] Add per-chapter target/min/max word controls, lock flag, and word-count priority.
+- [x] Add typed planning IPC/preload APIs and a main-process `PlanningRepository`.
+- [x] Add Plan Chat proposal flow with before/after JSON and accept/reject status.
+- [x] Make chapter workflow consume accepted chapter plans before generating a fresh plan.
+- [x] Add original micro-edit prompt templates for outline, volume, chapter, scene, selected text, length adjustment, hook variants, and ending variants.
+- [x] Add `ModelParameterPolicy` to normalize provider-safe request parameters before adapter calls.
+- [x] Fix Anthropic Claude Opus 4.7 sampling compatibility by omitting deprecated temperature/top-p/top-k fields.
+- [x] Fix OpenAI GPT-5.x output-token compatibility by using model-profile-controlled `max_completion_tokens` or `max_output_tokens`.
+- [x] Add model profile capability fields for endpoint family, max output parameter name, sampling support, reasoning, and adaptive thinking.
+- [x] Add route-level creativity intent and context budget mode, defaulting WenForge context to `max_safe`.
+- [x] Add one-shot provider parameter retry repair for known compatibility errors before streaming starts.
+- [x] Update Settings models/routing UI to show effective capabilities and creativity intent instead of raw temperature-first controls.
+- [x] Add focused unit tests for planning persistence, provider request normalization, and adapter request bodies.

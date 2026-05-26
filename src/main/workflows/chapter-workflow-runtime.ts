@@ -472,8 +472,29 @@ export class ChapterWorkflowRuntime {
 
   private async generateChapterOutline(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
     const chapter = this.options.repositories.chapters.get(state.chapterId);
+    const acceptedPlan = this.options.repositories.planning.getAcceptedChapterPlan(state.chapterId);
     const outlineLines = outlineBeats(state.sourceOutline);
-    const outline = state.sourceOutline
+    const outline = acceptedPlan && !state.sourceOutline
+      ? {
+          plan_id: acceptedPlan.id,
+          chapter_promise: acceptedPlan.chapterPromise ?? `${chapter?.title ?? "本章"}兑现当前计划。`,
+          opening_hook: acceptedPlan.openingHook ?? "按已接受计划开场。",
+          major_conflict: acceptedPlan.mainConflict ?? "按已接受计划推进主冲突。",
+          conflict_escalation: acceptedPlan.mainConflict ?? "把章节计划里的阻力具体化。",
+          emotional_turn: acceptedPlan.emotionalTurn ?? "让角色选择发生明确变化。",
+          payoff: acceptedPlan.payoff ?? "兑现本章承诺。",
+          chapter_end_hook: acceptedPlan.endingHook ?? "以已接受计划指定钩子收束。",
+          scene_plan: [
+            acceptedPlan.openingHook,
+            acceptedPlan.mainConflict,
+            acceptedPlan.emotionalTurn,
+            acceptedPlan.payoff,
+            acceptedPlan.endingHook
+          ].filter(Boolean),
+          continuity_dependencies: safeJsonArray(acceptedPlan.continuityDependenciesJson),
+          risks: ["使用已接受计划；不重新发明主线。"]
+        }
+      : state.sourceOutline
       ? {
           source_outline: state.sourceOutline,
           allow_story_changes: state.allowStoryChanges,
@@ -903,13 +924,18 @@ export class ChapterWorkflowRuntime {
       return [{ role: "user", content: fallbackContent }];
     }
     try {
-      const assemblyInput = {
+    const assemblyInput = {
         templateId,
         privacy: { ...this.privacy, allowPromptPreview: false },
         variables: {
           userInstruction: state.userInstruction ?? "",
           targetWords: String(
             this.options.repositories.chapters.get(state.chapterId)?.targetWords ?? ""
+          ),
+          acceptedChapterPlan: JSON.stringify(
+            this.options.repositories.planning.getAcceptedChapterPlan(state.chapterId),
+            null,
+            2
           ),
           draftText: state.draftMarkdown ?? "",
           sourceOutline: state.sourceOutline ?? "",
@@ -1232,6 +1258,15 @@ function outlineBeats(sourceOutline: string | null): string[] {
     .map((line) => line.replace(/^[-*•\d.、\s]+/, "").trim())
     .filter((line) => line.length > 0)
     .slice(0, 8);
+}
+
+function safeJsonArray(value: string): unknown[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 function inferSetting(beat: string): string {

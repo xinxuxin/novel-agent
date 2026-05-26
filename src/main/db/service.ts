@@ -14,6 +14,7 @@ import { MemoryRepository } from "./repositories/memory-repository";
 import { ModelPriceTierRepository } from "./repositories/model-price-tier-repository";
 import { ModelPriceRepository } from "./repositories/model-price-repository";
 import { ModelProfileRepository } from "./repositories/model-profile-repository";
+import { PlanningRepository } from "./repositories/planning-repository";
 import { ProjectRepository } from "./repositories/project-repository";
 import { ProviderCredentialRepository } from "./repositories/provider-credential-repository";
 import { ProviderHealthRepository } from "./repositories/provider-health-repository";
@@ -49,6 +50,7 @@ export interface RepositoryRegistry {
   usageCalibration: UsageCalibrationRepository;
   providerQuotas: ProviderQuotaRepository;
   taskRoutes: TaskRouteRepository;
+  planning: PlanningRepository;
 }
 
 export interface AppDatabaseService {
@@ -80,7 +82,8 @@ export function createRepositories(db: WenForgeDatabase): RepositoryRegistry {
     modelPriceTiers: new ModelPriceTierRepository(db),
     usageCalibration: new UsageCalibrationRepository(db),
     providerQuotas: new ProviderQuotaRepository(db),
-    taskRoutes: new TaskRouteRepository(db)
+    taskRoutes: new TaskRouteRepository(db),
+    planning: new PlanningRepository(db)
   };
 }
 
@@ -201,56 +204,83 @@ const MODEL_SEEDS: Array<{
   alias?: string | undefined;
   displayName: string;
   recommendedTasks: TaskType[];
+  endpointFamily?: ReturnType<typeof endpointFamilyForProvider> | undefined;
+  maxOutputParamName?: "max_tokens" | "max_completion_tokens" | "max_output_tokens" | "output_token_limit" | "generation_config_max_output_tokens" | undefined;
+  supportsTemperature?: boolean | undefined;
+  supportsAdaptiveThinking?: boolean | undefined;
+  supportsResponsesApi?: boolean | undefined;
 }> = [
   {
     provider: "openai",
     model: "gpt-5.5",
     alias: "gpt-5.5",
     displayName: "GPT-5.5",
-    recommendedTasks: ["draft_chapter", "revise_chapter"]
+    recommendedTasks: ["draft_chapter", "revise_chapter"],
+    endpointFamily: "openai_chat_completions",
+    maxOutputParamName: "max_completion_tokens",
+    supportsTemperature: true,
+    supportsResponsesApi: false
   },
   {
     provider: "openai",
     model: "gpt-5.4",
     displayName: "GPT-5.4",
-    recommendedTasks: ["chapter_outline", "draft_chapter"]
+    recommendedTasks: ["chapter_outline", "draft_chapter"],
+    endpointFamily: "openai_chat_completions",
+    maxOutputParamName: "max_completion_tokens"
   },
   {
     provider: "openai",
     model: "gpt-5.4-mini",
     displayName: "GPT-5.4 mini",
-    recommendedTasks: ["brainstorm", "summarize_chapter"]
+    recommendedTasks: ["brainstorm", "summarize_chapter"],
+    endpointFamily: "openai_chat_completions",
+    maxOutputParamName: "max_completion_tokens"
   },
   {
     provider: "openai",
     model: "gpt-5.4-nano",
     displayName: "GPT-5.4 nano",
-    recommendedTasks: ["embedding_or_memory_indexing"]
+    recommendedTasks: ["embedding_or_memory_indexing"],
+    endpointFamily: "openai_chat_completions",
+    maxOutputParamName: "max_completion_tokens"
   },
   {
     provider: "anthropic",
     model: "claude-opus-4.7",
     alias: "claude-opus-4.7",
     displayName: "Claude Opus 4.7",
-    recommendedTasks: ["draft_chapter", "continuity_audit"]
+    recommendedTasks: ["draft_chapter", "continuity_audit"],
+    endpointFamily: "anthropic_messages",
+    maxOutputParamName: "max_tokens",
+    supportsTemperature: false,
+    supportsAdaptiveThinking: true
   },
   {
     provider: "anthropic",
     model: "claude-sonnet-4.6",
     displayName: "Claude Sonnet 4.6",
-    recommendedTasks: ["webnovel_style_rewrite", "revise_chapter"]
+    recommendedTasks: ["webnovel_style_rewrite", "revise_chapter"],
+    endpointFamily: "anthropic_messages",
+    maxOutputParamName: "max_tokens",
+    supportsTemperature: false,
+    supportsAdaptiveThinking: true
   },
   {
     provider: "gemini",
     model: "gemini-3.1-pro-preview",
     displayName: "Gemini 3.1 Pro Preview",
-    recommendedTasks: ["volume_outline", "state_settlement"]
+    recommendedTasks: ["volume_outline", "state_settlement"],
+    endpointFamily: "gemini_generate_content",
+    maxOutputParamName: "generation_config_max_output_tokens"
   },
   {
     provider: "gemini",
     model: "gemini-3.5-flash",
     displayName: "Gemini 3.5 Flash",
-    recommendedTasks: ["brainstorm", "summarize_chapter"]
+    recommendedTasks: ["brainstorm", "summarize_chapter"],
+    endpointFamily: "gemini_generate_content",
+    maxOutputParamName: "generation_config_max_output_tokens"
   },
   {
     provider: "deepseek",
@@ -324,6 +354,16 @@ export function seedModelRoutingData(repositories: RepositoryRegistry): void {
       displayName: seed.displayName,
       supportsStreaming: true,
       supportsJson: true,
+      supportsTemperature: seed.supportsTemperature ?? true,
+      supportsTopP: false,
+      supportsTopK: false,
+      supportsStop: true,
+      supportsAdaptiveThinking: seed.supportsAdaptiveThinking ?? false,
+      maxOutputParamName:
+        seed.maxOutputParamName ?? maxOutputParamNameForProvider(seed.provider, seed.model),
+      endpointFamily: seed.endpointFamily ?? endpointFamilyForProvider(seed.provider),
+      supportsResponsesApi: seed.supportsResponsesApi ?? false,
+      supportsChatCompletions: seed.provider !== "gemini" && seed.provider !== "anthropic",
       defaultTemperature: 0.7,
       recommendedTasks: seed.recommendedTasks,
       enabled: true
@@ -387,6 +427,37 @@ export function seedModelRoutingData(repositories: RepositoryRegistry): void {
     }
   }
   applyPremiumWebnovelPreset(repositories);
+}
+
+function endpointFamilyForProvider(provider: ProviderId) {
+  switch (provider) {
+    case "openai":
+      return "openai_chat_completions" as const;
+    case "anthropic":
+      return "anthropic_messages" as const;
+    case "gemini":
+      return "gemini_generate_content" as const;
+    case "deepseek":
+      return "deepseek_openai_compatible" as const;
+    case "dashscope_qwen":
+      return "dashscope_openai_compatible" as const;
+    case "moonshot_kimi":
+      return "moonshot_openai_compatible" as const;
+    case "xai":
+      return "xai_openai_compatible" as const;
+    case "openrouter":
+      return "openrouter_openai_compatible" as const;
+    default:
+      return "openai_compatible" as const;
+  }
+}
+
+function maxOutputParamNameForProvider(provider: ProviderId, model: string) {
+  if (provider === "gemini") return "generation_config_max_output_tokens" as const;
+  if (provider === "openai" && /^gpt-5|^gpt-4\.1|^o[134]/i.test(model)) {
+    return "max_completion_tokens" as const;
+  }
+  return "max_tokens" as const;
 }
 
 function seedEditablePriceTiers(repositories: RepositoryRegistry): void {

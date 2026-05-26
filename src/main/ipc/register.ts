@@ -304,6 +304,43 @@ function registerDataIpc(
     return repositories.chapters.delete(request.id, true);
   });
 
+  registerIpcContract(IPC_CONTRACTS.planning.outlineSources.list, (request) =>
+    repositories.planning.listOutlineSources(request.bookId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.outlineSources.create, (request) =>
+    repositories.planning.createOutlineSource(request)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.outlineVersions.list, (request) =>
+    repositories.planning.listOutlineVersions(request.bookId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.outlineVersions.create, (request) =>
+    repositories.planning.createOutlineVersion(request)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.outlineVersions.setActive, (request) =>
+    repositories.planning.setActiveOutlineVersion(request.bookId, request.id)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.chapterPlans.list, (request) =>
+    repositories.planning.listChapterPlans(request.bookId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.chapterPlans.getAccepted, (request) =>
+    repositories.planning.getAcceptedChapterPlan(request.chapterId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.chapterPlans.upsert, (request) =>
+    repositories.planning.upsertChapterPlan(request)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.proposals.list, (request) =>
+    repositories.planning.listPlanEditProposals(request.bookId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.proposals.create, (request) =>
+    repositories.planning.createPlanEditProposal(request)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.proposals.accept, (request) =>
+    repositories.planning.acceptPlanEditProposal(request.id)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.proposals.reject, (request) =>
+    repositories.planning.rejectPlanEditProposal(request.id)
+  );
+
   registerIpcContract(IPC_CONTRACTS.manuscripts.listVersions, (request) =>
     repositories.manuscripts.listVersions(request.chapterId)
   );

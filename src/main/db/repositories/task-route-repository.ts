@@ -12,6 +12,8 @@ export interface UpsertTaskRouteInput {
   fallbackModelProfileId1?: string | null | undefined;
   fallbackModelProfileId2?: string | null | undefined;
   temperature: number;
+  creativityIntent?: TaskRouteRecord["creativityIntent"] | undefined;
+  contextBudgetMode?: TaskRouteRecord["contextBudgetMode"] | undefined;
   maxOutputTokens: number;
   budgetCapPerCall?: number | null | undefined;
   enabled?: boolean | undefined;
@@ -32,6 +34,8 @@ function mapRoute(row: Record<string, unknown>): TaskRouteRecord {
     fallbackModelProfileId2:
       row.fallback_model_profile_id_2 === null ? null : String(row.fallback_model_profile_id_2),
     temperature: Number(row.temperature),
+    creativityIntent: normalizeCreativityIntent(row.creativity_intent),
+    contextBudgetMode: normalizeContextBudgetMode(row.context_budget_mode),
     maxOutputTokens: Number(row.max_output_tokens),
     budgetCapPerCall: row.budget_cap_per_call === null ? null : Number(row.budget_cap_per_call),
     enabled: boolFromSql(row.enabled),
@@ -68,10 +72,12 @@ export class TaskRouteRepository {
       .prepare(
         `insert into task_model_routes
         (id, task_type, quality_mode, provider, model, primary_model_profile_id, fallback_model_profile_id_1,
-          fallback_model_profile_id_2, temperature, max_output_tokens, budget_cap_per_call,
+          fallback_model_profile_id_2, temperature, creativity_intent, context_budget_mode,
+          max_output_tokens, budget_cap_per_call,
           enabled, created_at, updated_at)
         values (@id, @taskType, @qualityMode, @legacyProvider, @legacyModel, @primaryModelProfileId, @fallbackModelProfileId1,
-          @fallbackModelProfileId2, @temperature, @maxOutputTokens, @budgetCapPerCall,
+          @fallbackModelProfileId2, @temperature, @creativityIntent, @contextBudgetMode,
+          @maxOutputTokens, @budgetCapPerCall,
           @enabled, @createdAt, @updatedAt)
         on conflict(task_type, quality_mode) do update set
           provider = excluded.provider,
@@ -80,6 +86,8 @@ export class TaskRouteRepository {
           fallback_model_profile_id_1 = excluded.fallback_model_profile_id_1,
           fallback_model_profile_id_2 = excluded.fallback_model_profile_id_2,
           temperature = excluded.temperature,
+          creativity_intent = excluded.creativity_intent,
+          context_budget_mode = excluded.context_budget_mode,
           max_output_tokens = excluded.max_output_tokens,
           budget_cap_per_call = excluded.budget_cap_per_call,
           enabled = excluded.enabled,
@@ -95,6 +103,8 @@ export class TaskRouteRepository {
         fallbackModelProfileId1: input.fallbackModelProfileId1 ?? null,
         fallbackModelProfileId2: input.fallbackModelProfileId2 ?? null,
         temperature: input.temperature,
+        creativityIntent: input.creativityIntent ?? defaultCreativityIntent(input.taskType),
+        contextBudgetMode: input.contextBudgetMode ?? "max_safe",
         maxOutputTokens: input.maxOutputTokens,
         budgetCapPerCall: input.budgetCapPerCall ?? null,
         enabled: input.enabled === false ? 0 : 1,
@@ -102,5 +112,33 @@ export class TaskRouteRepository {
         updatedAt: now
       });
     return this.find(input.taskType, input.qualityMode) as TaskRouteRecord;
+  }
+}
+
+function normalizeCreativityIntent(value: unknown): TaskRouteRecord["creativityIntent"] {
+  return value === "deterministic" || value === "creative" || value === "wild"
+    ? value
+    : "balanced";
+}
+
+function normalizeContextBudgetMode(value: unknown): TaskRouteRecord["contextBudgetMode"] {
+  return value === "conservative" || value === "balanced" || value === "manual"
+    ? value
+    : "max_safe";
+}
+
+function defaultCreativityIntent(taskType: TaskType): TaskRouteRecord["creativityIntent"] {
+  switch (taskType) {
+    case "continuity_audit":
+    case "state_settlement":
+    case "summarize_chapter":
+    case "embedding_or_memory_indexing":
+      return "deterministic";
+    case "draft_chapter":
+    case "webnovel_style_rewrite":
+    case "revise_chapter":
+      return "creative";
+    default:
+      return "balanced";
   }
 }

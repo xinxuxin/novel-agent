@@ -40,6 +40,10 @@ export interface ChapterRecord {
   title: string;
   status: string;
   targetWords: number;
+  minWords: number | null;
+  maxWords: number | null;
+  lockWordCount: boolean;
+  wordCountPriority: "loose" | "normal" | "strict";
   currentWords: number;
   summary: string | null;
   outlineJson: string | null;
@@ -119,6 +123,10 @@ export interface CreateChapterInput {
   chapterIndex: number;
   title: string;
   targetWords?: number;
+  minWords?: number | null;
+  maxWords?: number | null;
+  lockWordCount?: boolean;
+  wordCountPriority?: "loose" | "normal" | "strict";
   status?: string;
 }
 
@@ -128,6 +136,10 @@ export interface UpdateChapterInput {
   title?: string;
   status?: string;
   targetWords?: number;
+  minWords?: number | null;
+  maxWords?: number | null;
+  lockWordCount?: boolean;
+  wordCountPriority?: "loose" | "normal" | "strict";
   summary?: string | null;
   outlineJson?: string | null;
 }

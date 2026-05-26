@@ -24,7 +24,9 @@ The renderer must never directly call model providers, read decrypted secrets, o
 - Providers: normalized streaming adapters for supported providers and OpenAI-compatible endpoints.
 - Cost accounting: token estimation, model price registry, live cost meter updates, and final `llm_runs` reconciliation.
 - Model router: DB-backed task routes for brainstorm, outline, drafting, audits, revision, settlement, summary, and memory indexing.
+- Model parameter policy: provider/model-aware request normalization for endpoint families, output-token parameter names, creativity intent, and context budget mode.
 - Workflows: LangGraph.js chapter generation graphs with checkpoints and human gates.
+- Planning Lab: raw outline source preservation, editable outline versions, accepted chapter plans, scene planning metadata, and plan edit proposals.
 - Memory: SQLite FTS retrieval over approved summaries, story bible records, and memory chunks.
 - Context: main-process context pack assembly with privacy enforcement, redaction, token-budget truncation, and explicit omission notes.
 - Skill package: original WenForge writing methodology and prompt templates.
@@ -52,6 +54,10 @@ IPC is narrow, versioned, and Zod-validated. Future endpoint families should be 
 - `memory.search`
 - `memory.rebuildBookIndex`
 - `context.previewForChapter`
+- `planning.outlineSources.*`
+- `planning.outlineVersions.*`
+- `planning.chapterPlans.*`
+- `planning.proposals.*`
 - `generation.*`
 - `reviews.*`
 - `manuscript.diffVersions`
@@ -76,6 +82,7 @@ Core records:
 - workflow state: `generation_runs`, workflow checkpoints, streamed chunks, review cards, settlement proposals
 - cost state: `llm_runs`, `model_prices`, task route selections, model profiles
 - story memory: story bible entries, characters, factions, locations, artifacts, power-system rules, timeline events, foreshadowing, unresolved hooks, style guides, reader positioning, memory chunks
+- planning state: raw outline sources, outline versions, volume plans, chapter plans, scene planning metadata, and plan edit proposals
 - app configuration: provider credentials, logging settings, route defaults, UI preferences
 
 Generated outputs are drafts or proposals until accepted. Canonical manuscript writes use manuscript versions. Canonical story bible writes currently come from user-saved edits or confirmed settlement applications; generated facts stay out of canonical memory until the user applies supported settlement proposal items.
@@ -85,6 +92,8 @@ Phase 2 implements main-process repositories for projects, books, volumes, chapt
 Phase 6 extends the local data layer with structured story bible repositories for characters, factions, locations, artifacts, power-system rules, timeline events, foreshadowing, unresolved hooks, style guides, and reader positioning. `MemoryIndexService` rebuilds searchable memory from accepted story bible records, canonical manuscripts, and chapter summaries, using SQLite FTS5 first and keyword fallback when FTS is unavailable.
 
 Phase 10 adds a review and settlement confirmation layer. `ReviewSettlementService` owns review-card status updates, manuscript diffs, quality gates, generated artifact acceptance, settlement previews, and transactional settlement application. Applied settlement items write `state_update_applications` audit rows before new story bible, hook, timeline, character, or chapter-summary state becomes canonical.
+
+Phase 18 adds Planning Lab persistence. Raw imported/pasted outlines are immutable `outline_sources`; parsed plans live in versioned editable records; accepted chapter plans can be consumed by the workflow without regenerating outline data. Plan chat and micro-edit actions create `plan_edit_proposals` rather than mutating accepted plans directly.
 
 ## Workflow Runtime
 
@@ -104,6 +113,8 @@ LangGraph.js orchestrates durable local workflows:
 Workflow nodes call the provider layer through the cost wrapper. Human gates pause before canonical writes or accepted memory changes. Resume, cancellation, and partial artifact recovery are required workflow behaviors.
 
 The Phase 6 context builder implements the prepare-context input shape before LangGraph workflow execution exists. It runs in the main process, reads only local repositories, redacts key-like strings, respects privacy settings for full recent chapters, and returns explicit omissions/truncation notes to the renderer preview.
+
+Phase 18 updates chapter workflow preparation so accepted chapter plans, target/min/max word counts, and user notes are preferred over regenerating plan details. Regeneration remains explicit.
 
 ## Provider And Cost Layers
 
@@ -130,6 +141,8 @@ Later, the cost layer wraps every model call:
 `credentials.testConnection` is intentionally conservative in Phase 3: it reports configured-but-untested unless a future provider adapter supplies a safe, known probe endpoint.
 
 Phase 4 adds the main-process AI gateway. It resolves a direct provider/model or task route, decrypts credentials only in main, creates an `llm_runs` record before the request, streams provider deltas through typed event IPC, estimates live output tokens and cost, and reconciles final usage when providers report it. Fake provider streams are available for tests and local developer checks. Provider-specific REST adapters for Anthropic and Gemini are implemented in the main process, and Settings can list provider-supported models without exposing decrypted keys.
+
+Phase 18 adds `ModelParameterPolicy` before adapter request construction. It maps creativity intent and context budget mode into provider-safe parameters, omits unsupported sampling fields, selects the correct output-token field per model profile, and retries once for known parameter compatibility errors before streaming output starts.
 
 ## License Guardrails
 
