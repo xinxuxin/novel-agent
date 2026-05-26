@@ -10,6 +10,7 @@ import {
 import type { SettingsStore } from "@main/app/settings-store";
 import type { StudioModeController } from "@main/app/studio-mode";
 import type { AiGateway } from "@main/ai/ai-gateway";
+import type { ProviderAdapter } from "@main/ai/provider-adapter";
 import { CostDashboardService, PricingRegistryService } from "@main/costs/cost-dashboard-service";
 import type { WenForgeDatabase } from "@main/db/connection";
 import type { RepositoryRegistry } from "@main/db/service";
@@ -21,10 +22,11 @@ import type { StructuredLogger } from "@main/logging/logger";
 import { MemoryIndexService } from "@main/memory/memory-index-service";
 import type { CredentialService } from "@main/providers/credential-service";
 import { ModelRouter } from "@main/providers/model-router";
+import { ProviderSmokeService } from "@main/providers/provider-smoke-service";
 import { ReviewSettlementService } from "@main/review/review-settlement-service";
 import { ChapterWorkflowRuntime } from "@main/workflows/chapter-workflow-runtime";
 import { getEnvironment } from "@main/platform/environment";
-import { SafeIpcError } from "./typed-ipc";
+import { SafeIpcError } from "./safe-ipc-error";
 import { registerIpcContract } from "./typed-ipc";
 import { DEFAULT_PRIVACY_SETTINGS, DEFAULT_ROUTING_SETTINGS } from "@contracts/settings";
 import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
@@ -39,6 +41,7 @@ interface RegisterIpcOptions {
   database?: WenForgeDatabase;
   credentialService?: CredentialService;
   aiGateway?: AiGateway;
+  providerAdapters?: ProviderAdapter[];
   logger?: StructuredLogger;
 }
 
@@ -49,6 +52,7 @@ export function registerIpc({
   database,
   credentialService,
   aiGateway,
+  providerAdapters = [],
   logger
 }: RegisterIpcOptions): void {
   for (const contract of IPC_CONTRACT_LIST) {
@@ -109,7 +113,7 @@ export function registerIpc({
   );
 
   if (repositories) {
-    registerDataIpc(repositories, credentialService, aiGateway, database);
+    registerDataIpc(repositories, credentialService, aiGateway, database, providerAdapters);
   }
 }
 
@@ -123,7 +127,8 @@ function registerDataIpc(
   repositories: RepositoryRegistry,
   credentialService?: CredentialService,
   aiGateway?: AiGateway,
-  database?: WenForgeDatabase
+  database?: WenForgeDatabase,
+  providerAdapters: ProviderAdapter[] = []
 ): void {
   const workflowRuntime = database
     ? new ChapterWorkflowRuntime({
@@ -162,6 +167,14 @@ function registerDataIpc(
         userDataDir: app.getPath("userData")
       })
     : null;
+  const providerSmokeService =
+    aiGateway && providerAdapters.length > 0
+      ? new ProviderSmokeService({
+          repositories,
+          aiGateway,
+          adapters: providerAdapters
+        })
+      : null;
   evaluationService?.ensureBuiltInSuite();
 
   registerIpcContract(IPC_CONTRACTS.projects.list, () => repositories.projects.list());
@@ -748,6 +761,31 @@ function registerDataIpc(
     repositories.providerHealth.reset(request?.provider);
     return undefined;
   });
+  registerIpcContract(IPC_CONTRACTS.providerSmoke.run, (request) => {
+    if (!providerSmokeService) {
+      throw new SafeIpcError("PROVIDER_SMOKE_UNAVAILABLE", "Provider smoke service is unavailable");
+    }
+    requireConfirmation(request.confirmed);
+    return providerSmokeService.runProviderSmoke({
+      provider: request.provider,
+      confirmed: true,
+      ...(typeof request.budgetCapUsd === "number" ? { budgetCapUsd: request.budgetCapUsd } : {})
+    });
+  });
+  registerIpcContract(IPC_CONTRACTS.providerSmoke.runAll, (request) => {
+    if (!providerSmokeService) {
+      throw new SafeIpcError("PROVIDER_SMOKE_UNAVAILABLE", "Provider smoke service is unavailable");
+    }
+    requireConfirmation(request.confirmed);
+    return providerSmokeService.runAllConfigured({
+      confirmed: true,
+      ...(typeof request.budgetCapUsd === "number" ? { budgetCapUsd: request.budgetCapUsd } : {})
+    });
+  });
+  registerIpcContract(
+    IPC_CONTRACTS.providerSmoke.report,
+    () => providerSmokeService?.buildUntestedReport() ?? []
+  );
   registerIpcContract(IPC_CONTRACTS.reviews.listByGenerationRun, (request) => {
     if (!reviewSettlementService) {
       throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");

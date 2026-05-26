@@ -1,6 +1,11 @@
 import type { ThemePreference } from "@shared/theme";
 import type { DiagnosticBundle, DiagnosticBundleRequest } from "./diagnostics";
 import type {
+  ProviderSmokeResult,
+  ProviderSmokeRunAllRequest,
+  ProviderSmokeRunRequest
+} from "./provider-smoke";
+import type {
   AIStreamEvent,
   CostSummary,
   CostSummaryRequest,
@@ -393,6 +398,11 @@ export interface WenForgeApi {
   providerHealth: {
     list: () => Promise<ProviderHealthRecord[]>;
     reset: (provider?: ProviderHealthRecord["provider"]) => Promise<void>;
+  };
+  providerSmoke: {
+    run: (request: ProviderSmokeRunRequest) => Promise<ProviderSmokeResult>;
+    runAll: (request: ProviderSmokeRunAllRequest) => Promise<ProviderSmokeResult[]>;
+    report: () => Promise<ProviderSmokeResult[]>;
   };
   privacy: {
     get: () => Promise<PrivacySettings>;

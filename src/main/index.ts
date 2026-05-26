@@ -42,6 +42,7 @@ if (!hasSingleInstanceLock) {
       appVersion: app.getVersion()
     });
     const databaseService = createAppDatabaseService(app);
+    const providerAdapters = createDefaultProviderAdapters();
     logger.info("app_ready", {
       platform: process.platform,
       safeStorageAvailable: safeStorage.isEncryptionAvailable()
@@ -54,7 +55,7 @@ if (!hasSingleInstanceLock) {
     const aiGateway = new AiGateway({
       repositories: databaseService.repositories,
       credentialService,
-      adapters: createDefaultProviderAdapters()
+      adapters: providerAdapters
     });
     const openMainWindow = async (): Promise<BrowserWindow> => {
       const window = await createMainWindow((createdWindow) => {
@@ -66,6 +67,7 @@ if (!hasSingleInstanceLock) {
           database: databaseService.connection.db,
           credentialService,
           aiGateway,
+          providerAdapters,
           logger
         });
       });

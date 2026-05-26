@@ -71,6 +71,7 @@ describe("preload API", () => {
       "privacy",
       "projects",
       "providerHealth",
+      "providerSmoke",
       "reviews",
       "routingSettings",
       "settings",
@@ -84,6 +85,7 @@ describe("preload API", () => {
     expect(Object.keys(api.window).sort()).toEqual(["close", "minimize", "toggleStudioMode"]);
     expect(Object.keys(api.settings).sort()).toEqual(["getTheme", "setTheme"]);
     expect(Object.keys(api.diagnostics).sort()).toEqual(["exportBundle", "ping"]);
+    expect(Object.keys(api.providerSmoke).sort()).toEqual(["report", "run", "runAll"]);
     expect(await api.app.getVersion()).toBe("0.1.0");
     expect(await api.app.getPlatform()).toBe("darwin");
     expect(await api.app.getEnvironment()).toEqual({ mode: "test", packaged: false });

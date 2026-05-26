@@ -10,6 +10,7 @@ import type {
   ModelProfileRecord,
   BudgetPolicyRecord,
   ProviderHealthRecord,
+  ProviderSmokeResult,
   ProviderCredentialDto,
   TaskRouteRecord
 } from "@contracts/index";
@@ -34,6 +35,7 @@ interface SettingsData {
   routes: TaskRouteRecord[];
   budget: BudgetPolicyRecord | null;
   providerHealth: ProviderHealthRecord[];
+  providerSmoke: ProviderSmokeResult[];
   privacy: PrivacySettings | null;
   routing: RoutingSettings | null;
 }
@@ -96,23 +98,44 @@ const initialData: SettingsData = {
   routes: [],
   budget: null,
   providerHealth: [],
+  providerSmoke: [],
   privacy: null,
   routing: null
 };
 
 async function loadSettingsData(): Promise<SettingsData> {
-  const [credentials, profiles, prices, routes, budget, providerHealth, privacy, routing] =
-    await Promise.all([
-      window.wenforge.credentials.list(),
-      window.wenforge.modelProfiles.list(),
-      window.wenforge.modelPrices.list(),
-      window.wenforge.taskRoutes.list(),
-      window.wenforge.budgets.getPolicies(),
-      window.wenforge.providerHealth.list(),
-      window.wenforge.privacy.get(),
-      window.wenforge.routingSettings.get()
-    ]);
-  return { credentials, profiles, prices, routes, budget, providerHealth, privacy, routing };
+  const [
+    credentials,
+    profiles,
+    prices,
+    routes,
+    budget,
+    providerHealth,
+    providerSmoke,
+    privacy,
+    routing
+  ] = await Promise.all([
+    window.wenforge.credentials.list(),
+    window.wenforge.modelProfiles.list(),
+    window.wenforge.modelPrices.list(),
+    window.wenforge.taskRoutes.list(),
+    window.wenforge.budgets.getPolicies(),
+    window.wenforge.providerHealth.list(),
+    window.wenforge.providerSmoke.report(),
+    window.wenforge.privacy.get(),
+    window.wenforge.routingSettings.get()
+  ]);
+  return {
+    credentials,
+    profiles,
+    prices,
+    routes,
+    budget,
+    providerHealth,
+    providerSmoke,
+    privacy,
+    routing
+  };
 }
 
 export function SettingsPanel(): JSX.Element {
@@ -199,6 +222,10 @@ export function SettingsPanel(): JSX.Element {
     () => new Map(data.profiles.map((profile) => [profile.id, profile])),
     [data.profiles]
   );
+  const smokeByProvider = useMemo(
+    () => new Map(data.providerSmoke.map((result) => [result.provider, result])),
+    [data.providerSmoke]
+  );
 
   const runAction = async (action: () => Promise<void>, success: string): Promise<void> => {
     try {
@@ -221,6 +248,52 @@ export function SettingsPanel(): JSX.Element {
       });
       setCredentialDraft((current) => ({ ...current, apiKey: "" }));
     }, "Credential saved.");
+  };
+
+  const confirmSmokeCost = (): boolean =>
+    window.confirm("This will make a real API call and may cost money.");
+
+  const runProviderSmoke = async (provider: ProviderId): Promise<void> => {
+    if (!confirmSmokeCost()) {
+      return;
+    }
+    try {
+      setError(null);
+      const result = await window.wenforge.providerSmoke.run({
+        provider,
+        confirmed: true,
+        budgetCapUsd: 0.05
+      });
+      await refresh();
+      setData((current) => ({
+        ...current,
+        providerSmoke: upsertSmokeResult(current.providerSmoke, result)
+      }));
+      setNotice("Provider smoke test finished.");
+    } catch (nextError) {
+      setError(readError(nextError));
+    }
+  };
+
+  const runAllProviderSmoke = async (): Promise<void> => {
+    if (!confirmSmokeCost()) {
+      return;
+    }
+    try {
+      setError(null);
+      const results = await window.wenforge.providerSmoke.runAll({
+        confirmed: true,
+        budgetCapUsd: 0.05
+      });
+      await refresh();
+      setData((current) => ({
+        ...current,
+        providerSmoke: mergeSmokeResults(current.providerSmoke, results)
+      }));
+      setNotice("Configured provider smoke tests finished.");
+    } catch (nextError) {
+      setError(readError(nextError));
+    }
   };
 
   const saveModel = async (): Promise<void> => {
@@ -365,6 +438,8 @@ export function SettingsPanel(): JSX.Element {
           <ProvidersTab
             credentialDraft={credentialDraft}
             credentials={data.credentials}
+            providerHealth={data.providerHealth}
+            smokeByProvider={smokeByProvider}
             onCredentialDraftChange={setCredentialDraft}
             onDeleteCredential={(credential) =>
               runAction(async () => {
@@ -381,6 +456,12 @@ export function SettingsPanel(): JSX.Element {
                 setNotice(result.message);
               }, "Credential status refreshed.")
             }
+            onRunAllProviderSmoke={() => {
+              void runAllProviderSmoke();
+            }}
+            onRunProviderSmoke={(provider) => {
+              void runProviderSmoke(provider);
+            }}
           />
         ) : null}
         {!loading && activeTab === "models" ? (
@@ -447,10 +528,14 @@ export function SettingsPanel(): JSX.Element {
 function ProvidersTab({
   credentialDraft,
   credentials,
+  providerHealth,
+  smokeByProvider,
   onCredentialDraftChange,
   onDeleteCredential,
   onSaveCredential,
-  onTestCredential
+  onTestCredential,
+  onRunAllProviderSmoke,
+  onRunProviderSmoke
 }: {
   credentialDraft: {
     provider: ProviderId;
@@ -459,10 +544,14 @@ function ProvidersTab({
     apiKey: string;
   };
   credentials: ProviderCredentialDto[];
+  providerHealth: ProviderHealthRecord[];
+  smokeByProvider: Map<ProviderId, ProviderSmokeResult>;
   onCredentialDraftChange: (draft: typeof credentialDraft) => void;
   onDeleteCredential: (credential: ProviderCredentialDto) => void;
   onSaveCredential: () => Promise<void>;
   onTestCredential: (credential: ProviderCredentialDto) => void;
+  onRunAllProviderSmoke: () => void;
+  onRunProviderSmoke: (provider: ProviderId) => void;
 }): JSX.Element {
   return (
     <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
@@ -529,41 +618,76 @@ function ProvidersTab({
         </div>
       </section>
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
-        <SectionTitle title="Configured Providers" />
+        <div className="flex items-center justify-between gap-3">
+          <SectionTitle title="Configured Providers" />
+          <button
+            className={secondaryButtonClassName}
+            onClick={onRunAllProviderSmoke}
+            type="button"
+          >
+            Run all configured providers
+          </button>
+        </div>
         <div className="mt-4 overflow-hidden rounded-lg border border-white/10">
           {credentials.length === 0 ? <EmptyState text="No provider credentials saved." /> : null}
-          {credentials.map((credential) => (
-            <div
-              className="grid gap-3 border-b border-white/10 px-3 py-3 last:border-b-0 md:grid-cols-[1fr_auto]"
-              key={credential.id}
-            >
-              <div>
-                <p className="text-sm font-medium text-white">{credential.displayName}</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {PROVIDER_LABELS[credential.provider]} · {credential.redactedKeyLabel}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {credential.baseUrl ?? "Default provider endpoint"} · {credential.lastStatus}
-                </p>
+          {credentials.map((credential) => {
+            const smoke = smokeByProvider.get(credential.provider);
+            const health = providerHealth.find((item) => item.provider === credential.provider);
+            return (
+              <div
+                className="grid gap-3 border-b border-white/10 px-3 py-3 last:border-b-0 md:grid-cols-[1fr_auto]"
+                key={credential.id}
+              >
+                <div>
+                  <p className="text-sm font-medium text-white">{credential.displayName}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {PROVIDER_LABELS[credential.provider]} · {credential.redactedKeyLabel}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {credential.baseUrl ?? "Default provider endpoint"} · {credential.lastStatus}
+                  </p>
+                  <div className="mt-2 grid gap-1 text-xs text-slate-500 sm:grid-cols-2">
+                    <span>
+                      Last tested: {smoke?.testedAt ?? credential.lastTestedAt ?? "Never"}
+                    </span>
+                    <span>Status: {smoke?.status ?? health?.status ?? credential.lastStatus}</span>
+                    <span>Streaming: {smoke ? yesNo(smoke.streamingSupported) : "Unknown"}</span>
+                    <span>Usage: {smoke ? yesNo(smoke.usageParsed) : "Unknown"}</span>
+                    <span>Latency: {formatLatency(smoke?.latencyMs ?? null)}</span>
+                    <span>Cost: {formatUsd(smoke?.estimatedCost ?? null)}</span>
+                  </div>
+                  {(smoke?.error ?? health?.errorMessage) ? (
+                    <p className="mt-2 rounded-md border border-red-400/20 bg-red-400/5 px-2 py-1 text-xs text-red-200">
+                      {smoke?.error ?? health?.errorMessage}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                  <button
+                    className={secondaryButtonClassName}
+                    onClick={() => onTestCredential(credential)}
+                    type="button"
+                  >
+                    Test status
+                  </button>
+                  <button
+                    className={secondaryButtonClassName}
+                    onClick={() => onRunProviderSmoke(credential.provider)}
+                    type="button"
+                  >
+                    Run provider smoke test
+                  </button>
+                  <button
+                    className="rounded-lg border border-red-400/25 px-3 py-2 text-xs text-red-200 transition hover:bg-red-400/10"
+                    onClick={() => onDeleteCredential(credential)}
+                    type="button"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  className={secondaryButtonClassName}
-                  onClick={() => onTestCredential(credential)}
-                  type="button"
-                >
-                  Test status
-                </button>
-                <button
-                  className="rounded-lg border border-red-400/25 px-3 py-2 text-xs text-red-200 transition hover:bg-red-400/10"
-                  onClick={() => onDeleteCredential(credential)}
-                  type="button"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     </div>
@@ -1503,6 +1627,36 @@ function getRouteWarnings({
 
 function priceKey(value: { provider: ProviderId; model: string }): string {
   return `${value.provider}:${value.model}`;
+}
+
+function upsertSmokeResult(
+  current: ProviderSmokeResult[],
+  result: ProviderSmokeResult
+): ProviderSmokeResult[] {
+  return mergeSmokeResults(current, [result]);
+}
+
+function mergeSmokeResults(
+  current: ProviderSmokeResult[],
+  results: ProviderSmokeResult[]
+): ProviderSmokeResult[] {
+  const byProvider = new Map(current.map((result) => [result.provider, result]));
+  for (const result of results) {
+    byProvider.set(result.provider, result);
+  }
+  return [...byProvider.values()];
+}
+
+function yesNo(value: boolean): string {
+  return value ? "Yes" : "No";
+}
+
+function formatLatency(value: number | null): string {
+  return typeof value === "number" ? `${value} ms` : "Unknown";
+}
+
+function formatUsd(value: number | null): string {
+  return typeof value === "number" ? `$${value.toFixed(6)}` : "Unknown";
 }
 
 function isStaleDate(effectiveDate: string, staleAfterDays: number): boolean {

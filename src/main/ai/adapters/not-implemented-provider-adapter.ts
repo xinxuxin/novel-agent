@@ -46,7 +46,7 @@ export class NotImplementedProviderAdapter implements ProviderAdapter {
 
   private notImplementedError(): ProviderError {
     return {
-      code: "not_implemented",
+      code: "provider_not_implemented",
       message: `${this.displayName} adapter is not implemented yet`
     };
   }

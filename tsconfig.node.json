@@ -15,6 +15,7 @@
     "src/db/**/*.ts",
     "src/ai/**/*.ts",
     "src/agents/**/*.ts",
+    "scripts/**/*.ts",
     "tests/**/*.ts"
   ]
 }

@@ -8,6 +8,11 @@ export type {
 } from "./preload";
 export type { DiagnosticBundle, DiagnosticBundleRequest } from "./diagnostics";
 export type {
+  ProviderSmokeResult,
+  ProviderSmokeRunAllRequest,
+  ProviderSmokeRunRequest
+} from "./provider-smoke";
+export type {
   BookRecord,
   ChapterRecord,
   CreateBookInput,

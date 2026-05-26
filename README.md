@@ -39,6 +39,8 @@ pnpm package:mac
 pnpm package:win
 pnpm package:linux
 pnpm release:dry-run
+pnpm providers:smoke
+pnpm providers:report
 pnpm test:smoke
 pnpm db:generate
 pnpm db:migrate
@@ -46,6 +48,8 @@ pnpm db:studio
 ```
 
 `pnpm test:smoke` launches the built Electron output, so run `pnpm build` first.
+
+Real provider smoke tests are disabled by default. They require a local `.env.local` and `RUN_REAL_PROVIDER_TESTS=true`; CI never runs real providers.
 
 ## Documentation
 
@@ -55,6 +59,7 @@ pnpm db:studio
 - [Security](docs/SECURITY.md)
 - [Privacy](docs/PRIVACY.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Real Provider Setup](docs/REAL_PROVIDER_SETUP.md)
 - [Release Guide](docs/RELEASE.md)
 - [Release Checklist](docs/RELEASE_CHECKLIST.md)
 - [Cost Tracking](docs/COST_TRACKING.md)

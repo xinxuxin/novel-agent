@@ -25,6 +25,23 @@ The provider returned a rate-limit response.
 - Lower concurrent generation/evaluation work.
 - Prefer mock mode for local workflow testing.
 
+### Provider Smoke Test Skipped
+
+Real provider smoke tests are opt-in.
+
+- Set `RUN_REAL_PROVIDER_TESTS=true` for CLI smoke tests.
+- Do not set it in CI.
+- Confirm `.env.local` exists for local CLI tests.
+- In the app UI, save an encrypted credential and confirm the smoke-test warning.
+
+### Provider Not Implemented
+
+Some provider-specific adapters are still intentionally stubbed.
+
+- Anthropic and Gemini currently return `provider_not_implemented`.
+- Use OpenAI-compatible providers where supported.
+- Do not add guessed endpoints; implement provider-specific adapters only with reliable docs/tests.
+
 ### Context Length Exceeded
 
 The selected model could not fit the assembled context.
@@ -84,6 +101,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm providers:report
 ```
 
 `pnpm test:smoke` launches the built Electron output and should be run after `pnpm build` when checking the desktop shell manually.

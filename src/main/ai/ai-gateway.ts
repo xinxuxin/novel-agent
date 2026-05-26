@@ -14,7 +14,7 @@ import type { RoutingSettings } from "@contracts/settings";
 import type { RepositoryRegistry } from "@main/db/service";
 import type { CredentialService } from "@main/providers/credential-service";
 import { ModelRouter } from "@main/providers/model-router";
-import { SafeIpcError } from "@main/ipc/typed-ipc";
+import { SafeIpcError } from "@main/ipc/safe-ipc-error";
 import { RedactionService } from "@main/security/redaction-service";
 import { CostCalculator } from "./cost-calculator";
 import { hashMessages, sha256Hex } from "./hash";

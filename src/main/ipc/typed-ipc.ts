@@ -3,16 +3,9 @@ import { ZodError, type z } from "zod";
 
 import { normalizeOperationalError } from "@shared/errors/error-normalizer";
 import type { IpcContract, IpcEnvelope, SafeIpcErrorShape } from "@shared/ipc/contracts";
+import { SafeIpcError } from "./safe-ipc-error";
 
-export class SafeIpcError extends Error {
-  constructor(
-    public readonly code: string,
-    message: string
-  ) {
-    super(message);
-    this.name = "SafeIpcError";
-  }
-}
+export { SafeIpcError } from "./safe-ipc-error";
 
 export function mapToSafeIpcError(error: unknown): SafeIpcErrorShape {
   if (error instanceof SafeIpcError) {

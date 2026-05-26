@@ -146,3 +146,18 @@ Phase 14 adds explicit security and support surfaces:
 - Electron Builder packaging excludes `references/**`, `references/repos/**`, source files, tests, docs, and test results. Runtime DBs, backups, logs, and secrets stay under Electron `userData` and are not bundled into installers.
 
 Production release still requires platform signing, notarization, final icons, and a dependency notice review before public distribution.
+
+## Phase 15a Real Provider Bring-Up
+
+Real-provider validation is opt-in:
+
+- `.env.local`, `.env.*.local`, credential-like key files, and `reports/` are ignored by git.
+- `.env.example` contains empty placeholders only.
+- `pnpm providers:smoke` skips real providers unless `RUN_REAL_PROVIDER_TESTS=true` is set outside CI.
+- `pnpm dev:import-env-credentials` refuses to run without `--confirm-import-local-secrets` and refuses to run in CI.
+- Local env credential import writes encrypted secrets through Electron `safeStorage` and prints only redacted labels.
+- Settings -> Providers smoke tests require confirmation before making a real API call.
+- Smoke calls use tiny prompts, `temperature = 0`, `maxOutputTokens <= 80`, and a small per-call budget cap.
+- Provider conformance reports redact Authorization headers, API-key-like strings, and provider errors before writing under ignored `reports/`.
+
+Automated tests continue to use fake providers only.

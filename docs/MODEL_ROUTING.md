@@ -137,3 +137,19 @@ Phase 11 adds a local model evaluation suite for routing decisions:
 Promotion updates `task_model_routes.primary_model_profile_id`; it does not copy eval output text into manuscripts or story memory. Eval outputs still create `llm_runs`, so route choices can be judged against local cost and latency history.
 
 The Costs workspace also reports route price warnings for routes whose primary model is missing an active price row or uses a stale price.
+
+## Phase 15a Provider Conformance
+
+Provider smoke tests are not routing benchmarks. They validate whether a configured credential/model pair can complete a tiny request through the adapter and gateway.
+
+The conformance report records:
+
+- configured true/false
+- tested true/false
+- streaming support
+- usage parsing
+- final cost computation
+- fallback eligibility
+- redacted errors
+
+Successful smoke tests update provider health and credential tested status. Route selection still depends on editable model profiles, prices, task routes, and budget policy.

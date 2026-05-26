@@ -73,3 +73,20 @@ Phase 4 unit tests cover:
 - No real provider calls.
 - Prompt/response text excluded from run records.
 - Prompt/response hashes stored.
+
+## Phase 15a Smoke Validation
+
+Phase 15a adds a provider smoke layer around the existing gateway. Smoke calls still use `AiGateway`, so each model call creates an `llm_runs` row before the adapter runs and stores prompt/response hashes by default.
+
+The smoke layer adds stricter bring-up limits:
+
+- explicit user confirmation in Settings -> Providers
+- no real calls in CI
+- opt-in `RUN_REAL_PROVIDER_TESTS=true` for CLI smoke runs
+- global CLI budget from `REAL_PROVIDER_TEST_BUDGET_USD`
+- tiny JSON prompt
+- `temperature = 0`
+- `maxOutputTokens <= 80`
+- redacted provider conformance reports
+
+Anthropic and Gemini remain safe `provider_not_implemented` adapters until reliable provider-specific support is added.

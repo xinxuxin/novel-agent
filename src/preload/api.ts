@@ -29,6 +29,7 @@ import type {
   PriceImportResult,
   RoutePriceWarning
 } from "@contracts/cost-dashboard";
+import type { ProviderSmokeResult } from "@contracts/provider-smoke";
 import type {
   BackupRecord,
   BackupRestoreResult,
@@ -948,6 +949,28 @@ export function createPreloadApi(
           IPC_CONTRACTS.providerHealth.reset.channel,
           IPC_CONTRACTS.providerHealth.reset.response,
           typeof provider === "undefined" ? undefined : { provider }
+        )
+    },
+    providerSmoke: {
+      run: (request) =>
+        invokeContract<ProviderSmokeResult>(
+          invoke,
+          IPC_CONTRACTS.providerSmoke.run.channel,
+          IPC_CONTRACTS.providerSmoke.run.response,
+          request
+        ),
+      runAll: (request) =>
+        invokeContract<ProviderSmokeResult[]>(
+          invoke,
+          IPC_CONTRACTS.providerSmoke.runAll.channel,
+          IPC_CONTRACTS.providerSmoke.runAll.response,
+          request
+        ),
+      report: () =>
+        invokeContract<ProviderSmokeResult[]>(
+          invoke,
+          IPC_CONTRACTS.providerSmoke.report.channel,
+          IPC_CONTRACTS.providerSmoke.report.response
         )
     },
     privacy: {

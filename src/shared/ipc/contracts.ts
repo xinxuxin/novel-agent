@@ -9,6 +9,11 @@ import {
 } from "@contracts/ai";
 import { diagnosticBundleRequestSchema, diagnosticBundleSchema } from "@contracts/diagnostics";
 import {
+  providerSmokeResultSchema,
+  providerSmokeRunAllRequestSchema,
+  providerSmokeRunRequestSchema
+} from "@contracts/provider-smoke";
+import {
   costDashboardSummarySchema,
   costGroupSchema,
   costScopeRequestSchema,
@@ -1266,6 +1271,23 @@ export const IPC_CONTRACTS = {
       z.undefined()
     )
   },
+  providerSmoke: {
+    run: createContract(
+      "provider-smoke:run",
+      providerSmokeRunRequestSchema,
+      providerSmokeResultSchema
+    ),
+    runAll: createContract(
+      "provider-smoke:run-all",
+      providerSmokeRunAllRequestSchema,
+      z.array(providerSmokeResultSchema)
+    ),
+    report: createContract(
+      "provider-smoke:report",
+      emptyRequestSchema,
+      z.array(providerSmokeResultSchema)
+    )
+  },
   reviews: {
     listByGenerationRun: createContract(
       "reviews:list-by-generation-run",
@@ -1674,6 +1696,9 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.pricing.routeWarnings,
   IPC_CONTRACTS.providerHealth.list,
   IPC_CONTRACTS.providerHealth.reset,
+  IPC_CONTRACTS.providerSmoke.run,
+  IPC_CONTRACTS.providerSmoke.runAll,
+  IPC_CONTRACTS.providerSmoke.report,
   IPC_CONTRACTS.reviews.listByGenerationRun,
   IPC_CONTRACTS.reviews.updateStatus,
   IPC_CONTRACTS.reviews.rerunAudit,
