@@ -1,34 +1,20 @@
 import { BrowserWindow, app } from "electron";
+import type { BrowserWindowConstructorOptions } from "electron";
 import { join } from "node:path";
 
 import { CSP_HEADER_NAME, buildContentSecurityPolicy } from "@main/security/csp";
 import { isAllowedAppNavigation, openValidatedExternalUrl } from "@main/security/navigation";
 import { normalizeWindowBounds, readWindowBounds, writeWindowBounds } from "./window-state";
+import type { WindowBounds } from "./window-state";
 
 export async function createMainWindow(
   beforeLoad?: (window: BrowserWindow) => void
 ): Promise<BrowserWindow> {
   const windowStatePath = join(app.getPath("userData"), "window-state.json");
   const bounds = readWindowBounds(windowStatePath);
-  const mainWindow = new BrowserWindow({
-    ...bounds,
-    minWidth: 860,
-    minHeight: 560,
-    show: false,
-    frame: false,
-    transparent: true,
-    backgroundColor: "#00000000",
-    title: "WenForge Studio",
-    trafficLightPosition: { x: 18, y: 18 },
-    webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
-      sandbox: true,
-      nodeIntegration: false,
-      contextIsolation: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false
-    }
-  });
+  const mainWindow = new BrowserWindow(
+    buildMainWindowOptions(bounds, join(__dirname, "../preload/index.js"))
+  );
   const csp = buildContentSecurityPolicy({ dev: Boolean(process.env.ELECTRON_RENDERER_URL) });
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({
@@ -81,4 +67,29 @@ export async function createMainWindow(
   }
 
   return mainWindow;
+}
+
+export function buildMainWindowOptions(
+  bounds: WindowBounds,
+  preloadPath: string
+): BrowserWindowConstructorOptions {
+  return {
+    ...bounds,
+    minWidth: 860,
+    minHeight: 560,
+    show: false,
+    frame: false,
+    transparent: false,
+    backgroundColor: "#070a12",
+    title: "WenForge Studio",
+    trafficLightPosition: { x: 18, y: 18 },
+    webPreferences: {
+      preload: preloadPath,
+      sandbox: true,
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false
+    }
+  };
 }

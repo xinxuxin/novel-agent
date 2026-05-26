@@ -136,7 +136,7 @@ Backup files may contain manuscript text and story bible facts, so they should b
 
 Phase 14 adds explicit security and support surfaces:
 
-- A renderer and response-header Content Security Policy forbids `unsafe-eval`, disallows objects/forms/frames, and documents the temporary `style-src 'unsafe-inline'` allowance needed by the current Vite/Tailwind renderer pipeline.
+- A response-header Content Security Policy forbids `unsafe-eval`, disallows objects/forms/frames, and documents the temporary `style-src 'unsafe-inline'` allowance needed by the current Vite/Tailwind renderer pipeline. Development builds additionally allow `script-src 'unsafe-inline'` only for the Vite React refresh preamble; production keeps scripts at `'self'`.
 - Navigation validation allows HTTPS external links and local development HTTP endpoints only. Arbitrary `http:`, `file:`, and `javascript:` URLs are rejected.
 - ESLint blocks renderer imports from main, DB, AI, agent, preload, and privileged security modules. Renderer files are also checked for direct `fetch` calls and unsafe HTML injection patterns.
 - Main-process logging is structured, level-based, and redacted before write. Logs rotate locally and default to `info`.

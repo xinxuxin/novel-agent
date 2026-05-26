@@ -12,7 +12,7 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  background: transparent;
+  background: #070a12;
 }
 
 html,
@@ -23,7 +23,10 @@ body,
 }
 
 body {
-  background: transparent;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(65, 112, 207, 0.16), transparent 28rem),
+    radial-gradient(circle at 82% 18%, rgba(128, 92, 255, 0.12), transparent 24rem),
+    #070a12;
   overflow: hidden;
 }
 

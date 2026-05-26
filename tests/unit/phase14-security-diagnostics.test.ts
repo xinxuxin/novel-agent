@@ -31,8 +31,17 @@ describe("phase 14 security and diagnostics hardening", () => {
     expect(policy.headerValue).toContain("default-src 'self'");
     expect(policy.headerValue).toContain("script-src 'self'");
     expect(policy.headerValue).not.toContain("'unsafe-eval'");
+    expect(policy.headerValue).not.toContain("script-src 'self' 'unsafe-inline'");
     expect(policy.headerValue).toContain("style-src 'self' 'unsafe-inline'");
     expect(policy.rationale).toContain("Tailwind");
+  });
+
+  it("allows the Vite React refresh script preamble only in development CSP", () => {
+    const policy = buildContentSecurityPolicy({ dev: true });
+
+    expect(policy.headerValue).toContain("script-src 'self' 'unsafe-inline'");
+    expect(policy.headerValue).not.toContain("'unsafe-eval'");
+    expect(policy.rationale).toContain("dev-only script preamble");
   });
 
   it("rejects unsafe external URLs while allowing HTTPS and local development endpoints", () => {
