@@ -1,6 +1,7 @@
 import { BrowserWindow, app } from "electron";
 import { join } from "node:path";
 
+import { CSP_HEADER_NAME, buildContentSecurityPolicy } from "@main/security/csp";
 import { isAllowedAppNavigation, openValidatedExternalUrl } from "@main/security/navigation";
 import { normalizeWindowBounds, readWindowBounds, writeWindowBounds } from "./window-state";
 
@@ -24,8 +25,18 @@ export async function createMainWindow(
       sandbox: true,
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: true
+      webSecurity: true,
+      allowRunningInsecureContent: false
     }
+  });
+  const csp = buildContentSecurityPolicy({ dev: Boolean(process.env.ELECTRON_RENDERER_URL) });
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        [CSP_HEADER_NAME]: [csp.headerValue]
+      }
+    });
   });
 
   let saveTimer: NodeJS.Timeout | undefined;

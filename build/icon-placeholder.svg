@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="WenForge Studio placeholder icon">
+  <rect width="256" height="256" rx="56" fill="#111827"/>
+  <path d="M64 69h128v24H64zM64 116h96v20H64zM64 153h72v20H64z" fill="#8bb7ff"/>
+  <path d="M166 117l24 24-54 54H112v-24z" fill="#b294ff"/>
+  <path d="M181 102l19 19-10 10-19-19z" fill="#67e8f9"/>
+</svg>

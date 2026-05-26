@@ -1,11 +1,12 @@
 import { shell } from "electron";
 
-const ALLOWED_EXTERNAL_PROTOCOLS = new Set(["https:", "http:"]);
-
 export function getValidatedExternalUrl(rawUrl: string): string | null {
   try {
     const url = new URL(rawUrl);
-    return ALLOWED_EXTERNAL_PROTOCOLS.has(url.protocol) ? url.toString() : null;
+    const isLocalHttp =
+      url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+    const isHttps = url.protocol === "https:";
+    return isHttps || isLocalHttp ? url.toString() : null;
   } catch {
     return null;
   }
@@ -13,7 +14,9 @@ export function getValidatedExternalUrl(rawUrl: string): string | null {
 
 export function isAllowedAppNavigation(targetUrl: string, currentUrl: string): boolean {
   const isDevServer =
-    targetUrl.startsWith("http://localhost:") || targetUrl.startsWith("http://127.0.0.1:");
+    targetUrl.startsWith("http://localhost:") ||
+    targetUrl.startsWith("http://127.0.0.1:") ||
+    targetUrl.startsWith("http://[::1]:");
 
   return targetUrl === currentUrl || targetUrl.startsWith("file://") || isDevServer;
 }

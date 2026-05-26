@@ -1,4 +1,5 @@
 import type { ThemePreference } from "@shared/theme";
+import type { DiagnosticBundle, DiagnosticBundleRequest } from "./diagnostics";
 import type {
   AIStreamEvent,
   CostSummary,
@@ -164,6 +165,7 @@ export interface WenForgeApi {
   };
   diagnostics: {
     ping: () => Promise<DiagnosticPing>;
+    exportBundle: (request?: DiagnosticBundleRequest) => Promise<DiagnosticBundle>;
   };
   projects: {
     list: () => Promise<ProjectRecord[]>;

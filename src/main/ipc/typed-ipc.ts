@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import { ZodError, type z } from "zod";
 
+import { normalizeOperationalError } from "@shared/errors/error-normalizer";
 import type { IpcContract, IpcEnvelope, SafeIpcErrorShape } from "@shared/ipc/contracts";
 
 export class SafeIpcError extends Error {
@@ -28,9 +29,10 @@ export function mapToSafeIpcError(error: unknown): SafeIpcErrorShape {
     };
   }
 
+  const normalized = normalizeOperationalError(error);
   return {
-    code: "INTERNAL_ERROR",
-    message: "Something went wrong"
+    code: normalized.code.toUpperCase(),
+    message: normalized.message
   };
 }
 

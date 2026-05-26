@@ -6,7 +6,7 @@ The product direction is a dark command-center writing studio with a popover lau
 
 ## Current Status
 
-Phases 1-13 are implemented through the local-first studio shell, SQLite data foundation, secure credential metadata, AI gateway, story bible memory, WenForge-native skill package, mock/provider workflow runtime, review and settlement flows, cost/eval dashboards, safe import/export/backup tooling, and first-launch onboarding/palette/popover polish. Packaging remains planned follow-up work.
+Phases 1-14 are implemented through the local-first studio shell, SQLite data foundation, secure credential metadata, AI gateway, story bible memory, WenForge-native skill package, mock/provider workflow runtime, review and settlement flows, cost/eval dashboards, safe import/export/backup tooling, first-launch onboarding/palette/popover polish, and security/diagnostics/packaging preparation. Native signing and public release publishing remain planned follow-up work.
 
 ## Planned Stack
 
@@ -34,6 +34,11 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm package
+pnpm package:mac
+pnpm package:win
+pnpm package:linux
+pnpm release:dry-run
 pnpm test:smoke
 pnpm db:generate
 pnpm db:migrate
@@ -48,6 +53,10 @@ pnpm db:studio
 - [Roadmap](docs/ROADMAP.md)
 - [AI Workflows](docs/AI_WORKFLOWS.md)
 - [Security](docs/SECURITY.md)
+- [Privacy](docs/PRIVACY.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Release Guide](docs/RELEASE.md)
+- [Release Checklist](docs/RELEASE_CHECKLIST.md)
 - [Cost Tracking](docs/COST_TRACKING.md)
 - [Database](docs/DATABASE.md)
 - [Import And Export](docs/IMPORT_EXPORT.md)

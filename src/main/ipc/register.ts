@@ -1,8 +1,12 @@
-import { BrowserWindow, app, ipcMain } from "electron";
+import { BrowserWindow, app, ipcMain, safeStorage } from "electron";
 
 import { AI_STREAM_EVENT_CHANNEL } from "@contracts/ai";
 import { IPC_CONTRACT_LIST, IPC_CONTRACTS } from "@shared/ipc/contracts";
 import { normalizeTheme } from "@shared/theme";
+import {
+  exportDiagnosticsBundle,
+  readLatestMigrationVersion
+} from "@main/diagnostics/diagnostics-service";
 import type { SettingsStore } from "@main/app/settings-store";
 import type { StudioModeController } from "@main/app/studio-mode";
 import type { AiGateway } from "@main/ai/ai-gateway";
@@ -13,6 +17,7 @@ import { EvaluationService } from "@main/eval/evaluation-service";
 import { BackupService } from "@main/files/backup-service";
 import { ImportExportService } from "@main/files/import-export-service";
 import { ContextBuilder } from "@main/context/context-builder";
+import type { StructuredLogger } from "@main/logging/logger";
 import { MemoryIndexService } from "@main/memory/memory-index-service";
 import type { CredentialService } from "@main/providers/credential-service";
 import { ModelRouter } from "@main/providers/model-router";
@@ -34,6 +39,7 @@ interface RegisterIpcOptions {
   database?: WenForgeDatabase;
   credentialService?: CredentialService;
   aiGateway?: AiGateway;
+  logger?: StructuredLogger;
 }
 
 export function registerIpc({
@@ -42,7 +48,8 @@ export function registerIpc({
   repositories,
   database,
   credentialService,
-  aiGateway
+  aiGateway,
+  logger
 }: RegisterIpcOptions): void {
   for (const contract of IPC_CONTRACT_LIST) {
     ipcMain.removeHandler(contract.channel);
@@ -76,6 +83,30 @@ export function registerIpc({
     ok: true as const,
     at: new Date().toISOString()
   }));
+  registerIpcContract(IPC_CONTRACTS.diagnostics.exportBundle, (request) =>
+    exportDiagnosticsBundle({
+      appVersion: app.getVersion(),
+      platform: process.platform,
+      environment: getEnvironment(app).mode,
+      dbMigrationVersion: database ? readLatestMigrationVersion(database.sqlite) : "unavailable",
+      safeStorageAvailable: safeStorage.isEncryptionAvailable(),
+      providerHealth: repositories?.providerHealth.list() ?? [],
+      recentErrors:
+        logger
+          ?.recent(200)
+          .filter((line) => line.includes('"level":"error"'))
+          .slice(-25) ?? [],
+      logs: logger?.recent(200) ?? [],
+      settings: repositories
+        ? {
+            privacy: getPrivacySettings(repositories),
+            routing: getRoutingSettings(repositories),
+            backup: repositories.settings.get("backup_settings")
+          }
+        : {},
+      includeManuscripts: request?.includeManuscripts === true
+    })
+  );
 
   if (repositories) {
     registerDataIpc(repositories, credentialService, aiGateway, database);

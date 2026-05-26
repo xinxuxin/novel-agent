@@ -234,6 +234,13 @@ export function createPreloadApi(
           invoke,
           IPC_CONTRACTS.diagnostics.ping.channel,
           IPC_CONTRACTS.diagnostics.ping.response
+        ),
+      exportBundle: (request = {}) =>
+        invokeContract(
+          invoke,
+          IPC_CONTRACTS.diagnostics.exportBundle.channel,
+          IPC_CONTRACTS.diagnostics.exportBundle.response,
+          request
         )
     },
     projects: {

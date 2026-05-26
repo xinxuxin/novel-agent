@@ -20,6 +20,24 @@ describe("preload API", () => {
       if (channel === IPC_CONTRACTS.diagnostics.ping.channel) {
         return { ok: true, data: { ok: true, at: "2026-05-25T00:00:00.000Z" } };
       }
+      if (channel === IPC_CONTRACTS.diagnostics.exportBundle.channel) {
+        return {
+          ok: true,
+          data: {
+            appVersion: "0.1.0",
+            platform: "darwin",
+            environment: "test",
+            dbMigrationVersion: "0000_initial_wenforge_schema",
+            safeStorageAvailable: true,
+            providerHealth: [],
+            recentErrors: [],
+            logs: [],
+            settings: {},
+            manuscriptsIncluded: false,
+            createdAt: "2026-05-25T00:00:00.000Z"
+          }
+        };
+      }
       if (channel === IPC_CONTRACTS.window.minimize.channel) return { ok: true };
       if (channel === IPC_CONTRACTS.window.close.channel) return { ok: true };
       if (channel === IPC_CONTRACTS.window.toggleStudioMode.channel) {
@@ -65,12 +83,17 @@ describe("preload API", () => {
     expect(Object.keys(api.app).sort()).toEqual(["getEnvironment", "getPlatform", "getVersion"]);
     expect(Object.keys(api.window).sort()).toEqual(["close", "minimize", "toggleStudioMode"]);
     expect(Object.keys(api.settings).sort()).toEqual(["getTheme", "setTheme"]);
+    expect(Object.keys(api.diagnostics).sort()).toEqual(["exportBundle", "ping"]);
     expect(await api.app.getVersion()).toBe("0.1.0");
     expect(await api.app.getPlatform()).toBe("darwin");
     expect(await api.app.getEnvironment()).toEqual({ mode: "test", packaged: false });
     expect(await api.settings.setTheme("dark")).toBe("dark");
     expect(await api.window.toggleStudioMode()).toBe("popover");
     expect(await api.diagnostics.ping()).toEqual({ ok: true, at: "2026-05-25T00:00:00.000Z" });
+    expect(await api.diagnostics.exportBundle()).toMatchObject({
+      appVersion: "0.1.0",
+      manuscriptsIncluded: false
+    });
     expect(calls).toContain(IPC_CONTRACTS.app.getVersion.channel);
     expect(calls).toContain(IPC_CONTRACTS.settings.setTheme.channel);
   });

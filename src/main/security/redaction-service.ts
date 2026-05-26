@@ -1,7 +1,7 @@
 const SECRET_PATTERNS = [
-  /Authorization:\s*Bearer\s+[^\s]+/gi,
+  /Authorization:\s*Bearer\s+[^\s"'}]+/gi,
   /\b(sk|ak|xai|or|kimi|qwen|gemini|deepseek)-[A-Za-z0-9._-]{8,}\b/g,
-  /\b(api[_-]?key|access[_-]?token|secret)\s*[:=]\s*["']?[^"'\s]+/gi
+  /\b(api[_-]?key|access[_-]?token|secret)\s*[:=]\s*["']?[^"'\s,}]+/gi
 ];
 
 export class RedactionService {
@@ -24,7 +24,7 @@ export class RedactionService {
 
   private redactMatch(match: string): string {
     if (/Authorization:/i.test(match)) {
-      return "Authorization: Bearer [redacted]";
+      return "Authorization: [redacted]";
     }
 
     const separator = match.includes("=") ? "=" : match.includes(":") ? ":" : "";

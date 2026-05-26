@@ -131,3 +131,18 @@ Phase 12 keeps file portability in the main process:
 - Restore requires explicit confirmation and creates a pre-restore backup before clearing local project data.
 
 Backup files may contain manuscript text and story bible facts, so they should be protected like user documents even though they do not contain provider secrets.
+
+## Phase 14 Hardening
+
+Phase 14 adds explicit security and support surfaces:
+
+- A renderer and response-header Content Security Policy forbids `unsafe-eval`, disallows objects/forms/frames, and documents the temporary `style-src 'unsafe-inline'` allowance needed by the current Vite/Tailwind renderer pipeline.
+- Navigation validation allows HTTPS external links and local development HTTP endpoints only. Arbitrary `http:`, `file:`, and `javascript:` URLs are rejected.
+- ESLint blocks renderer imports from main, DB, AI, agent, preload, and privileged security modules. Renderer files are also checked for direct `fetch` calls and unsafe HTML injection patterns.
+- Main-process logging is structured, level-based, and redacted before write. Logs rotate locally and default to `info`.
+- Operational errors are normalized into safe categories for provider auth, rate limits, context length, invalid JSON, network timeout, user abort, budgets, migrations, secret encryption, import/export validation, and workflow checkpoint recovery.
+- The diagnostics bundle exports app version, platform, environment, DB migration version, `safeStorage` availability, provider health, redacted recent errors/logs, and non-secret settings. Manuscripts are excluded by default and API keys are never included.
+- The app-wide renderer error boundary presents redacted error details and can copy a redacted diagnostic bundle.
+- Electron Builder packaging excludes `references/**`, `references/repos/**`, source files, tests, docs, and test results. Runtime DBs, backups, logs, and secrets stay under Electron `userData` and are not bundled into installers.
+
+Production release still requires platform signing, notarization, final icons, and a dependency notice review before public distribution.

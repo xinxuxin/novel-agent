@@ -39,7 +39,20 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }]
+      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: ["@main/*", "@db/*", "@ai/*", "@agents/*", "../main/*", "../db/*", "../ai/*"]
+        }
+      ],
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "fetch",
+          message: "Renderer must not call provider or network APIs directly; use typed IPC."
+        }
+      ]
     }
   }
 );

@@ -7,6 +7,7 @@ import {
   streamRequestSchema,
   streamStartResultSchema
 } from "@contracts/ai";
+import { diagnosticBundleRequestSchema, diagnosticBundleSchema } from "@contracts/diagnostics";
 import {
   costDashboardSummarySchema,
   costGroupSchema,
@@ -623,7 +624,12 @@ export const IPC_CONTRACTS = {
     )
   },
   diagnostics: {
-    ping: createContract("diagnostics:ping", emptyRequestSchema, diagnosticPingSchema)
+    ping: createContract("diagnostics:ping", emptyRequestSchema, diagnosticPingSchema),
+    exportBundle: createContract(
+      "diagnostics:export-bundle",
+      diagnosticBundleRequestSchema.optional(),
+      diagnosticBundleSchema
+    )
   },
   projects: {
     list: createContract("projects:list", emptyRequestSchema, z.array(projectSchema)),
@@ -1548,6 +1554,7 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.settings.getTheme,
   IPC_CONTRACTS.settings.setTheme,
   IPC_CONTRACTS.diagnostics.ping,
+  IPC_CONTRACTS.diagnostics.exportBundle,
   IPC_CONTRACTS.projects.list,
   IPC_CONTRACTS.projects.get,
   IPC_CONTRACTS.projects.create,

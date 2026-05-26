@@ -16,6 +16,11 @@
     "test:smoke": "pnpm rebuild:native:electron && playwright test",
     "rebuild:native:node": "npm rebuild better-sqlite3",
     "rebuild:native:electron": "electron-rebuild -f -w better-sqlite3",
+    "package": "pnpm build && electron-builder --publish never",
+    "package:mac": "pnpm build && electron-builder --mac --publish never",
+    "package:win": "pnpm build && electron-builder --win --publish never",
+    "package:linux": "pnpm build && electron-builder --linux --publish never",
+    "release:dry-run": "pnpm build && electron-builder --dir --publish never",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
@@ -37,6 +42,50 @@
     "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },
+  "build": {
+    "appId": "studio.wenforge.app",
+    "productName": "WenForge Studio",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "files": [
+      "out/**",
+      "skills/wenforge-webnovel-writer/**",
+      "package.json",
+      "!references/**",
+      "!references/repos/**",
+      "!docs/**",
+      "!test-results/**",
+      "!tests/**",
+      "!src/**",
+      "!**/*.tsbuildinfo"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "category": "Office",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
+  },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",
     "@eslint/js": "^9.39.2",
@@ -49,6 +98,7 @@
     "autoprefixer": "^10.4.22",
     "drizzle-kit": "^0.31.10",
     "electron": "^39.2.6",
+    "electron-builder": "^26.8.1",
     "electron-vite": "^4.0.0",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^7.0.1",

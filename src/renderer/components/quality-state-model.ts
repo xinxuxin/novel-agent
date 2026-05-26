@@ -75,7 +75,7 @@ export function getQualityStateAction(state: QualityState): QualityStateCopy {
 
 export function redactRenderableText(value: string): string {
   return value
-    .replace(/Authorization:\s*Bearer\s+[^\s]+/gi, "Authorization: Bearer [redacted]")
+    .replace(/Authorization:\s*Bearer\s+[^\s"'}]+/gi, "Authorization: [redacted]")
     .replace(/\b(sk|ak|xai|or|kimi|qwen|gemini|deepseek)-[A-Za-z0-9._-]{8,}\b/g, "[redacted]")
-    .replace(/\b(api[_-]?key|access[_-]?token|secret)\s*[:=]\s*["']?[^"'\s]+/gi, "$1=[redacted]");
+    .replace(/\b(api[_-]?key|access[_-]?token|secret)\s*[:=]\s*["']?[^"'\s,}]+/gi, "$1=[redacted]");
 }

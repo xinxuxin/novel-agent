@@ -205,10 +205,26 @@ Deferred from Phase 12: native file picker save/open flows, EPUB export, automat
 
 Deferred from Phase 13: native file picker save/open flows, automatic backup scheduling hooks, optional EPUB export, and electron-builder packaging configuration.
 
-## Phase 14: File Picker Polish And Packaging Prep
+## Phase 14: Security, Diagnostics, Error Handling, And Packaging Prep (Complete)
+
+- [x] Re-audit Electron security defaults for `nodeIntegration: false`, `contextIsolation: true`, sandbox compatibility, `webSecurity: true`, locked navigation, and narrow preload APIs.
+- [x] Add a renderer/header Content Security Policy that forbids `unsafe-eval`, blocks object/form/frame embedding, and documents the current style exception.
+- [x] Add static guardrails so renderer code cannot import privileged main/DB/provider modules, call provider APIs directly, or inject untrusted HTML.
+- [x] Add structured main-process logging with redaction, log levels, and local rotation.
+- [x] Normalize common operational errors into safe user-facing provider, network, budget, DB, secret, import/export, and workflow recovery categories.
+- [x] Add a redacted diagnostics bundle with app version, platform, migration version, `safeStorage` status, provider health, redacted errors/logs, and settings excluding secrets.
+- [x] Add a renderer error boundary, redacted error panel, copy-diagnostics action, provider health panel, and migration/version details in Advanced settings.
+- [x] Add Electron Builder packaging scripts/config for macOS, Windows, Linux, and dry-run packaging.
+- [x] Exclude reference repos, source, docs, tests, test results, local DBs, backups, logs, and secrets from packaged app artifacts.
+- [x] Add GitHub Actions CI for install, lint, typecheck, test, and build without real API keys.
+- [x] Add privacy, troubleshooting, release, and release checklist documentation.
+
+Deferred from Phase 14: signed/notarized public installers, final branded icons, auto-update feeds, native file picker polish, automatic backup scheduling hooks, and optional EPUB export.
+
+## Phase 15: Release Polish And Native File Flows
 
 - Add safe native file picker flows for saving exports and opening import packages.
 - Add automatic backup triggers for daily, app-close, and before-destructive-operation settings.
 - Add optional EPUB export if dependency and formatting risk stay low.
-- Add first-run migration for moving onboarding completion from renderer storage into main-process settings if needed.
-- Add electron-builder configuration after local development commands remain stable.
+- Replace placeholder build icons with final WenForge assets.
+- Add platform signing/notarization and release checksums before public distribution.

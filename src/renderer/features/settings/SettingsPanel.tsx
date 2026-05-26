@@ -13,6 +13,7 @@ import type {
   ProviderCredentialDto,
   TaskRouteRecord
 } from "@contracts/index";
+import type { DiagnosticBundle } from "@contracts/diagnostics";
 import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
 import { PROVIDERS, QUALITY_MODES, TASK_TYPES } from "@shared/domain/model-routing";
 import type { ProviderId, QualityMode, TaskType } from "@shared/domain/model-routing";
@@ -432,6 +433,7 @@ export function SettingsPanel(): JSX.Element {
         ) : null}
         {!loading && activeTab === "advanced" && data.routing ? (
           <AdvancedTab
+            providerHealth={data.providerHealth}
             profiles={data.profiles}
             routing={data.routing}
             onUpdateRoutingSettings={updateRoutingSettings}
@@ -1084,15 +1086,30 @@ function PrivacyTab({
 }
 
 function AdvancedTab({
+  providerHealth,
   profiles,
   routing,
   onUpdateRoutingSettings
 }: {
+  providerHealth: ProviderHealthRecord[];
   profiles: ModelProfileRecord[];
   routing: RoutingSettings;
   onUpdateRoutingSettings: (patch: Partial<RoutingSettings>) => Promise<void>;
 }): JSX.Element {
   const [ping, setPing] = useState<string>("Not checked");
+  const [bundle, setBundle] = useState<DiagnosticBundle | null>(null);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const loadBundle = async (): Promise<DiagnosticBundle> => {
+    const nextBundle = await window.wenforge.diagnostics.exportBundle();
+    setBundle(nextBundle);
+    return nextBundle;
+  };
+  const copyBundle = async (): Promise<void> => {
+    const nextBundle = bundle ?? (await loadBundle());
+    await navigator.clipboard?.writeText(JSON.stringify(nextBundle, null, 2));
+    setCopyStatus("Copied redacted diagnostic bundle.");
+  };
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
@@ -1122,17 +1139,68 @@ function AdvancedTab({
       </section>
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
         <SectionTitle title="Diagnostics" />
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <span className="text-sm text-slate-400">{ping}</span>
-          <button
-            className={secondaryButtonClassName}
-            onClick={() => {
-              void window.wenforge.diagnostics.ping().then((result) => setPing(result.at));
-            }}
-            type="button"
-          >
-            Ping
-          </button>
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-slate-400">{ping}</span>
+            <button
+              className={secondaryButtonClassName}
+              onClick={() => {
+                void window.wenforge.diagnostics.ping().then((result) => setPing(result.at));
+              }}
+              type="button"
+            >
+              Ping
+            </button>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300">
+            <p>Version: {bundle?.appVersion ?? "Not loaded"}</p>
+            <p>Platform: {bundle?.platform ?? "Not loaded"}</p>
+            <p>Migration: {bundle?.dbMigrationVersion ?? "Not loaded"}</p>
+            <p>safeStorage: {bundle ? String(bundle.safeStorageAvailable) : "Not loaded"}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className={secondaryButtonClassName}
+              onClick={() => void loadBundle()}
+              type="button"
+            >
+              Load diagnostics
+            </button>
+            <button
+              className={secondaryButtonClassName}
+              onClick={() => void copyBundle()}
+              type="button"
+            >
+              Copy redacted diagnostic info
+            </button>
+          </div>
+          {copyStatus ? <p className="text-xs text-forge-mint">{copyStatus}</p> : null}
+        </div>
+      </section>
+      <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
+        <SectionTitle title="Provider Health" />
+        <div className="mt-4 space-y-2">
+          {providerHealth.length === 0 ? (
+            <EmptyState text="No provider health records yet." />
+          ) : null}
+          {providerHealth.map((item) => (
+            <div
+              className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
+              key={item.id}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-white">
+                  {PROVIDER_LABELS[item.provider]} · {item.model ?? "all models"}
+                </span>
+                <StatusPill tone={item.status === "healthy" ? "success" : "warning"}>
+                  {item.status}
+                </StatusPill>
+              </div>
+              {item.errorMessage ? (
+                <p className="mt-1 text-xs text-slate-500">{item.errorMessage}</p>
+              ) : null}
+            </div>
+          ))}
         </div>
       </section>
       <DeveloperGenerationPanel profiles={profiles} />

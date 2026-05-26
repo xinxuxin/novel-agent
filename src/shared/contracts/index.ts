@@ -6,6 +6,7 @@ export type {
   WenForgeEnvironmentMode,
   WenForgePlatform
 } from "./preload";
+export type { DiagnosticBundle, DiagnosticBundleRequest } from "./diagnostics";
 export type {
   BookRecord,
   ChapterRecord,

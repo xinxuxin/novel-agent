@@ -9,6 +9,7 @@ import { AiGateway } from "@main/ai/ai-gateway";
 import { createDefaultProviderAdapters } from "@main/ai/adapters";
 import { createAppDatabaseService } from "@main/db/service";
 import { registerIpc } from "@main/ipc/register";
+import { StructuredLogger } from "@main/logging/logger";
 import { CredentialService } from "@main/providers/credential-service";
 import { RedactionService } from "@main/security/redaction-service";
 import { SecretEncryptionService } from "@main/security/secret-encryption-service";
@@ -35,7 +36,16 @@ if (!hasSingleInstanceLock) {
 
   app.whenReady().then(async () => {
     const settingsStore = new SettingsStore(join(app.getPath("userData"), "settings.json"));
+    const logger = new StructuredLogger({
+      logDir: join(app.getPath("userData"), "logs"),
+      level: "info",
+      appVersion: app.getVersion()
+    });
     const databaseService = createAppDatabaseService(app);
+    logger.info("app_ready", {
+      platform: process.platform,
+      safeStorageAvailable: safeStorage.isEncryptionAvailable()
+    });
     const credentialService = new CredentialService({
       repository: databaseService.repositories.providerCredentials,
       encryption: new SecretEncryptionService(safeStorage),
@@ -55,7 +65,8 @@ if (!hasSingleInstanceLock) {
           repositories: databaseService.repositories,
           database: databaseService.connection.db,
           credentialService,
-          aiGateway
+          aiGateway,
+          logger
         });
       });
       mainWindow = window;
