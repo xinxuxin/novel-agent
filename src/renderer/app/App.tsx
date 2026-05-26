@@ -34,7 +34,7 @@ import { SettingsPanel } from "@features/settings/SettingsPanel";
 import { ContextPreviewPanel } from "@features/story-bible/ContextPreviewPanel";
 import { StoryBiblePanel } from "@features/story-bible/StoryBiblePanel";
 import { StoryBibleWorkspace } from "@features/story-bible/StoryBibleWorkspace";
-import { TaskTimeline } from "@features/workflows/TaskTimeline";
+import { CandidateStudioPanel } from "@features/workflows/CandidateStudioPanel";
 import { WorkflowGeneratePanel } from "@features/workflows/WorkflowGeneratePanel";
 import type { StudioCommandId } from "@features/workflows/command-registry";
 import { runDestructiveAction } from "@features/workflows/confirmation";
@@ -48,7 +48,7 @@ import type {
 import { useUiStore } from "@renderer/stores/ui-store";
 
 type WorkspaceView = "chapter" | "planning" | "storyBible" | "costs" | "eval" | "data" | "settings";
-type WorkspaceTab = "manuscript" | "generate" | "review" | "timeline" | "versions";
+type WorkspaceTab = "manuscript" | "generate" | "candidates" | "review" | "timeline" | "versions";
 
 const CHAPTER_STATUSES = [
   "planned",
@@ -708,6 +708,14 @@ export function App(): JSX.Element {
       },
       "strengthen-chapter-hook": () => setWorkspaceView("planning"),
       "generate-alternative-endings": () => setWorkspaceView("planning"),
+      "compare-drafts": () => {
+        setWorkspaceView("chapter");
+        setActiveTab("candidates");
+      },
+      "fuse-drafts": () => {
+        setWorkspaceView("chapter");
+        setActiveTab("candidates");
+      },
       "draft-from-accepted-scene-cards": () => {
         setWorkspaceView("chapter");
         setActiveTab("generate");
@@ -737,7 +745,9 @@ export function App(): JSX.Element {
     setWorkspaceView("chapter");
   };
   const showInspector =
-    !compact && workspaceView !== "planning" && !(workspaceView === "chapter" && activeTab === "generate");
+    !compact &&
+    workspaceView !== "planning" &&
+    !(workspaceView === "chapter" && (activeTab === "generate" || activeTab === "candidates"));
 
   return (
     <main className="min-h-screen overflow-hidden bg-transparent p-3 text-slate-100">
@@ -1297,11 +1307,10 @@ function ChapterWorkspace({
   versions: ManuscriptVersionRecord[];
 }): JSX.Element {
   const tabs: { id: WorkspaceTab; label: string }[] = [
-    { id: "manuscript", label: "正文" },
-    { id: "generate", label: "生成" },
-    { id: "review", label: "审稿" },
-    { id: "timeline", label: "流程" },
-    { id: "versions", label: "版本" }
+    { id: "manuscript", label: "Write" },
+    { id: "candidates", label: "Candidates" },
+    { id: "review", label: "Review" },
+    { id: "versions", label: "Versions" }
   ];
   const generateFocused = activeTab === "generate";
 
@@ -1342,6 +1351,22 @@ function ChapterWorkspace({
             </div>
           </div>
           <div className={`flex flex-wrap gap-2 ${generateFocused ? "hidden 2xl:flex" : ""}`}>
+            <select
+              aria-label="Generate mode"
+              className="rounded-md border border-forge-blue/35 bg-forge-blue/10 px-3 py-2 text-xs text-forge-blue outline-none"
+              onChange={(event) => {
+                if (event.target.value === "single") onSetTab("generate");
+                if (event.target.value === "compare") onSetTab("candidates");
+                if (event.target.value === "fuse") onSetTab("candidates");
+                event.target.value = "";
+              }}
+              value=""
+            >
+              <option value="">Generate</option>
+              <option value="single">Single Draft</option>
+              <option value="compare">Compare Drafts</option>
+              <option value="fuse">Fuse Drafts</option>
+            </select>
             <button
               className="rounded-md border border-white/10 px-3 py-2 text-xs text-slate-300 hover:border-forge-blue/40 hover:text-white"
               onClick={onEditTargetWords}
@@ -1421,6 +1446,14 @@ function ChapterWorkspace({
               onWorkflowCostChange={onWorkflowCostChange}
             />
           ) : null}
+          {activeTab === "candidates" ? (
+            <CandidateStudioPanel
+              activeChapter={activeChapter}
+              onCanonicalChanged={onWorkflowCanonicalChanged}
+              onVersionCreated={onWorkflowVersionCreated}
+              onWorkflowCostChange={onWorkflowCostChange}
+            />
+          ) : null}
           {activeTab === "review" ? (
             <ReviewWorkspace
               activeChapter={activeChapter}
@@ -1449,8 +1482,6 @@ function ChapterWorkspace({
           ) : null}
         </motion.div>
       </AnimatePresence>
-
-      <TaskTimeline activeTab={activeTab} />
     </div>
   );
 }

@@ -40,7 +40,10 @@ const requiredPrompts = [
   "worldbuilding-aggregator.zh.md",
   "originality-audit.zh.md",
   "plot-logic-audit.zh.md",
-  "webnovel-market-fit-audit.zh.md"
+  "webnovel-market-fit-audit.zh.md",
+  "multi-draft-candidate.zh.md",
+  "candidate-fusion.zh.md",
+  "candidate-light-review.zh.md"
 ];
 
 const requiredSchemas = [

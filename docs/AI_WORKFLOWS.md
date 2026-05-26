@@ -301,3 +301,23 @@ settlement proposals until separately accepted.
 - 连贯性审稿：检查人物、设定、时间线、伏笔、能力规则和前文事实冲突。
 - 改写成终稿：综合审稿意见改写为终稿候选，保留原草稿和审稿记录。
 - 人工确认：用户决定保存为版本、再改一版、进入设定结算或设为正式正文。系统不会自动覆盖正式正文，也不会自动改写故事圣经。
+
+## Phase 19 Multi-Draft Workflow
+
+`multi_draft_chapter_v1` is a lightweight workflow for practical model comparison:
+
+1. prepare_context
+2. resolve_candidate_models
+3. estimate_cost
+4. generate_candidates_parallel
+5. save_candidates
+6. human_compare_gate
+7. fuse_selected_candidates, optional
+8. save_fused_draft
+9. route_to_existing_review_flow
+
+All candidates receive the same accepted chapter plan, scene cards, target words, style guide, reader positioning, story bible context, and user instruction. The workflow pauses after candidate generation so the user can manually compare drafts.
+
+Fusion requires a base candidate. Reference candidates are optional. The fusion model receives the base, selected references, and a natural-language instruction such as "Use Kimi's prose and DeepSeek's plot structure." The result is a proposal artifact and can be saved as a non-canonical version before entering review.
+
+No candidate or fused draft becomes canonical automatically.

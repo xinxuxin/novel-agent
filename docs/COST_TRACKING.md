@@ -211,3 +211,11 @@ Forecasts show per-node models, estimated tokens, selected tiers, low/expected/h
 ## Phase 15e Eval Cost Accounting
 
 Model evaluation runs continue to create normal `llm_runs` records for every model output and every LLM judge call. Provider-backed evals are disabled unless explicitly confirmed, outside CI, and protected by a budget cap. Eval reports include cost, latency, cost-adjusted score, and recommended route changes, but they omit raw outputs by default.
+
+## Phase 19 Candidate Draft Costs
+
+Every candidate draft is a normal AI gateway call and creates an `llm_runs` row before the provider request. Costs are stored on each `draft_candidates` row and summarized at the candidate group level in the UI.
+
+Fusion is a separate `revise_chapter` call. Its `llm_runs` row is linked to the same generation run, and the resulting proposal artifact stores the base candidate, reference candidate IDs, and fusion run metadata.
+
+The UI estimates candidate cost per model, warns when comparing more than three candidates, and requires confirmation for provider-backed compare or fusion actions. Automated tests use fake providers only.

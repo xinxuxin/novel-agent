@@ -25,6 +25,23 @@ export type {
   CrossCheckType
 } from "./cross-check";
 export type {
+  CandidateModelSelection,
+  CreateCandidateGroupInput,
+  CreateFusionInput,
+  DraftCandidateGroupDetail,
+  DraftCandidateGroupRecord,
+  DraftCandidateRecord,
+  DraftCandidateStatus,
+  DraftFusionRecord,
+  GenerateCandidatesInput,
+  GenerateFusionInput,
+  RetryCandidateInput,
+  SaveCandidateAsVersionInput,
+  SaveFusionAsVersionInput,
+  SetCandidateCanonicalInput,
+  SetFusionCanonicalInput
+} from "./draft-candidates";
+export type {
   BookRecord,
   ChapterRecord,
   CreateBookInput,

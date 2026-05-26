@@ -23,9 +23,8 @@ import type { ProviderId, QualityMode, TaskType } from "@shared/domain/model-rou
 type SettingsTab =
   | "providers"
   | "models"
-  | "pricing"
+  | "costs"
   | "routing"
-  | "budgets"
   | "privacy"
   | "advanced";
 
@@ -84,13 +83,12 @@ const QUALITY_LABELS: Record<QualityMode, string> = {
 };
 
 const SETTINGS_TABS: Array<{ id: SettingsTab; label: string }> = [
-  { id: "providers", label: "模型密钥" },
-  { id: "models", label: "模型" },
-  { id: "pricing", label: "价格" },
-  { id: "routing", label: "路线" },
-  { id: "budgets", label: "预算" },
-  { id: "privacy", label: "隐私" },
-  { id: "advanced", label: "高级" }
+  { id: "providers", label: "Providers" },
+  { id: "models", label: "Models" },
+  { id: "routing", label: "Routing" },
+  { id: "costs", label: "Costs" },
+  { id: "privacy", label: "Privacy" },
+  { id: "advanced", label: "Advanced" }
 ];
 
 const today = new Date().toISOString().slice(0, 10);
@@ -535,18 +533,6 @@ export function SettingsPanel(): JSX.Element {
             onUpdateProfile={updateProfile}
           />
         ) : null}
-        {!loading && activeTab === "pricing" ? (
-          <PricingTab
-            priceDraft={priceDraft}
-            prices={data.prices}
-            profiles={data.profiles}
-            routing={data.routing}
-            stalePriceIds={stalePriceIds}
-            onPriceDraftChange={setPriceDraft}
-            onSavePrice={savePrice}
-            onUpdatePrice={updatePrice}
-          />
-        ) : null}
         {!loading && activeTab === "routing" ? (
           <RoutingTab
             configuredProviders={configuredProviders}
@@ -562,16 +548,24 @@ export function SettingsPanel(): JSX.Element {
             onUpdateRoute={updateRoute}
           />
         ) : null}
-        {!loading && activeTab === "budgets" && data.budget ? (
-          <BudgetsTab
+        {!loading && activeTab === "costs" && data.budget ? (
+          <CostsTab
             budget={data.budget}
+            priceDraft={priceDraft}
+            prices={data.prices}
+            profiles={data.profiles}
             providerHealth={data.providerHealth}
+            routing={data.routing}
+            stalePriceIds={stalePriceIds}
+            onPriceDraftChange={setPriceDraft}
             onResetProviderHealth={() =>
               runAction(async () => {
                 await window.wenforge.providerHealth.reset();
               }, "Provider health reset.")
             }
+            onSavePrice={savePrice}
             onUpdateBudget={updateBudgetPolicy}
+            onUpdatePrice={updatePrice}
           />
         ) : null}
         {!loading && activeTab === "privacy" && data.privacy ? (
@@ -1088,6 +1082,64 @@ function PricingTab({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function CostsTab({
+  budget,
+  priceDraft,
+  prices,
+  profiles,
+  providerHealth,
+  routing,
+  stalePriceIds,
+  onPriceDraftChange,
+  onResetProviderHealth,
+  onSavePrice,
+  onUpdateBudget,
+  onUpdatePrice
+}: {
+  budget: BudgetPolicyRecord;
+  priceDraft: {
+    provider: ProviderId;
+    model: string;
+    inputPricePerMillion: string;
+    outputPricePerMillion: string;
+    cachedInputPricePerMillion: string;
+    effectiveDate: string;
+    sourceNote: string;
+    enabled: boolean;
+  };
+  prices: ModelPriceRecord[];
+  profiles: ModelProfileRecord[];
+  providerHealth: ProviderHealthRecord[];
+  routing: RoutingSettings | null;
+  stalePriceIds: Set<string>;
+  onPriceDraftChange: (draft: typeof priceDraft) => void;
+  onResetProviderHealth: () => void;
+  onSavePrice: () => Promise<void>;
+  onUpdateBudget: (patch: Partial<BudgetPolicyRecord>) => Promise<void>;
+  onUpdatePrice: (price: ModelPriceRecord, patch: Partial<ModelPriceRecord>) => Promise<void>;
+}): JSX.Element {
+  return (
+    <div className="space-y-5">
+      <PricingTab
+        priceDraft={priceDraft}
+        prices={prices}
+        profiles={profiles}
+        routing={routing}
+        stalePriceIds={stalePriceIds}
+        onPriceDraftChange={onPriceDraftChange}
+        onSavePrice={onSavePrice}
+        onUpdatePrice={onUpdatePrice}
+      />
+      <BudgetsTab
+        budget={budget}
+        providerHealth={providerHealth}
+        onResetProviderHealth={onResetProviderHealth}
+        onUpdateBudget={onUpdateBudget}
+      />
     </div>
   );
 }

@@ -228,3 +228,14 @@ Important defaults:
 - DeepSeek, Qwen, Kimi, xAI, OpenRouter, and generic OpenAI-compatible profiles use the editable max-output parameter configured on the model profile.
 
 Known provider parameter errors are classified as `provider_parameter_error`. If no stream output has started, WenForge can retry once with the rejected parameter removed and records both attempts in `llm_runs`.
+
+## Phase 19 Candidate Presets
+
+Multi-draft mode adds user-facing candidate presets. These presets are convenience selections for writer models and do not replace task routes:
+
+- Daily Compare: Qwen3.7-Max and DeepSeek V4 Pro.
+- Balanced Compare: Qwen3.7-Max, Kimi K2.6, and DeepSeek V4 Pro.
+- Premium Compare: Claude Opus 4.7, Qwen3.7-Max, and Kimi K2.6.
+- Full Key Chapter Compare: Claude Opus 4.7, GPT-5.5, Qwen3.7-Max, Kimi K2.6, and DeepSeek V4 Pro.
+
+Each candidate receives a role label that becomes a prompt hint. The actual provider/model IDs still come from editable model profiles. If credentials or prices are missing, provider-backed candidate generation surfaces the same safe route errors as the normal AI gateway.

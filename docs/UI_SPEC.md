@@ -228,3 +228,18 @@ Generate 视图改为中文写作台：
 - `inkos`, `MaliangAINovalWriter`, `ai-novel-lab`, and `story-writing` may inform information architecture only.
 - OpenAI/Codex may inform broad command-center patterns only.
 - No UI source, screenshots, logos, image assets, distinctive copy, or branding may be copied in this phase.
+
+## Phase 19 Cleaner Chapter UI
+
+The chapter workspace is simplified around four primary tabs:
+
+- Write
+- Candidates
+- Review
+- Versions
+
+The full workflow is still available through the Generate action, but the visible surface should prioritize the manuscript, candidate drafts, review, and version history. Less-used technical controls move behind More, Settings, or Advanced sections.
+
+The Candidates tab uses simple cards instead of an analytics dashboard. Each card shows model/provider, role label, word count, cost, generation time, status, and a few direct actions: use as base, add to fusion, retry, save as version, or set canonical after confirmation.
+
+Settings now groups cost tools under Costs instead of showing separate Pricing and Budgets tabs by default.

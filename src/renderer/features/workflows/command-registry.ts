@@ -21,6 +21,8 @@ export const REQUIRED_COMMAND_IDS = [
   "compress-chapter-to-target",
   "strengthen-chapter-hook",
   "generate-alternative-endings",
+  "compare-drafts",
+  "fuse-drafts",
   "draft-from-accepted-scene-cards",
   "regenerate-scene-cards-only",
   "apply-accepted-plan"
@@ -229,6 +231,22 @@ export const STUDIO_COMMANDS: StudioCommand[] = [
     keywords: ["ending", "variant", "结尾", "变体"],
     scope: { requiresChapter: true },
     placeholder: true
+  },
+  {
+    id: "compare-drafts",
+    label: "对比多个候选稿",
+    category: "生成",
+    description: "同一章纲交给 2-3 个主笔模型起草",
+    keywords: ["compare drafts", "candidate", "候选稿", "多模型"],
+    scope: { requiresChapter: true }
+  },
+  {
+    id: "fuse-drafts",
+    label: "融合候选稿",
+    category: "生成",
+    description: "选择 base 和 reference 后生成一个终稿候选",
+    keywords: ["fuse", "merge", "候选稿", "融合"],
+    scope: { requiresChapter: true }
   },
   {
     id: "draft-from-accepted-scene-cards",

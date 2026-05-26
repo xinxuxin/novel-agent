@@ -219,6 +219,75 @@ export const generatedArtifacts = sqliteTable("generated_artifacts", {
   createdAt: text("created_at").notNull()
 });
 
+export const draftCandidateGroups = sqliteTable(
+  "draft_candidate_groups",
+  {
+    id: text("id").primaryKey(),
+    chapterId: text("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    generationRunId: text("generation_run_id").notNull(),
+    chapterPlanId: text("chapter_plan_id"),
+    targetWords: integer("target_words").notNull().default(3000),
+    userInstruction: text("user_instruction"),
+    presetName: text("preset_name"),
+    status: text("status").notNull().default("draft"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull()
+  },
+  (table) => [index("draft_candidate_groups_chapter_idx").on(table.chapterId)]
+);
+
+export const draftCandidates = sqliteTable(
+  "draft_candidates",
+  {
+    id: text("id").primaryKey(),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => draftCandidateGroups.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    roleLabel: text("role_label").notNull(),
+    contentMarkdown: text("content_markdown").notNull(),
+    contentPlaintext: text("content_plaintext").notNull(),
+    wordCount: integer("word_count").notNull().default(0),
+    characterCount: integer("character_count").notNull().default(0),
+    llmRunId: text("llm_run_id"),
+    cost: real("cost"),
+    latencyMs: integer("latency_ms"),
+    status: text("status").notNull().default("queued"),
+    errorMessage: text("error_message"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull()
+  },
+  (table) => [index("draft_candidates_group_idx").on(table.groupId)]
+);
+
+export const draftFusions = sqliteTable(
+  "draft_fusions",
+  {
+    id: text("id").primaryKey(),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => draftCandidateGroups.id, { onDelete: "cascade" }),
+    baseCandidateId: text("base_candidate_id").notNull(),
+    referenceCandidateIdsJson: text("reference_candidate_ids_json").notNull().default("[]"),
+    fusionInstruction: text("fusion_instruction"),
+    fusionProvider: text("fusion_provider").notNull(),
+    fusionModel: text("fusion_model").notNull(),
+    resultArtifactId: text("result_artifact_id"),
+    resultManuscriptVersionId: text("result_manuscript_version_id"),
+    llmRunId: text("llm_run_id"),
+    cost: real("cost"),
+    latencyMs: integer("latency_ms"),
+    status: text("status").notNull().default("proposed"),
+    errorMessage: text("error_message"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull()
+  },
+  (table) => [index("draft_fusions_group_idx").on(table.groupId)]
+);
+
 export const storyBibleEntries = sqliteTable("story_bible_entries", {
   id: text("id").primaryKey(),
   bookId: text("book_id")
@@ -709,6 +778,9 @@ export const schema = {
   planEditProposals,
   manuscriptVersions,
   generatedArtifacts,
+  draftCandidateGroups,
+  draftCandidates,
+  draftFusions,
   storyBibleEntries,
   characters,
   factions,

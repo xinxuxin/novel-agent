@@ -8,6 +8,7 @@ import { BookRepository } from "./repositories/book-repository";
 import { BudgetPolicyRepository } from "./repositories/budget-policy-repository";
 import { ChapterRepository } from "./repositories/chapter-repository";
 import { CostRepository } from "./repositories/cost-repository";
+import { DraftCandidateRepository } from "./repositories/draft-candidate-repository";
 import { GenerationRepository } from "./repositories/generation-repository";
 import { ManuscriptRepository } from "./repositories/manuscript-repository";
 import { MemoryRepository } from "./repositories/memory-repository";
@@ -51,6 +52,7 @@ export interface RepositoryRegistry {
   providerQuotas: ProviderQuotaRepository;
   taskRoutes: TaskRouteRepository;
   planning: PlanningRepository;
+  draftCandidates: DraftCandidateRepository;
 }
 
 export interface AppDatabaseService {
@@ -83,7 +85,8 @@ export function createRepositories(db: WenForgeDatabase): RepositoryRegistry {
     usageCalibration: new UsageCalibrationRepository(db),
     providerQuotas: new ProviderQuotaRepository(db),
     taskRoutes: new TaskRouteRepository(db),
-    planning: new PlanningRepository(db)
+    planning: new PlanningRepository(db),
+    draftCandidates: new DraftCandidateRepository(db)
   };
 }
 

@@ -36,6 +36,12 @@ import type {
   RoutePriceWarning
 } from "@contracts/cost-dashboard";
 import type { CrossCheckRequest, CrossCheckResult } from "@contracts/cross-check";
+import type {
+  DraftCandidateGroupDetail,
+  DraftCandidateGroupRecord,
+  DraftCandidateRecord,
+  DraftFusionRecord
+} from "@contracts/draft-candidates";
 import type { ProviderSmokeResult } from "@contracts/provider-smoke";
 import type {
   ProviderChapterCheckResult,
@@ -1186,6 +1192,99 @@ export function createPreloadApi(
           IPC_CONTRACTS.crossCheck.run.channel,
           IPC_CONTRACTS.crossCheck.run.response,
           request
+        )
+    },
+    candidates: {
+      createGroup: (input) =>
+        invokeContract<DraftCandidateGroupRecord>(
+          invoke,
+          IPC_CONTRACTS.candidates.createGroup.channel,
+          IPC_CONTRACTS.candidates.createGroup.response,
+          input
+        ),
+      generate: (input) =>
+        invokeContract<DraftCandidateGroupDetail>(
+          invoke,
+          IPC_CONTRACTS.candidates.generate.channel,
+          IPC_CONTRACTS.candidates.generate.response,
+          input
+        ),
+      listByChapter: (chapterId) =>
+        invokeContract<DraftCandidateGroupDetail[]>(
+          invoke,
+          IPC_CONTRACTS.candidates.listByChapter.channel,
+          IPC_CONTRACTS.candidates.listByChapter.response,
+          { chapterId }
+        ),
+      getGroup: (groupId) =>
+        invokeContract<DraftCandidateGroupDetail>(
+          invoke,
+          IPC_CONTRACTS.candidates.getGroup.channel,
+          IPC_CONTRACTS.candidates.getGroup.response,
+          { groupId }
+        ),
+      getCandidate: (candidateId) =>
+        invokeContract<DraftCandidateRecord>(
+          invoke,
+          IPC_CONTRACTS.candidates.getCandidate.channel,
+          IPC_CONTRACTS.candidates.getCandidate.response,
+          { candidateId }
+        ),
+      deleteGroup: (groupId, confirmed) =>
+        invokeContract<DraftCandidateGroupRecord | null>(
+          invoke,
+          IPC_CONTRACTS.candidates.deleteGroup.channel,
+          IPC_CONTRACTS.candidates.deleteGroup.response,
+          { groupId, confirmed }
+        ),
+      retryCandidate: (input) =>
+        invokeContract<DraftCandidateRecord>(
+          invoke,
+          IPC_CONTRACTS.candidates.retryCandidate.channel,
+          IPC_CONTRACTS.candidates.retryCandidate.response,
+          input
+        ),
+      saveCandidateAsVersion: (input) =>
+        invokeContract<ManuscriptVersionRecord>(
+          invoke,
+          IPC_CONTRACTS.candidates.saveCandidateAsVersion.channel,
+          IPC_CONTRACTS.candidates.saveCandidateAsVersion.response,
+          input
+        ),
+      setCandidateCanonical: (input) =>
+        invokeContract<ManuscriptVersionRecord>(
+          invoke,
+          IPC_CONTRACTS.candidates.setCandidateCanonical.channel,
+          IPC_CONTRACTS.candidates.setCandidateCanonical.response,
+          input
+        ),
+      createFusion: (input) =>
+        invokeContract<DraftFusionRecord>(
+          invoke,
+          IPC_CONTRACTS.candidates.createFusion.channel,
+          IPC_CONTRACTS.candidates.createFusion.response,
+          input
+        ),
+      generateFusion: (input) =>
+        invokeContract<DraftFusionRecord>(
+          invoke,
+          IPC_CONTRACTS.candidates.generateFusion.channel,
+          IPC_CONTRACTS.candidates.generateFusion.response,
+          input
+        ),
+      saveFusionAsVersion: (input) =>
+        invokeContract<ManuscriptVersionRecord>(
+          invoke,
+          IPC_CONTRACTS.candidates.saveFusionAsVersion.channel,
+          IPC_CONTRACTS.candidates.saveFusionAsVersion.response,
+          input
+        ),
+      setFusionCanonical: (input) =>
+        invokeContract<ManuscriptVersionRecord>(
+          invoke,
+          IPC_CONTRACTS.candidates.setFusionCanonical.channel,
+          IPC_CONTRACTS.candidates.setFusionCanonical.response,
+          input
         )
     },
     privacy: {

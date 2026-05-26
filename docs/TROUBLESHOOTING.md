@@ -143,3 +143,21 @@ pnpm providers:report
 ```
 
 `pnpm test:smoke` launches the built Electron output and should be run after `pnpm build` when checking the desktop shell manually.
+
+### Candidate Draft Compare Has Missing Models
+
+The Candidates tab uses editable model aliases such as Qwen3.7-Max, Kimi K2.6, DeepSeek V4 Pro, Claude Opus 4.7, and GPT-5.5.
+
+- Open Settings > Models and confirm each alias points to the provider model ID available in your account.
+- Open Settings > Providers and confirm the provider credential is configured.
+- Open Settings > Costs and confirm an active price row exists, or allow missing-price warnings according to the budget policy.
+- Use Mock mode to test UI behavior without real provider calls.
+
+### Fusion Button Is Disabled
+
+Fusion requires a base candidate.
+
+- Generate or load a candidate group.
+- Click Use as Base on one candidate.
+- Optionally add reference candidates.
+- Enter a fusion instruction or use the default behavior.

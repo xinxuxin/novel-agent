@@ -35,6 +35,7 @@ import { ProviderModelCatalogService } from "@main/providers/provider-model-cata
 import { ReviewSettlementService } from "@main/review/review-settlement-service";
 import { ChapterWorkflowRuntime } from "@main/workflows/chapter-workflow-runtime";
 import { CrossCheckService } from "@main/workflows/cross-check-service";
+import { MultiDraftService } from "@main/workflows/multi-draft-service";
 import { getEnvironment } from "@main/platform/environment";
 import { SafeIpcError } from "./safe-ipc-error";
 import { registerIpcContract } from "./typed-ipc";
@@ -223,6 +224,7 @@ function registerDataIpc(
           aiGateway
         })
       : null;
+  const multiDraftService = database ? new MultiDraftService({ repositories, aiGateway }) : null;
   evaluationService?.ensureBuiltInSuite();
   evaluationService?.ensureRouteEvalSuite();
 
@@ -954,6 +956,90 @@ function registerDataIpc(
     }
     requireConfirmation(request.confirmed);
     return crossCheckService.run({ ...request, confirmed: true });
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.createGroup, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return multiDraftService.createGroup(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.generate, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    requireConfirmation(request.confirmed);
+    return multiDraftService.generateCandidates({ ...request, confirmed: true });
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.listByChapter, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return multiDraftService.listByChapter(request.chapterId);
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.getGroup, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return multiDraftService.getGroup(request.groupId);
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.getCandidate, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return multiDraftService.getCandidate(request.candidateId);
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.deleteGroup, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    requireConfirmation(request.confirmed);
+    return multiDraftService.deleteGroup(request.groupId, true);
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.retryCandidate, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    requireConfirmation(request.confirmed);
+    return multiDraftService.retryCandidate({ ...request, confirmed: true });
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.saveCandidateAsVersion, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return multiDraftService.saveCandidateAsVersion(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.setCandidateCanonical, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    requireConfirmation(request.confirmed);
+    return multiDraftService.setCandidateCanonical({ ...request, confirmed: true });
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.createFusion, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return multiDraftService.createFusion(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.generateFusion, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    requireConfirmation(request.confirmed);
+    return multiDraftService.generateFusion({ ...request, confirmed: true });
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.saveFusionAsVersion, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return multiDraftService.saveFusionAsVersion(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.candidates.setFusionCanonical, (request) => {
+    if (!multiDraftService) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    requireConfirmation(request.confirmed);
+    return multiDraftService.setFusionCanonical({ ...request, confirmed: true });
   });
   registerIpcContract(IPC_CONTRACTS.reviews.listByGenerationRun, (request) => {
     if (!reviewSettlementService) {

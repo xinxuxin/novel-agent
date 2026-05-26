@@ -63,6 +63,7 @@ Real provider connectivity checks are disabled by default. They require explicit
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Real Provider Setup](docs/REAL_PROVIDER_SETUP.md)
 - [Planning Lab](docs/PLANNING_LAB.md)
+- [Multi-Draft Studio](docs/MULTI_DRAFT_STUDIO.md)
 - [Model Parameter Policy](docs/MODEL_PARAMETER_POLICY.md)
 - [Release Guide](docs/RELEASE.md)
 - [Release Checklist](docs/RELEASE_CHECKLIST.md)

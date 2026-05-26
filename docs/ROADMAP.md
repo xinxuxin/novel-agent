@@ -273,3 +273,15 @@ Deferred from Phase 14: signed/notarized public installers, final branded icons,
 - [x] Add one-shot provider parameter retry repair for known compatibility errors before streaming starts.
 - [x] Update Settings models/routing UI to show effective capabilities and creativity intent instead of raw temperature-first controls.
 - [x] Add focused unit tests for planning persistence, provider request normalization, and adapter request bodies.
+
+## Phase 19: Simple Multi-Draft Studio And Cleaner UI (Complete)
+
+- [x] Add `multi_draft_chapter_v1` for practical candidate generation and fusion.
+- [x] Add candidate group, candidate draft, and fusion persistence tables.
+- [x] Add main-process `MultiDraftService` using the existing AI gateway, `llm_runs`, generated artifacts, and manuscript versioning.
+- [x] Add typed IPC/preload endpoints for candidate groups, candidate generation, retry, save-as-version, canonical confirmation, fusion creation, and fusion save/confirmation.
+- [x] Add candidate prompts for multi-draft candidate writing, candidate fusion, and optional light review.
+- [x] Add a Candidates workspace with simple candidate cards and a small fusion form.
+- [x] Reduce the visible chapter workspace tabs to Write, Candidates, Review, and Versions.
+- [x] Group Settings cost controls under Costs to reduce tab clutter.
+- [x] Add tests for candidate generation, failed-candidate retry, non-canonical saves, canonical confirmation, fusion, and secret-safe UI.

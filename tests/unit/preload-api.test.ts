@@ -54,6 +54,7 @@ describe("preload API", () => {
       "backup",
       "books",
       "budgets",
+      "candidates",
       "chapters",
       "context",
       "costs",
@@ -100,6 +101,21 @@ describe("preload API", () => {
     expect(Object.keys(api.providerModels).sort()).toEqual(["list"]);
     expect(Object.keys(api.providerChapterCheck).sort()).toEqual(["run"]);
     expect(Object.keys(api.crossCheck).sort()).toEqual(["run"]);
+    expect(Object.keys(api.candidates).sort()).toEqual([
+      "createFusion",
+      "createGroup",
+      "deleteGroup",
+      "generate",
+      "generateFusion",
+      "getCandidate",
+      "getGroup",
+      "listByChapter",
+      "retryCandidate",
+      "saveCandidateAsVersion",
+      "saveFusionAsVersion",
+      "setCandidateCanonical",
+      "setFusionCanonical"
+    ]);
     expect(await api.app.getVersion()).toBe("0.1.0");
     expect(await api.app.getPlatform()).toBe("darwin");
     expect(await api.app.getEnvironment()).toEqual({ mode: "test", packaged: false });

@@ -21,6 +21,24 @@ import {
 } from "@contracts/provider-check";
 import { crossCheckRequestSchema, crossCheckResultSchema } from "@contracts/cross-check";
 import {
+  chapterCandidatesRequestSchema,
+  createCandidateGroupSchema,
+  createFusionSchema,
+  deleteCandidateGroupSchema,
+  draftCandidateGroupDetailSchema,
+  draftCandidateGroupSchema,
+  draftCandidateSchema,
+  draftFusionSchema,
+  generateCandidatesSchema,
+  generateFusionSchema,
+  groupIdRequestSchema,
+  retryCandidateSchema,
+  saveCandidateAsVersionSchema,
+  saveFusionAsVersionSchema,
+  setCandidateCanonicalSchema,
+  setFusionCanonicalSchema
+} from "@contracts/draft-candidates";
+import {
   costForecastRequestSchema,
   costForecastSchema,
   costDashboardSummarySchema,
@@ -1675,6 +1693,69 @@ export const IPC_CONTRACTS = {
   crossCheck: {
     run: createContract("cross-check:run", crossCheckRequestSchema, crossCheckResultSchema)
   },
+  candidates: {
+    createGroup: createContract(
+      "candidates:create-group",
+      createCandidateGroupSchema,
+      draftCandidateGroupSchema
+    ),
+    generate: createContract(
+      "candidates:generate",
+      generateCandidatesSchema,
+      draftCandidateGroupDetailSchema
+    ),
+    listByChapter: createContract(
+      "candidates:list-by-chapter",
+      chapterCandidatesRequestSchema,
+      z.array(draftCandidateGroupDetailSchema)
+    ),
+    getGroup: createContract(
+      "candidates:get-group",
+      groupIdRequestSchema,
+      draftCandidateGroupDetailSchema
+    ),
+    getCandidate: createContract(
+      "candidates:get-candidate",
+      z.object({ candidateId: z.string().min(1) }),
+      draftCandidateSchema
+    ),
+    deleteGroup: createContract(
+      "candidates:delete-group",
+      deleteCandidateGroupSchema,
+      draftCandidateGroupSchema.nullable()
+    ),
+    retryCandidate: createContract(
+      "candidates:retry-candidate",
+      retryCandidateSchema,
+      draftCandidateSchema
+    ),
+    saveCandidateAsVersion: createContract(
+      "candidates:save-candidate-as-version",
+      saveCandidateAsVersionSchema,
+      manuscriptVersionSchema
+    ),
+    setCandidateCanonical: createContract(
+      "candidates:set-candidate-canonical",
+      setCandidateCanonicalSchema,
+      manuscriptVersionSchema
+    ),
+    createFusion: createContract("candidates:create-fusion", createFusionSchema, draftFusionSchema),
+    generateFusion: createContract(
+      "candidates:generate-fusion",
+      generateFusionSchema,
+      draftFusionSchema
+    ),
+    saveFusionAsVersion: createContract(
+      "candidates:save-fusion-as-version",
+      saveFusionAsVersionSchema,
+      manuscriptVersionSchema
+    ),
+    setFusionCanonical: createContract(
+      "candidates:set-fusion-canonical",
+      setFusionCanonicalSchema,
+      manuscriptVersionSchema
+    )
+  },
   reviews: {
     listByGenerationRun: createContract(
       "reviews:list-by-generation-run",
@@ -2120,6 +2201,19 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.providerSmoke.latestReport,
   IPC_CONTRACTS.providerChapterCheck.run,
   IPC_CONTRACTS.crossCheck.run,
+  IPC_CONTRACTS.candidates.createGroup,
+  IPC_CONTRACTS.candidates.generate,
+  IPC_CONTRACTS.candidates.listByChapter,
+  IPC_CONTRACTS.candidates.getGroup,
+  IPC_CONTRACTS.candidates.getCandidate,
+  IPC_CONTRACTS.candidates.deleteGroup,
+  IPC_CONTRACTS.candidates.retryCandidate,
+  IPC_CONTRACTS.candidates.saveCandidateAsVersion,
+  IPC_CONTRACTS.candidates.setCandidateCanonical,
+  IPC_CONTRACTS.candidates.createFusion,
+  IPC_CONTRACTS.candidates.generateFusion,
+  IPC_CONTRACTS.candidates.saveFusionAsVersion,
+  IPC_CONTRACTS.candidates.setFusionCanonical,
   IPC_CONTRACTS.reviews.listByGenerationRun,
   IPC_CONTRACTS.reviews.updateStatus,
   IPC_CONTRACTS.reviews.rerunAudit,

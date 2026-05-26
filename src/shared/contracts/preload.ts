@@ -12,6 +12,21 @@ import type {
 } from "./provider-check";
 import type { CrossCheckRequest, CrossCheckResult } from "./cross-check";
 import type {
+  CreateCandidateGroupInput,
+  CreateFusionInput,
+  DraftCandidateGroupDetail,
+  DraftCandidateGroupRecord,
+  DraftCandidateRecord,
+  DraftFusionRecord,
+  GenerateCandidatesInput,
+  GenerateFusionInput,
+  RetryCandidateInput,
+  SaveCandidateAsVersionInput,
+  SaveFusionAsVersionInput,
+  SetCandidateCanonicalInput,
+  SetFusionCanonicalInput
+} from "./draft-candidates";
+import type {
   AIStreamEvent,
   CostSummary,
   CostSummaryRequest,
@@ -520,6 +535,21 @@ export interface WenForgeApi {
   };
   crossCheck: {
     run: (request: CrossCheckRequest) => Promise<CrossCheckResult>;
+  };
+  candidates: {
+    createGroup: (input: CreateCandidateGroupInput) => Promise<DraftCandidateGroupRecord>;
+    generate: (input: GenerateCandidatesInput) => Promise<DraftCandidateGroupDetail>;
+    listByChapter: (chapterId: string) => Promise<DraftCandidateGroupDetail[]>;
+    getGroup: (groupId: string) => Promise<DraftCandidateGroupDetail>;
+    getCandidate: (candidateId: string) => Promise<DraftCandidateRecord>;
+    deleteGroup: (groupId: string, confirmed: boolean) => Promise<DraftCandidateGroupRecord | null>;
+    retryCandidate: (input: RetryCandidateInput) => Promise<DraftCandidateRecord>;
+    saveCandidateAsVersion: (input: SaveCandidateAsVersionInput) => Promise<ManuscriptVersionRecord>;
+    setCandidateCanonical: (input: SetCandidateCanonicalInput) => Promise<ManuscriptVersionRecord>;
+    createFusion: (input: CreateFusionInput) => Promise<DraftFusionRecord>;
+    generateFusion: (input: GenerateFusionInput) => Promise<DraftFusionRecord>;
+    saveFusionAsVersion: (input: SaveFusionAsVersionInput) => Promise<ManuscriptVersionRecord>;
+    setFusionCanonical: (input: SetFusionCanonicalInput) => Promise<ManuscriptVersionRecord>;
   };
   privacy: {
     get: () => Promise<PrivacySettings>;

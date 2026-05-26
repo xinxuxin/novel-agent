@@ -214,6 +214,60 @@ create table if not exists generated_artifacts (
   created_at text not null
 );
 
+create table if not exists draft_candidate_groups (
+  id text primary key,
+  chapter_id text not null references chapters(id) on delete cascade,
+  generation_run_id text not null references generation_runs(id) on delete cascade,
+  chapter_plan_id text,
+  target_words integer not null default 3000,
+  user_instruction text,
+  preset_name text,
+  status text not null default 'draft',
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists draft_candidate_groups_chapter_idx on draft_candidate_groups(chapter_id);
+
+create table if not exists draft_candidates (
+  id text primary key,
+  group_id text not null references draft_candidate_groups(id) on delete cascade,
+  provider text not null,
+  model text not null,
+  role_label text not null,
+  content_markdown text not null,
+  content_plaintext text not null,
+  word_count integer not null default 0,
+  character_count integer not null default 0,
+  llm_run_id text,
+  cost real,
+  latency_ms integer,
+  status text not null default 'queued',
+  error_message text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists draft_candidates_group_idx on draft_candidates(group_id);
+
+create table if not exists draft_fusions (
+  id text primary key,
+  group_id text not null references draft_candidate_groups(id) on delete cascade,
+  base_candidate_id text not null,
+  reference_candidate_ids_json text not null default '[]',
+  fusion_instruction text,
+  fusion_provider text not null,
+  fusion_model text not null,
+  result_artifact_id text,
+  result_manuscript_version_id text,
+  llm_run_id text,
+  cost real,
+  latency_ms integer,
+  status text not null default 'proposed',
+  error_message text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists draft_fusions_group_idx on draft_fusions(group_id);
+
 create table if not exists story_bible_entries (
   id text primary key,
   book_id text not null references books(id) on delete cascade,

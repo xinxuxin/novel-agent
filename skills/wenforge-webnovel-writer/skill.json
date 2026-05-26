@@ -233,6 +233,27 @@
       "version": "1.0.0",
       "language": "zh-CN",
       "taskType": "suspense_hook_audit"
+    },
+    {
+      "id": "multi-draft-candidate",
+      "file": "multi-draft-candidate.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "draft_chapter"
+    },
+    {
+      "id": "candidate-fusion",
+      "file": "candidate-fusion.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "revise_chapter"
+    },
+    {
+      "id": "candidate-light-review",
+      "file": "candidate-light-review.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "suspense_hook_audit"
     }
   ],
   "schemas": [
