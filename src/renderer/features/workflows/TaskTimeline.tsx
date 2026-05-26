@@ -3,12 +3,13 @@ import type { JSX } from "react";
 import React from "react";
 
 const STAGES = [
-  ["Context", "Story bible and recent summaries"],
-  ["Outline", "Chapter beats"],
-  ["Scene Cards", "Goal, conflict, handoff"],
-  ["Draft", "Chinese long-form prose"],
-  ["Audit", "Continuity and rhythm"],
-  ["Revise", "Human-gated proposal"]
+  ["读取大纲", "上下文"],
+  ["拆场景", "场景卡"],
+  ["起草正文", "正文"],
+  ["节奏审稿", "爽点/钩子"],
+  ["连贯性审稿", "设定/时间线"],
+  ["改写成终稿", "终稿候选"],
+  ["人工确认", "保存/设为正文"]
 ] as const;
 
 export function TaskTimeline({ activeTab }: { activeTab: string }): JSX.Element {
@@ -18,11 +19,11 @@ export function TaskTimeline({ activeTab }: { activeTab: string }): JSX.Element 
     <section className="border-t border-white/10 bg-black/20 px-5 py-3">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-          Task timeline
+          实时工作流
         </p>
-        <span className="text-xs text-slate-500">Human gate before canon update</span>
+        <span className="text-xs text-slate-500">人工确认后才写入正文</span>
       </div>
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-7">
         {STAGES.map(([stage, description], index) => (
           <div className="rounded-lg border border-white/10 bg-white/[0.035] p-3" key={stage}>
             <div className="flex items-center gap-2">

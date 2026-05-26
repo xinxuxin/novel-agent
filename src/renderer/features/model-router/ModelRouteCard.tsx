@@ -10,14 +10,14 @@ export function ModelRouteCard({
 }): JSX.Element {
   return (
     <section className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
-      <h3 className="text-sm font-semibold text-white">Model route</h3>
+      <h3 className="text-sm font-semibold text-white">模型路线</h3>
       {routeResolution ? (
         <div className="mt-3 space-y-2 text-sm">
           <p className="text-slate-300">
-            {routeResolution.modelProfile?.displayName ?? "No available draft route"}
+            {routeResolution.modelProfile?.displayName ?? "无可用路线"}
           </p>
           <p className="text-xs text-slate-500">
-            draft_chapter / balanced · {routeResolution.available ? "ready" : "needs configuration"}
+            起草正文 / 均衡 · {routeResolution.available ? "就绪" : "待配置"}
           </p>
           {[...routeResolution.warnings, ...routeResolution.errors].slice(0, 3).map((message) => (
             <p
@@ -29,7 +29,7 @@ export function ModelRouteCard({
           ))}
         </div>
       ) : (
-        <p className="mt-2 text-sm text-slate-500">Route health loads from local settings.</p>
+        <p className="mt-2 text-sm text-slate-500">未加载路线。</p>
       )}
     </section>
   );

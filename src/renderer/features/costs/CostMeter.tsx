@@ -22,13 +22,16 @@ export function CostMeter({
 }: CostMeterProps): JSX.Element {
   const total = summary?.finalCost ?? sessionCost;
   const warningActive = !["prices local", "ready", ""].includes(costWarning.toLowerCase());
+  const visibleWarning = costWarning === "prices local" ? "本地价格" : costWarning;
 
   return (
     <section className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-white">Cost meter</h3>
-          <p className="mt-1 text-xs text-slate-500">{activeRunLabel}</p>
+          <h3 className="text-sm font-semibold text-white">成本</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            {activeRunLabel === "No active run" ? "无运行" : activeRunLabel}
+          </p>
         </div>
         <span className="rounded-full border border-forge-blue/30 bg-forge-blue/10 px-3 py-1 text-xs text-forge-blue">
           ${activeRunCost.toFixed(6)}
@@ -36,11 +39,11 @@ export function CostMeter({
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-          <p className="text-slate-500">Session</p>
+          <p className="text-slate-500">本轮</p>
           <p className="mt-1 text-sm text-slate-100">${sessionCost.toFixed(6)}</p>
         </div>
         <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-          <p className="text-slate-500">Scope</p>
+          <p className="text-slate-500">范围</p>
           <p className="mt-1 text-sm text-slate-100">${total.toFixed(6)}</p>
         </div>
       </div>
@@ -51,11 +54,11 @@ export function CostMeter({
             : "border-white/10 bg-black/20 text-slate-400"
         }`}
       >
-        {costWarning}
+        {visibleWarning}
       </p>
       <div className="mt-4 space-y-2">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-          Recent runs
+          最近调用
         </p>
         {recentRuns.slice(0, 4).map((run) => (
           <div
@@ -67,7 +70,7 @@ export function CostMeter({
           </div>
         ))}
         {recentRuns.length === 0 ? (
-          <p className="text-sm text-slate-500">No LLM runs yet.</p>
+          <p className="text-sm text-slate-500">暂无调用。</p>
         ) : null}
       </div>
     </section>

@@ -407,7 +407,7 @@ export function App(): JSX.Element {
   }, []);
 
   const createProject = async (): Promise<void> => {
-    const name = promptText("Project name");
+    const name = promptText("项目名称");
     if (!name) return;
     const project = await window.wenforge.projects.create({ name });
     await refreshProjectsAfterCreate(project);
@@ -415,7 +415,7 @@ export function App(): JSX.Element {
 
   const createBook = async (): Promise<void> => {
     if (!selectedProjectId) return;
-    const title = promptText("Book title");
+    const title = promptText("书名");
     if (!title) return;
     const book = await window.wenforge.books.create({ projectId: selectedProjectId, title });
     await refreshBooksAfterCreate(book);
@@ -423,7 +423,7 @@ export function App(): JSX.Element {
 
   const createVolume = async (): Promise<void> => {
     if (!selectedBookId) return;
-    const title = promptText("Volume title", `Volume ${volumes.length + 1}`);
+    const title = promptText("分卷名", `第 ${volumes.length + 1} 卷`);
     if (!title) return;
     const volume = await window.wenforge.volumes.create({
       bookId: selectedBookId,
@@ -435,7 +435,7 @@ export function App(): JSX.Element {
 
   const createChapter = async (volumeId: string | null = null): Promise<void> => {
     if (!selectedBookId) return;
-    const title = promptText("Chapter title", `第${chapters.length + 1}章`);
+    const title = promptText("章节标题", `第${chapters.length + 1}章`);
     if (!title) return;
     const chapter = await window.wenforge.chapters.create({
       bookId: selectedBookId,
@@ -448,7 +448,7 @@ export function App(): JSX.Element {
   };
 
   const renameChapter = async (chapter: ChapterRecord): Promise<void> => {
-    const title = promptText("Rename chapter", chapter.title);
+    const title = promptText("重命名章节", chapter.title);
     if (!title) return;
     const updated = await window.wenforge.chapters.update(chapter.id, { title });
     if (updated) {
@@ -488,7 +488,7 @@ export function App(): JSX.Element {
 
   const editTargetWords = async (): Promise<void> => {
     if (!activeChapter) return;
-    const value = promptText("Target words", String(activeChapter.targetWords));
+    const value = promptText("目标字数", String(activeChapter.targetWords));
     if (!value) return;
     const targetWords = Number.parseInt(value, 10);
     if (!Number.isFinite(targetWords) || targetWords <= 0) return;
@@ -512,7 +512,7 @@ export function App(): JSX.Element {
     if (!activeChapter) return;
     if (isCanonical) {
       const result = await runDestructiveAction(
-        "Set this working draft as the canonical manuscript?",
+        "将当前工作稿设为正式正文？",
         window.confirm.bind(window),
         async () => true
       );
@@ -532,7 +532,7 @@ export function App(): JSX.Element {
   const setVersionCanonical = async (versionToSet: ManuscriptVersionRecord): Promise<void> => {
     if (!activeChapter) return;
     const result = await runDestructiveAction(
-      `Set version ${versionToSet.versionIndex} as canonical?`,
+      `将 v${versionToSet.versionIndex} 设为正式正文？`,
       window.confirm.bind(window),
       () => window.wenforge.manuscripts.setCanonical(activeChapter.id, versionToSet.id)
     );
@@ -546,7 +546,7 @@ export function App(): JSX.Element {
   const rollbackVersion = async (versionToRestore: ManuscriptVersionRecord): Promise<void> => {
     if (!activeChapter) return;
     const restored = await runDestructiveAction(
-      `Rollback by creating a new canonical version from v${versionToRestore.versionIndex}?`,
+      `从 v${versionToRestore.versionIndex} 创建新的正式回滚版本？`,
       window.confirm.bind(window),
       () => window.wenforge.manuscripts.rollback(activeChapter.id, versionToRestore.id, true)
     );
@@ -714,6 +714,7 @@ export function App(): JSX.Element {
     setSelectedChapterId(chapter.id);
     setWorkspaceView("chapter");
   };
+  const showInspector = !compact && !(workspaceView === "chapter" && activeTab === "generate");
 
   return (
     <main className="min-h-screen overflow-hidden bg-transparent p-3 text-slate-100">
@@ -731,7 +732,7 @@ export function App(): JSX.Element {
             <div>
               <h1 className="text-sm font-semibold tracking-normal text-white">WenForge Studio</h1>
               <p className="text-xs text-slate-500">
-                {activeProject?.name ?? "Local-first writing studio"}
+                {activeProject?.name ?? "本地写作台"}
               </p>
             </div>
           </div>
@@ -741,17 +742,17 @@ export function App(): JSX.Element {
             onClick={openCommandPalette}
             type="button"
           >
-            <span>Search projects, chapters, commands</span>
+            <span>搜索项目、章节、命令</span>
             <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[11px] text-slate-500">
               Cmd K
             </kbd>
           </button>
 
           <div className="app-no-drag flex items-center gap-2">
-            <StatusPill label={activeRunLabel} tone="blue" />
-            <StatusPill label={`Session $${sessionCost.toFixed(6)}`} tone="mint" />
+            <StatusPill label={activeRunLabel === "No active run" ? "无运行" : activeRunLabel} tone="blue" />
+            <StatusPill label={`本轮 $${sessionCost.toFixed(6)}`} tone="mint" />
             <StatusPill
-              label={routeResolution?.available ? "Route ready" : "Route needs setup"}
+              label={routeResolution?.available ? "路线就绪" : "路线待配置"}
               tone={routeResolution?.available ? "mint" : "amber"}
             />
             <button
@@ -766,7 +767,7 @@ export function App(): JSX.Element {
               }}
               type="button"
             >
-              Studio
+              写作
             </button>
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
@@ -780,10 +781,10 @@ export function App(): JSX.Element {
               }}
               type="button"
             >
-              Generate
+              生成
             </button>
             <select
-              aria-label="Open secondary workspace"
+              aria-label="打开工作区"
               className="h-8 rounded-md border border-white/10 bg-black/30 px-2 text-xs text-slate-300 outline-none hover:border-forge-violet/40 focus:border-forge-blue/50"
               onChange={(event) => {
                 const nextView = event.target.value as WorkspaceView | "";
@@ -792,11 +793,11 @@ export function App(): JSX.Element {
               }}
               value=""
             >
-              <option value="">More</option>
-              <option value="storyBible">Story Bible</option>
-              <option value="costs">Costs</option>
-              <option value="eval">Eval</option>
-              <option value="data">Data</option>
+              <option value="">更多</option>
+              <option value="storyBible">故事圣经</option>
+              <option value="costs">成本</option>
+              <option value="eval">评测</option>
+              <option value="data">导入导出</option>
             </select>
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
@@ -807,14 +808,14 @@ export function App(): JSX.Element {
               onClick={() => setWorkspaceView("settings")}
               type="button"
             >
-              Settings
+              设置
             </button>
             <button
               className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-forge-violet/40 hover:text-white"
               onClick={() => void toggleStudioMode()}
               type="button"
             >
-              {compact ? "Expand" : "Compact"}
+              {compact ? "展开" : "精简"}
             </button>
             <button
               aria-label="Minimize"
@@ -837,7 +838,11 @@ export function App(): JSX.Element {
 
         <div
           className={`grid min-h-0 transition-[grid-template-columns] duration-300 ${
-            compact ? "grid-cols-[64px_minmax(0,1fr)]" : "grid-cols-[300px_minmax(0,1fr)_340px]"
+            compact
+              ? "grid-cols-[64px_minmax(0,1fr)]"
+              : showInspector
+                ? "grid-cols-[300px_minmax(0,1fr)_340px]"
+                : "grid-cols-[300px_minmax(0,1fr)]"
           }`}
         >
           <ProjectSidebar
@@ -947,7 +952,7 @@ export function App(): JSX.Element {
             )}
           </section>
 
-          {compact ? null : (
+          {showInspector ? (
             <aside className="min-h-0 overflow-auto border-l border-white/10 bg-black/18">
               <div className="space-y-4 p-4">
                 <StoryBiblePanel
@@ -971,22 +976,19 @@ export function App(): JSX.Element {
                   volume={activeVolume}
                 />
                 <section className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
-                  <h3 className="text-sm font-semibold text-white">Settlement proposals</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Proposed state updates will appear here and require approval before touching
-                    canon.
-                  </p>
+                  <h3 className="text-sm font-semibold text-white">设定结算</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">等待确认。</p>
                 </section>
               </div>
             </aside>
-          )}
+          ) : null}
         </div>
 
         <footer className="grid h-9 grid-cols-[1fr_auto] items-center border-t border-white/10 bg-black/28 px-4 text-xs text-slate-500">
           <span>WenForge Studio {version}</span>
           <span>
-            {activeBook?.title ?? "No book"} · Run ${activeRunCost.toFixed(6)} · Session $
-            {sessionCost.toFixed(6)} · {costWarning}
+            {activeBook?.title ?? "无书籍"} · 本次 ${activeRunCost.toFixed(6)} · 本轮 $
+            {sessionCost.toFixed(6)} · {costWarning === "prices local" ? "本地价格" : costWarning}
           </span>
         </footer>
       </motion.section>
@@ -1069,19 +1071,20 @@ function CompactLauncher({
     reducedMotion,
     activeRunLabel === "No active run" ? 12 : 68
   );
+  const activeRunDisplay = activeRunLabel === "No active run" ? "无运行" : activeRunLabel;
   return (
     <div className="flex h-full items-center justify-center p-6">
       <section className="w-full max-w-2xl rounded-xl border border-white/10 bg-graphite-900/70 p-5 shadow-soft-glow">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-              Popover launcher
+              快速启动
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-white">
-              {activeChapter?.title ?? "Choose a chapter"}
+              {activeChapter?.title ?? "选择章节"}
             </h2>
             <p className="mt-2 text-sm text-slate-500">
-              {activeProject?.name ?? "No project"} / {activeBook?.title ?? "No book"}
+              {activeProject?.name ?? "未选择项目"} / {activeBook?.title ?? "未选择书籍"}
             </p>
           </div>
           <button
@@ -1089,13 +1092,13 @@ function CompactLauncher({
             onClick={onExpand}
             type="button"
           >
-            Expand Studio
+            展开写作台
           </button>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-            <p className="text-xs text-slate-500">Active run</p>
-            <p className="mt-1 truncate text-sm text-slate-200">{activeRunLabel}</p>
+            <p className="text-xs text-slate-500">当前任务</p>
+            <p className="mt-1 truncate text-sm text-slate-200">{activeRunDisplay}</p>
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
               <motion.div
                 animate={runProgress.animate}
@@ -1106,9 +1109,9 @@ function CompactLauncher({
             </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-            <p className="text-xs text-slate-500">Session cost</p>
+            <p className="text-xs text-slate-500">本轮成本</p>
             <p className="mt-1 font-mono text-sm text-forge-mint">${sessionCost.toFixed(6)}</p>
-            <p className="mt-2 text-xs text-slate-500">Estimated local session spend</p>
+            <p className="mt-2 text-xs text-slate-500">本地估算花费</p>
           </div>
         </div>
         <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -1117,34 +1120,34 @@ function CompactLauncher({
             onClick={onOpenCommandPalette}
             type="button"
           >
-            Commands
+            命令
           </button>
           <button
             className="rounded-lg border border-white/10 bg-black/20 p-3 text-left text-sm text-slate-200"
             onClick={onCreateChapter}
             type="button"
           >
-            New Chapter
+            新章节
           </button>
           <button
             className="rounded-lg border border-white/10 bg-black/20 p-3 text-left text-sm text-slate-200"
             onClick={onOpenGenerate}
             type="button"
           >
-            Quick Draft
+            快速起草
           </button>
           <button
             className="rounded-lg border border-white/10 bg-black/20 p-3 text-left text-sm text-slate-200"
             onClick={onOpenGenerate}
             type="button"
           >
-            Run Audit
+            运行审稿
           </button>
         </div>
         {projects.length > 0 ? (
           <div className="mt-5 space-y-2">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-              Recent projects
+              最近项目
             </p>
             <div className="flex flex-wrap gap-2">
               {projects.slice(0, 4).map((project) => (
@@ -1166,7 +1169,7 @@ function CompactLauncher({
         ) : null}
         <div className="mt-5 space-y-2">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-            Recent chapters
+            最近章节
           </p>
           {chapters.slice(0, 5).map((chapter) => (
             <button
@@ -1251,11 +1254,11 @@ function ChapterWorkspace({
   versions: ManuscriptVersionRecord[];
 }): JSX.Element {
   const tabs: { id: WorkspaceTab; label: string }[] = [
-    { id: "manuscript", label: "Manuscript" },
-    { id: "generate", label: "Generate" },
-    { id: "review", label: "Review" },
-    { id: "timeline", label: "Timeline" },
-    { id: "versions", label: "Versions" }
+    { id: "manuscript", label: "正文" },
+    { id: "generate", label: "生成" },
+    { id: "review", label: "审稿" },
+    { id: "timeline", label: "流程" },
+    { id: "versions", label: "版本" }
   ];
   const generateFocused = activeTab === "generate";
 
@@ -1264,31 +1267,33 @@ function ChapterWorkspace({
       <div className={`border-b border-white/10 px-6 ${generateFocused ? "py-3" : "py-4"}`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-              Active chapter
-            </p>
-            <h2 className={`${generateFocused ? "mt-0.5 text-lg" : "mt-1 text-xl"} truncate font-semibold text-white`}>
-              {activeChapter?.title ?? "No chapter selected"}
+            <p className="text-xs font-medium tracking-[0.16em] text-slate-500">当前章节</p>
+            <h2
+              className={`${generateFocused ? "mt-0.5 text-lg" : "mt-1 text-xl"} truncate font-semibold text-white`}
+            >
+              {activeChapter?.title ?? "未选择章节"}
             </h2>
-            <div className={`${generateFocused ? "mt-1.5" : "mt-2"} flex flex-wrap items-center gap-2`}>
+            <div
+              className={`${generateFocused ? "mt-1.5" : "mt-2"} flex flex-wrap items-center gap-2`}
+            >
               {activeChapter ? <StatusBadge status={activeChapter.status} /> : null}
               {canonical ? (
                 <span className="rounded-full border border-forge-mint/30 bg-forge-mint/10 px-3 py-1 text-xs text-forge-mint">
-                  Canonical v{canonical.versionIndex}
+                  正文 v{canonical.versionIndex}
                 </span>
               ) : (
                 <span className="rounded-full border border-forge-amber/30 bg-forge-amber/10 px-3 py-1 text-xs text-forge-amber">
-                  No canonical manuscript
+                  无正式正文
                 </span>
               )}
               {activeVersion && !activeVersion.isCanonical ? (
                 <span className="rounded-full border border-forge-amber/30 bg-forge-amber/10 px-3 py-1 text-xs text-forge-amber">
-                  Viewing draft v{activeVersion.versionIndex}
+                  查看草稿 v{activeVersion.versionIndex}
                 </span>
               ) : null}
               {activeVersion?.sourceType === "generated" ? (
                 <span className="rounded-full border border-forge-violet/30 bg-forge-violet/10 px-3 py-1 text-xs text-forge-violet">
-                  Generated proposal
+                  生成候选
                 </span>
               ) : null}
             </div>
@@ -1299,28 +1304,28 @@ function ChapterWorkspace({
               onClick={onEditTargetWords}
               type="button"
             >
-              Target {activeChapter?.targetWords ?? 0}
+              字数 {activeChapter?.targetWords ?? 0}
             </button>
             <button
               className="rounded-md border border-white/10 px-3 py-2 text-xs text-slate-300 hover:border-forge-blue/40 hover:text-white"
               onClick={onEditSummary}
               type="button"
             >
-              Summary
+              摘要
             </button>
             <button
               className="rounded-md border border-white/10 px-3 py-2 text-xs text-slate-300 hover:border-forge-violet/40 hover:text-white"
               onClick={onSaveVersion}
               type="button"
             >
-              Save Version
+              保存版本
             </button>
             <button
               className="rounded-md border border-forge-mint/30 bg-forge-mint/10 px-3 py-2 text-xs text-forge-mint hover:border-forge-mint/60"
               onClick={onSetCanonical}
               type="button"
             >
-              Set Canonical
+              设为正文
             </button>
           </div>
         </div>
@@ -1514,7 +1519,7 @@ function ReviewWorkspace({
   const saveArtifact = async (setCanonical: boolean): Promise<void> => {
     if (!detail || !latestArtifact) return;
     if (setCanonical && blockingCount > 0 && !overrideBlocking) return;
-    const confirmed = !setCanonical || window.confirm("Save generated text and set it canonical?");
+    const confirmed = !setCanonical || window.confirm("保存生成稿并设为正式正文？");
     if (!confirmed) return;
     const version = await window.wenforge.manuscript.saveArtifactAsVersion({
       runId: detail.run.id,
@@ -1578,7 +1583,7 @@ function ReviewWorkspace({
               </p>
               <p className="mt-1 text-sm text-slate-400">
                 Comparing {compareA ? `v${compareA.versionIndex}` : "empty"} to{" "}
-                {compareB ? `v${compareB.versionIndex}` : canonical ? "canon" : "empty"}.
+                {compareB ? `v${compareB.versionIndex}` : canonical ? "正式" : "空"}.
               </p>
             </div>
             <div className="flex gap-2">
@@ -1745,17 +1750,16 @@ function ReviewActionsCard({
     [];
   return (
     <article className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
-      <h3 className="text-sm font-semibold text-white">Generated manuscript gate</h3>
+      <h3 className="text-sm font-semibold text-white">人工确认</h3>
       <p className="mt-2 text-xs leading-5 text-slate-500">
-        Generated text remains proposed until it is saved as a version. Canonical approval is
-        blocked while blocking review cards are open.
+        生成稿在保存为版本前只作为候选。存在阻断级审稿卡时，需要明确勾选后才能设为正式正文。
       </p>
       <select
         className="mt-3 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs text-slate-200"
         value={selectedArtifactId}
         onChange={(event) => onSelectArtifact(event.target.value)}
       >
-        <option value="">No generated artifact</option>
+        <option value="">无生成稿</option>
         {artifacts.map((artifact) => (
           <option key={artifact.id} value={artifact.id}>
             {artifact.artifactType} · {artifact.title ?? artifact.sourceNode}
@@ -1770,7 +1774,7 @@ function ReviewActionsCard({
             onChange={(event) => onOverrideBlocking(event.target.checked)}
             type="checkbox"
           />
-          I understand the warnings and want to approve anyway.
+          我已理解审稿警告，仍要确认。
         </label>
       ) : null}
       <div className="mt-3 grid gap-2">
@@ -1780,7 +1784,7 @@ function ReviewActionsCard({
           onClick={onSaveVersion}
           type="button"
         >
-          Save Generated As Non-Canonical Version
+          保存为非正式版本
         </button>
         <button
           className="rounded-md border border-forge-mint/30 bg-forge-mint/10 px-3 py-2 text-left text-xs text-forge-mint disabled:cursor-not-allowed disabled:opacity-50"
@@ -1788,7 +1792,7 @@ function ReviewActionsCard({
           onClick={onSaveCanonical}
           type="button"
         >
-          Save Generated And Set Canonical
+          保存并设为正式正文
         </button>
         <button
           className="rounded-md border border-white/10 bg-black/20 px-3 py-2 text-left text-xs text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1796,14 +1800,14 @@ function ReviewActionsCard({
           onClick={onCopyGenerated}
           type="button"
         >
-          Copy Generated To Editor
+          复制到编辑器
         </button>
         <button
           className="rounded-md border border-forge-blue/30 bg-forge-blue/10 px-3 py-2 text-left text-xs text-forge-blue"
           onClick={() => void onRerunAudit()}
           type="button"
         >
-          Rerun Audit
+          重新审稿
         </button>
         <button
           className="rounded-md border border-forge-violet/30 bg-forge-violet/10 px-3 py-2 text-left text-xs text-forge-violet disabled:cursor-not-allowed disabled:opacity-50"
@@ -1811,7 +1815,7 @@ function ReviewActionsCard({
           onClick={onReviseSelectedIssues}
           type="button"
         >
-          Revise Based On Active Issues
+          按当前问题再改一版
         </button>
       </div>
     </article>
@@ -1822,9 +1826,9 @@ function CostByNodeCard({ detail }: { detail: ChapterWorkflowDetail | null }): J
   const runs = detail?.llmRuns ?? [];
   return (
     <article className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
-      <h3 className="text-sm font-semibold text-white">Cost by node</h3>
+      <h3 className="text-sm font-semibold text-white">节点成本</h3>
       <div className="mt-3 space-y-2">
-        {runs.length === 0 ? <p className="text-xs text-slate-500">No model runs yet.</p> : null}
+        {runs.length === 0 ? <p className="text-xs text-slate-500">暂无模型调用。</p> : null}
         {runs.map((run) => (
           <div
             className="rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs"
@@ -2035,7 +2039,7 @@ function RunDiffPanel({ diff }: { diff: ManuscriptDiff }): JSX.Element {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-            Canonical vs generated
+            正式正文 vs 生成稿
           </p>
           <h3 className="mt-1 text-sm font-semibold text-white">
             {diff.fromTitle} to {diff.toTitle}
@@ -2097,10 +2101,10 @@ function VersionSelect({
       onChange={(event) => onChange(event.target.value || null)}
       value={value ?? ""}
     >
-      <option value="">Empty</option>
+      <option value="">空</option>
       {versions.map((version) => (
         <option key={version.id} value={version.id}>
-          v{version.versionIndex} {version.isCanonical ? "canon" : version.sourceType}
+          v{version.versionIndex} {version.isCanonical ? "正式" : version.sourceType}
         </option>
       ))}
     </select>
@@ -2116,17 +2120,17 @@ function TimelineWorkspace({
     <div className="h-full overflow-auto px-6 py-5">
       <section className="rounded-lg border border-white/10 bg-black/25 p-5">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-          Chapter timeline
+          章节流程
         </p>
         <h3 className="mt-2 text-lg font-semibold text-white">
-          {activeChapter?.title ?? "No chapter"}
+          {activeChapter?.title ?? "未选择章节"}
         </h3>
         <div className="mt-5 grid gap-3 md:grid-cols-2">
           {[
-            ["Loaded state", "Project, book, volume, story bible context"],
-            ["Draft state", "Autosaved local working draft"],
-            ["Review gate", "Audit and rewrite cards remain proposals"],
-            ["Settlement", "State changes will be proposed, versioned, and approved"]
+            ["读取状态", "项目、书籍、分卷、故事圣经上下文"],
+            ["工作草稿", "本地自动保存当前工作稿"],
+            ["审稿闸门", "审稿卡和改写稿在确认前都是提案"],
+            ["设定结算", "状态变更会先提案、再版本化、最后确认"]
           ].map(([title, body]) => (
             <article className="rounded-lg border border-white/10 bg-white/[0.035] p-4" key={title}>
               <p className="text-sm font-medium text-slate-100">{title}</p>
@@ -2172,7 +2176,7 @@ function VersionsWorkspace({
                   </h3>
                   {version.isCanonical ? (
                     <span className="rounded-full border border-forge-mint/30 px-2 py-0.5 text-[10px] text-forge-mint">
-                      Canon
+                      正式
                     </span>
                   ) : null}
                   <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-slate-500">
@@ -2180,7 +2184,7 @@ function VersionsWorkspace({
                   </span>
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  {version.wordCount} words · {version.characterCount} chars ·{" "}
+                  {version.wordCount} 字 · {version.characterCount} 字符 ·{" "}
                   {new Date(version.createdAt).toLocaleString()}
                 </p>
               </div>
@@ -2190,14 +2194,14 @@ function VersionsWorkspace({
                   onClick={() => onOpenVersion(version)}
                   type="button"
                 >
-                  Open
+                  打开
                 </button>
                 <button
                   className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:text-white"
                   onClick={() => onRollbackVersion(version)}
                   type="button"
                 >
-                  Rollback
+                  回滚
                 </button>
                 {!version.isCanonical ? (
                   <button
@@ -2205,19 +2209,19 @@ function VersionsWorkspace({
                     onClick={() => onSetVersionCanonical(version)}
                     type="button"
                   >
-                    Set Canon
+                    设为正式
                   </button>
                 ) : null}
               </div>
             </div>
             <p className="mt-3 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-slate-400">
-              {version.contentPlaintext || "Empty version"}
+              {version.contentPlaintext || "空版本"}
             </p>
           </article>
         ))}
         {versions.length === 0 ? (
           <p className="rounded-lg border border-white/10 bg-black/25 px-4 py-8 text-center text-sm text-slate-500">
-            No versions yet. Save the working draft to create the first manuscript version.
+            暂无版本。保存当前工作稿后会创建第一个正文版本。
           </p>
         ) : null}
       </div>
@@ -2233,16 +2237,16 @@ function ContinuityPanel({
   canonical: ManuscriptVersionRecord | null;
 }): JSX.Element {
   const warnings = [
-    activeChapter?.summary ? null : "Chapter summary missing",
-    canonical ? null : "No accepted canonical manuscript",
+    activeChapter?.summary ? null : "缺少章节摘要",
+    canonical ? null : "还没有已确认的正式正文",
     activeChapter && activeChapter.currentWords < activeChapter.targetWords * 0.5
-      ? "Draft is below target length"
+      ? "草稿低于目标字数"
       : null
   ].filter(Boolean);
 
   return (
     <section className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
-      <h3 className="text-sm font-semibold text-white">Continuity warnings</h3>
+      <h3 className="text-sm font-semibold text-white">连贯性提醒</h3>
       <div className="mt-3 space-y-2">
         {warnings.length > 0 ? (
           warnings.map((warning) => (
@@ -2255,7 +2259,7 @@ function ContinuityPanel({
           ))
         ) : (
           <p className="rounded-lg border border-forge-mint/25 bg-forge-mint/10 px-3 py-2 text-xs text-forge-mint">
-            No continuity warnings in the current local view.
+            当前本地视图没有连贯性提醒。
           </p>
         )}
       </div>

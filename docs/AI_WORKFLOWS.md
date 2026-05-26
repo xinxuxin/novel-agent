@@ -243,3 +243,27 @@ The Generate tab sends this outline through typed IPC as `sourceOutline`, along 
 Generated output remains proposed. Saving creates a non-canonical manuscript version, and setting
 that version canonical still requires explicit confirmation. Story bible/state updates remain
 settlement proposals until separately accepted.
+
+## Phase 17 中文实时工作流
+
+写作台显示一条实时工作流：
+
+1. 读取大纲
+2. 拆场景
+3. 起草正文
+4. 节奏审稿
+5. 连贯性审稿
+6. 改写成终稿
+7. 人工确认
+
+用户可以把 `.docx`、`.txt`、`.md` 大纲拖入生成区。Renderer 使用浏览器 File API 读取用户主动拖入的文件，不向主进程暴露任意文件读取能力。`.docx` 只解析 `word/document.xml` 正文文本；旧 `.doc` 文件需要另存为 `.docx`。
+
+流程含义：
+
+- 读取大纲：把用户大纲作为章节任务输入，同时加载项目、书籍、章节、故事圣经、近期摘要和隐私设置。
+- 拆场景：把大纲拆成章节承诺、开篇钩子、冲突升级、情绪转折、回收点、章末钩子和场景卡。
+- 起草正文：根据场景卡写中文正文草稿，生成内容仍是候选稿。
+- 节奏审稿：检查开篇钩子、冲突密度、爽点、情绪转折、章末悬念、套路贴合和 AI 腔。
+- 连贯性审稿：检查人物、设定、时间线、伏笔、能力规则和前文事实冲突。
+- 改写成终稿：综合审稿意见改写为终稿候选，保留原草稿和审稿记录。
+- 人工确认：用户决定保存为版本、再改一版、进入设定结算或设为正式正文。系统不会自动覆盖正式正文，也不会自动改写故事圣经。

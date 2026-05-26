@@ -83,13 +83,13 @@ const QUALITY_LABELS: Record<QualityMode, string> = {
 };
 
 const SETTINGS_TABS: Array<{ id: SettingsTab; label: string }> = [
-  { id: "providers", label: "Providers" },
-  { id: "models", label: "Models" },
-  { id: "pricing", label: "Pricing" },
-  { id: "routing", label: "Routing" },
-  { id: "budgets", label: "Budgets" },
-  { id: "privacy", label: "Privacy" },
-  { id: "advanced", label: "Advanced" }
+  { id: "providers", label: "模型密钥" },
+  { id: "models", label: "模型" },
+  { id: "pricing", label: "价格" },
+  { id: "routing", label: "路线" },
+  { id: "budgets", label: "预算" },
+  { id: "privacy", label: "隐私" },
+  { id: "advanced", label: "高级" }
 ];
 
 const today = new Date().toISOString().slice(0, 10);
@@ -415,11 +415,11 @@ export function SettingsPanel(): JSX.Element {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Settings</p>
-          <h2 className="mt-1 text-xl font-semibold text-white">Providers, Models, Routing</h2>
+          <p className="text-xs font-medium tracking-[0.16em] text-slate-500">设置</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">模型密钥 / 路线 / 预算</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Add API keys in Providers. Keys go into the encrypted credential store, and the
-            renderer only sees redacted credential status.
+            API Key 在「模型密钥」添加。密钥进入加密凭据库，renderer only sees redacted
+            credential status.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

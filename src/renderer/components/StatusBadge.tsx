@@ -2,13 +2,13 @@ import type { JSX } from "react";
 import React from "react";
 
 const STATUS_LABELS: Record<string, string> = {
-  planned: "Planned",
-  outlining: "Outlining",
-  drafting: "Drafting",
-  reviewing: "Reviewing",
-  revised: "Revised",
-  approved: "Approved",
-  published: "Published"
+  planned: "计划",
+  outlining: "大纲",
+  drafting: "起草",
+  reviewing: "审稿",
+  revised: "已改",
+  approved: "通过",
+  published: "发布"
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -29,7 +29,7 @@ export function StatusBadge({ status }: { status: string }): JSX.Element {
   const label = statusLabel(status);
   return (
     <span
-      aria-label={`Status: ${label}`}
+      aria-label={`状态：${label}`}
       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
         STATUS_STYLES[status] ?? STATUS_STYLES.planned
       }`}

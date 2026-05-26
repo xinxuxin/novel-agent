@@ -18,13 +18,13 @@ export const REQUIRED_COMMAND_IDS = [
 ] as const;
 
 export const COMMAND_CATEGORIES = [
-  "Project",
-  "Chapter",
-  "Generation",
-  "Review",
-  "Story Bible",
-  "Cost",
-  "Settings"
+  "项目",
+  "章节",
+  "生成",
+  "审稿",
+  "故事圣经",
+  "成本",
+  "设置"
 ] as const;
 
 export type StudioCommandId = (typeof REQUIRED_COMMAND_IDS)[number];
@@ -73,128 +73,128 @@ export interface ResolveCommandPaletteInput {
 export const STUDIO_COMMANDS: StudioCommand[] = [
   {
     id: "new-project",
-    label: "New Project",
-    category: "Project",
-    description: "Create a local project",
+    label: "新建项目",
+    category: "项目",
+    description: "创建本地项目",
     keywords: ["project", "create", "新项目", "项目"]
   },
   {
     id: "new-book",
-    label: "New Book",
-    category: "Project",
-    description: "Add a book to the active project",
+    label: "新建书籍",
+    category: "项目",
+    description: "在当前项目中添加书籍",
     keywords: ["book", "novel", "新书", "书"],
     scope: { requiresProject: true }
   },
   {
     id: "new-volume",
-    label: "New Volume",
-    category: "Project",
-    description: "Add a volume to the active book",
+    label: "新建分卷",
+    category: "项目",
+    description: "在当前书籍中添加分卷",
     keywords: ["volume", "arc", "分卷", "卷"],
     scope: { requiresBook: true }
   },
   {
     id: "new-chapter",
-    label: "New Chapter",
-    category: "Chapter",
-    description: "Create a chapter placeholder",
+    label: "新建章节",
+    category: "章节",
+    description: "创建章节占位",
     keywords: ["chapter", "章节", "新章"],
     scope: { requiresBook: true }
   },
   {
     id: "rename-chapter",
-    label: "Rename Chapter",
-    category: "Chapter",
-    description: "Rename the selected chapter",
+    label: "重命名章节",
+    category: "章节",
+    description: "修改当前章节标题",
     keywords: ["rename", "chapter", "改名", "标题"],
     scope: { requiresChapter: true }
   },
   {
     id: "save-manuscript-version",
-    label: "Save Manuscript Version",
-    category: "Chapter",
-    description: "Version the current working draft",
+    label: "保存正文版本",
+    category: "章节",
+    description: "保存当前工作稿为版本",
     keywords: ["save", "version", "版本", "保存"],
     scope: { requiresChapter: true }
   },
   {
     id: "set-canonical",
-    label: "Set Canonical",
-    category: "Chapter",
-    description: "Accept the current draft as canon",
+    label: "设为正式正文",
+    category: "章节",
+    description: "确认当前稿为正式正文",
     keywords: ["canon", "canonical", "accept", "定稿"],
     requiresConfirmation: true,
     scope: { requiresChapter: true }
   },
   {
     id: "generate-outline",
-    label: "Generate Outline",
-    category: "Generation",
-    description: "Open outline generation for the current chapter",
+    label: "生成大纲",
+    category: "生成",
+    description: "打开当前章节的大纲生成",
     keywords: ["outline", "generate", "生成", "大纲"],
     scope: { requiresChapter: true }
   },
   {
     id: "draft-chapter",
-    label: "Draft Chapter",
-    category: "Generation",
-    description: "Draft the current chapter through the workflow panel",
-    keywords: ["draft", "write", "chapter", "起草", "正文"],
+    label: "起草正文",
+    category: "生成",
+    description: "通过工作流起草当前章节",
+    keywords: ["draft", "draft chapter", "write", "chapter", "起草", "正文"],
     scope: { requiresChapter: true }
   },
   {
     id: "run-audit",
-    label: "Run Audit",
-    category: "Review",
-    description: "Open continuity and rhythm audit controls",
+    label: "运行审稿",
+    category: "审稿",
+    description: "打开节奏与连贯性审稿",
     keywords: ["audit", "review", "检查", "爽点"],
     scope: { requiresChapter: true }
   },
   {
     id: "show-review",
-    label: "Show Review",
-    category: "Review",
-    description: "Open review cards, diffs, and human gate controls",
+    label: "查看审稿",
+    category: "审稿",
+    description: "打开审稿卡、差异和人工确认",
     keywords: ["review", "diff", "cards", "审稿", "对比"],
     scope: { requiresChapter: true }
   },
   {
     id: "apply-settlement",
-    label: "Apply Settlement",
-    category: "Review",
-    description: "Review pending state settlement proposals",
+    label: "应用设定结算",
+    category: "审稿",
+    description: "查看待确认的设定结算提案",
     keywords: ["settlement", "state", "canon", "结算", "设定"],
     requiresConfirmation: true,
     scope: { requiresChapter: true, requiresSettlementProposal: true }
   },
   {
     id: "open-story-bible",
-    label: "Open Story Bible",
-    category: "Story Bible",
-    description: "Manage characters, hooks, timeline, and style rules",
+    label: "打开故事圣经",
+    category: "故事圣经",
+    description: "管理人物、钩子、时间线和风格规则",
     keywords: ["story", "bible", "characters", "设定", "人物"],
     scope: { requiresBook: true }
   },
   {
     id: "show-cost-dashboard",
-    label: "Show Cost Dashboard",
-    category: "Cost",
-    description: "Open spend, budget, pricing, and evaluation controls",
+    label: "查看成本面板",
+    category: "成本",
+    description: "打开花费、预算、价格和评测",
     keywords: ["cost", "spend", "费用", "预算"]
   },
   {
     id: "open-settings",
-    label: "Open Settings",
-    category: "Settings",
-    description: "Open providers, models, routing, privacy, and diagnostics",
+    label: "打开设置",
+    category: "设置",
+    description: "打开模型密钥、模型、路线、隐私和诊断",
     keywords: ["settings", "provider", "model", "设置"]
   },
   {
     id: "open-data-workspace",
-    label: "Open Data Workspace",
-    category: "Settings",
-    description: "Open import, export, backup, and restore controls",
+    label: "打开数据工作台",
+    category: "设置",
+    description: "打开导入、导出、备份和恢复",
     keywords: ["data", "backup", "export", "import", "导出", "备份"]
   }
 ];
@@ -260,14 +260,14 @@ function fuzzyScore(query: string, value: string): number {
 }
 
 function disabledReason(command: StudioCommand, context: CommandPaletteContext): string | null {
-  if (command.scope?.requiresProject && !context.hasProject) return "Select a project first";
-  if (command.scope?.requiresBook && !context.hasBook) return "Select a book first";
-  if (command.scope?.requiresChapter && !context.hasChapter) return "Select a chapter first";
+  if (command.scope?.requiresProject && !context.hasProject) return "先选择项目";
+  if (command.scope?.requiresBook && !context.hasBook) return "先选择书籍";
+  if (command.scope?.requiresChapter && !context.hasChapter) return "先选择章节";
   if (command.scope?.requiresGeneratedDraft && !context.hasGeneratedDraft) {
-    return "Generate a draft first";
+    return "先生成草稿";
   }
   if (command.scope?.requiresSettlementProposal && !context.hasSettlementProposal) {
-    return "No settlement proposal is pending";
+    return "没有待处理的设定结算";
   }
   return null;
 }

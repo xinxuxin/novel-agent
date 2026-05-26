@@ -263,8 +263,8 @@ describe("phase 15b premium webnovel routing and cross-checks", () => {
     expect(settingsPanel).toContain("Premium Webnovel");
     expect(settingsPanel).toContain("Export preset");
     expect(settingsPanel).toContain("Import preset");
-    expect(workflowPanel).toContain("Run Worldbuilding Cross-Check");
-    expect(workflowPanel).toContain("Run Key Chapter Preflight");
+    expect(workflowPanel).toContain("世界观交叉检查");
+    expect(workflowPanel).toContain("关键章预检");
     expect(`${settingsPanel}\n${workflowPanel}`).not.toContain("encryptedSecretBase64");
     expect(`${settingsPanel}\n${workflowPanel}`).not.toContain("decrypted");
   });

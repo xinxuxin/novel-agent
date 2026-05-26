@@ -61,12 +61,11 @@ export function OnboardingPanel({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-forge-cyan">
-              First launch
+              首次启动
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">Set up WenForge Studio</h2>
+            <h2 className="mt-2 text-2xl font-semibold text-white">配置 WenForge Studio</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-              Choose private defaults, a project path, and whether to start with mock generation or
-              provider setup.
+              选择隐私默认值、项目入口，以及先用本地模拟还是添加模型密钥。
             </p>
           </div>
           <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400">
@@ -79,7 +78,7 @@ export function OnboardingPanel({
 
         <div className="mt-6">
           {state.currentStep === "language" ? (
-            <Step title="Language" body="WenForge defaults to Simplified Chinese output.">
+            <Step title="语言" body="默认生成简体中文正文。">
               <ChoiceButton onClick={() => void complete("language", { language: "zh-Hans" })}>
                 简体中文
               </ChoiceButton>
@@ -87,7 +86,7 @@ export function OnboardingPanel({
           ) : null}
 
           {state.currentStep === "project" ? (
-            <Step title="Project" body="Use the current project or create a starter project.">
+            <Step title="项目" body="使用当前项目，或创建一个起步项目。">
               <ChoiceButton
                 onClick={() => {
                   setBusy(true);
@@ -97,18 +96,18 @@ export function OnboardingPanel({
                   });
                 }}
               >
-                {hasProject ? "Use Current Project" : "Create Starter Project"}
+                {hasProject ? "使用当前项目" : "创建起步项目"}
               </ChoiceButton>
             </Step>
           ) : null}
 
           {state.currentStep === "provider" ? (
             <Step
-              title="Provider"
-              body="Start safely with mock mode or open Settings to add an encrypted credential."
+              title="模型"
+              body="先用本地模拟，或打开设置添加加密保存的模型密钥。"
             >
               <ChoiceButton onClick={() => void complete("provider", { providerMode: "mock" })}>
-                Use Mock Mode
+                使用本地模拟
               </ChoiceButton>
               <ChoiceButton
                 onClick={() => {
@@ -118,21 +117,20 @@ export function OnboardingPanel({
                   });
                 }}
               >
-                Open Provider Settings
+                打开模型密钥设置
               </ChoiceButton>
             </Step>
           ) : null}
 
           {state.currentStep === "quality" ? (
-            <Step title="Quality Mode" body="Balanced is the default route for routine chapters.">
+            <Step title="质量模式" body="日常章节默认使用均衡路线。">
               {(["economy", "balanced", "premium"] as QualityMode[]).map((mode) => (
                 <ChoiceButton
                   active={state.qualityMode === mode}
                   key={mode}
                   onClick={() => void complete("quality", { qualityMode: mode })}
                 >
-                  {mode[0]?.toUpperCase()}
-                  {mode.slice(1)}
+                  {mode === "economy" ? "经济" : mode === "balanced" ? "均衡" : "高级"}
                 </ChoiceButton>
               ))}
             </Step>
@@ -140,15 +138,15 @@ export function OnboardingPanel({
 
           {state.currentStep === "privacy" ? (
             <Step
-              title="Privacy"
-              body="Verbose prompt, response, manuscript, and recent-chapter logging stay off."
+              title="隐私"
+              body="默认关闭完整提示词、响应、正文和近期章节日志。"
             >
               <ul className="grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
                 {[
-                  "Full prompt logging off",
-                  "Full response logging off",
-                  "Manuscript logging off",
-                  "Full recent chapters off"
+                  "完整提示词日志关闭",
+                  "完整响应日志关闭",
+                  "正文日志关闭",
+                  "完整近期章节关闭"
                 ].map((label) => (
                   <li
                     className="rounded-lg border border-forge-mint/20 bg-forge-mint/8 p-3"
@@ -159,18 +157,18 @@ export function OnboardingPanel({
                 ))}
               </ul>
               <ChoiceButton onClick={() => void complete("privacy")}>
-                Keep Private Defaults
+                保持隐私默认值
               </ChoiceButton>
             </Step>
           ) : null}
 
           {state.currentStep === "book" ? (
-            <Step title="Book" body="Create a demo book or a blank book shell.">
+            <Step title="书籍" body="创建演示书，或创建空白书籍。">
               <ChoiceButton disabled={busy} onClick={() => void finishWithBook("demo")}>
-                Create Demo Book
+                创建演示书
               </ChoiceButton>
               <ChoiceButton disabled={busy} onClick={() => void finishWithBook("blank")}>
-                Create Blank Book
+                创建空白书
               </ChoiceButton>
             </Step>
           ) : null}

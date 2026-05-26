@@ -173,6 +173,17 @@ center of gravity is the active writing task. Settings explicitly tells users to
 Providers and that keys are stored in the encrypted credential store; decrypted keys are never shown
 to the renderer.
 
+## Phase 17 中文写作台
+
+Generate 视图改为中文写作台：
+
+- 首屏隐藏右侧检查器，减少干扰。
+- 中心只保留大纲拖入/粘贴、实时工作流、执行配置、生成按钮和候选文稿。
+- 支持拖入 `.docx`、`.txt`、`.md` 大纲；`.doc` 提示另存为 `.docx`。
+- 实时工作流固定为：读取大纲、拆场景、起草正文、节奏审稿、连贯性审稿、改写成终稿、人工确认。
+- 生成结果仍显示为候选稿；保存版本和设为正式正文仍是分开的人工动作。
+- 顶栏、章节树、状态、成本、模型路线和设置入口优先使用中文。
+
 ## Interaction Rules
 
 - Generated text, audits, rewrites, and state updates are visibly marked as draft/proposed.

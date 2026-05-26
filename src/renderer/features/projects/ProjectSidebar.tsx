@@ -27,7 +27,7 @@ interface ProjectSidebarProps {
 }
 
 function chapterLabel(chapter: ChapterRecord): string {
-  return `Chapter ${String(chapter.chapterIndex).padStart(3, "0")}`;
+  return `第 ${String(chapter.chapterIndex).padStart(3, "0")} 章`;
 }
 
 export function ProjectSidebar({
@@ -92,14 +92,14 @@ export function ProjectSidebar({
         <div className="space-y-3 border-b border-white/10 px-4 py-3">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-              Projects
+              项目
             </p>
             <button
               className="rounded-md border border-white/10 px-2 py-1 text-xs text-slate-300 hover:border-forge-blue/40 hover:text-white"
               onClick={onCreateProject}
               type="button"
             >
-              New
+              新建
             </button>
           </div>
           <select
@@ -107,7 +107,7 @@ export function ProjectSidebar({
             onChange={(event) => onSelectProject(event.target.value)}
             value={selectedProjectId ?? ""}
           >
-            {projects.length === 0 ? <option value="">No project</option> : null}
+            {projects.length === 0 ? <option value="">无项目</option> : null}
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
                 {project.name}
@@ -120,14 +120,14 @@ export function ProjectSidebar({
           <div className="mb-4 space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                Books
+                书籍
               </p>
               <button
                 className="rounded-md border border-white/10 px-2 py-1 text-xs text-slate-300 hover:border-forge-violet/40 hover:text-white"
                 onClick={onCreateBook}
                 type="button"
               >
-                Add
+                添加
               </button>
             </div>
             <div className="space-y-1">
@@ -147,7 +147,7 @@ export function ProjectSidebar({
               ))}
               {books.length === 0 ? (
                 <p className="rounded-lg border border-white/10 px-3 py-3 text-sm text-slate-500">
-                  No books yet.
+                  暂无书籍。
                 </p>
               ) : null}
             </div>
@@ -155,14 +155,14 @@ export function ProjectSidebar({
 
           <div className="mb-4 flex items-center justify-between">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-              Volumes & Chapters
+              卷与章节
             </p>
             <button
               className="rounded-md border border-white/10 px-2 py-1 text-xs text-slate-300 hover:border-forge-violet/40 hover:text-white"
               onClick={onCreateVolume}
               type="button"
             >
-              Volume
+              新卷
             </button>
           </div>
 
@@ -178,7 +178,7 @@ export function ProjectSidebar({
                       onClick={() => onCreateChapter(volume.id)}
                       type="button"
                     >
-                      + Chapter
+                      + 章节
                     </button>
                   </div>
                   <ChapterList
@@ -198,14 +198,14 @@ export function ProjectSidebar({
               <section>
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-sm font-medium text-slate-200">
-                    {volumes.length === 0 ? "Chapters" : "Unassigned"}
+                    {volumes.length === 0 ? "章节" : "未分卷"}
                   </p>
                   <button
                     className="text-xs text-forge-blue hover:text-white"
                     onClick={() => onCreateChapter(null)}
                     type="button"
                   >
-                    + Chapter
+                    + 章节
                   </button>
                 </div>
                 <ChapterList
@@ -246,7 +246,7 @@ function ChapterList({
   if (chapters.length === 0) {
     return (
       <p className="rounded-lg border border-white/10 px-3 py-3 text-sm text-slate-500">
-        No chapters yet.
+        暂无章节。
       </p>
     );
   }
@@ -271,7 +271,7 @@ function ChapterList({
               <span className="text-xs text-slate-500">{chapterLabel(chapter)}</span>
               {canonicalChapterIds.has(chapter.id) ? (
                 <span className="rounded-full border border-forge-mint/30 px-2 py-0.5 text-[10px] text-forge-mint">
-                  Canon
+                  正文
                 </span>
               ) : null}
             </div>
@@ -289,28 +289,28 @@ function ChapterList({
               onClick={() => onRenameChapter(chapter)}
               type="button"
             >
-              Rename
+              改名
             </button>
             <button
               className="rounded border border-white/10 px-2 py-1 text-[11px] text-slate-400 hover:text-white"
               onClick={() => onMoveChapter(chapter, "up")}
               type="button"
             >
-              Up
+              上移
             </button>
             <button
               className="rounded border border-white/10 px-2 py-1 text-[11px] text-slate-400 hover:text-white"
               onClick={() => onMoveChapter(chapter, "down")}
               type="button"
             >
-              Down
+              下移
             </button>
             <button
               className="rounded border border-white/10 px-2 py-1 text-[11px] text-slate-400 hover:text-white"
               onClick={() => onChangeStatus(chapter)}
               type="button"
             >
-              Status
+              状态
             </button>
           </div>
         </div>

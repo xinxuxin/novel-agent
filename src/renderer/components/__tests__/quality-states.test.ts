@@ -27,7 +27,7 @@ describe("quality state panels", () => {
       })
     );
 
-    expect(markup).toContain("No provider configured");
+    expect(markup).toContain("还没有模型密钥");
     expect(markup).toContain("aria-label");
     expect(markup).not.toContain("sk-secret");
   });

@@ -109,7 +109,7 @@ export function CommandPalette({
                 exit={{ opacity: 0, y: -12, scale: 0.98 }}
                 transition={{ duration: reduceMotion ? 0 : 0.18, ease: "easeOut" }}
               >
-                <Dialog.Title className="sr-only">Command palette</Dialog.Title>
+                <Dialog.Title className="sr-only">命令面板</Dialog.Title>
                 <div className="border-b border-white/10 px-4 py-3">
                   <input
                     autoFocus
@@ -118,7 +118,7 @@ export function CommandPalette({
                       setQuery(event.target.value);
                       setActiveIndex(0);
                     }}
-                    placeholder="Search commands"
+                    placeholder="搜索命令"
                     value={query}
                   />
                 </div>
@@ -151,7 +151,7 @@ export function CommandPalette({
                   })}
                   {items.length === 0 ? (
                     <p className="px-3 py-6 text-center text-sm text-slate-500">
-                      No matching commands.
+                      没有匹配命令。
                     </p>
                   ) : null}
                 </div>
@@ -193,11 +193,11 @@ function CommandButton({
       <span className="flex shrink-0 items-center gap-2">
         {item.recent ? (
           <span className="rounded-full border border-forge-cyan/20 px-2 py-0.5 text-xs text-forge-cyan">
-            Recent
+            最近
           </span>
         ) : null}
         <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-slate-500">
-          {command.requiresConfirmation ? "Confirm" : command.category}
+          {command.requiresConfirmation ? "需确认" : command.category}
         </span>
       </span>
     </button>

@@ -11,7 +11,7 @@ describe("renderer component smoke tests", () => {
   it("renders status badges with visible text labels", () => {
     const markup = renderToStaticMarkup(createElement(StatusBadge, { status: "drafting" }));
 
-    expect(markup).toContain("Drafting");
+    expect(markup).toContain("起草");
     expect(markup).toContain("aria-label");
   });
 
@@ -53,8 +53,8 @@ describe("renderer component smoke tests", () => {
       })
     );
 
-    expect(onboarding).toContain("Set up WenForge Studio");
-    expect(statePanel).toContain("Missing price");
+    expect(onboarding).toContain("配置 WenForge Studio");
+    expect(statePanel).toContain("缺少价格");
     expect(statePanel).not.toContain("sk-secret");
   });
 });

@@ -244,3 +244,13 @@ Deferred from Phase 14: signed/notarized public installers, final branded icons,
 - [x] Declutter the top navigation and move secondary workspaces behind a compact More selector.
 - [x] Clarify Settings API key setup, encrypted storage, and renderer secret isolation.
 - [x] Add regression tests for outline-driven workflow behavior, UI copy, and shell/settings clarity.
+
+## Phase 17: Chinese Outline Import Workflow UX (Complete)
+
+- [x] Change the Generate workspace into a Chinese writing surface.
+- [x] Hide the right inspector in Generate mode to reduce visual noise.
+- [x] Add drag-and-drop outline import for `.docx`, `.txt`, and `.md`.
+- [x] Add safe `.docx` body-text extraction in the renderer without exposing arbitrary filesystem IPC.
+- [x] Replace explanatory workflow copy with live workflow stages: 读取大纲 → 拆场景 → 起草正文 → 节奏审稿 → 连贯性审稿 → 改写成终稿 → 人工确认.
+- [x] Localize the most visible shell, chapter tree, status badges, cost meter, route card, and Settings entry points to Chinese.
+- [x] Add tests for outline file extraction, drag/drop UI affordance, and Chinese workflow labels.

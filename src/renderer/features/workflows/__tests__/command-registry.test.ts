@@ -17,13 +17,13 @@ describe("studio command registry", () => {
 
   it("uses the Phase 13 command categories", () => {
     expect(COMMAND_CATEGORIES).toEqual([
-      "Project",
-      "Chapter",
-      "Generation",
-      "Review",
-      "Story Bible",
-      "Cost",
-      "Settings"
+      "项目",
+      "章节",
+      "生成",
+      "审稿",
+      "故事圣经",
+      "成本",
+      "设置"
     ]);
   });
 
@@ -65,6 +65,6 @@ describe("studio command registry", () => {
     });
 
     const canonical = items.find((item) => item.command.id === "set-canonical");
-    expect(canonical?.disabledReason).toMatch(/chapter/i);
+    expect(canonical?.disabledReason).toContain("章节");
   });
 });

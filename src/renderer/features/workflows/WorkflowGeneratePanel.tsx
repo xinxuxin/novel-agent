@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import type { JSX } from "react";
+import type { DragEvent, JSX } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import type { ChapterWorkflowDetail, WorkflowArtifactRecord } from "@contracts/workflow";
@@ -14,6 +14,7 @@ import type {
 import type { ModelProfileRecord } from "@contracts/model-routing";
 import { QUALITY_MODES } from "@shared/domain/model-routing";
 import type { QualityMode, TaskType } from "@shared/domain/model-routing";
+import { importOutlineFile } from "./outline-file-import";
 
 interface WorkflowGeneratePanelProps {
   activeBook: BookRecord | null;
@@ -36,19 +37,29 @@ const WORKFLOW_PREVIEW_TASKS: TaskType[] = [
 ];
 
 const CROSS_CHECK_ACTIONS: Array<{ label: string; type: CrossCheckType }> = [
-  { label: "Run Worldbuilding Cross-Check", type: "worldbuilding_cross_check" },
-  { label: "Run Originality Audit", type: "originality_audit" },
-  { label: "Run Plot Logic Audit", type: "main_plot_logic_audit" },
-  { label: "Run Volume Outline Cross-Check", type: "volume_outline_cross_check" },
-  { label: "Run Key Chapter Preflight", type: "key_chapter_preflight_cross_check" }
+  { label: "世界观交叉检查", type: "worldbuilding_cross_check" },
+  { label: "原创性审稿", type: "originality_audit" },
+  { label: "主线逻辑审稿", type: "main_plot_logic_audit" },
+  { label: "卷纲交叉检查", type: "volume_outline_cross_check" },
+  { label: "关键章预检", type: "key_chapter_preflight_cross_check" }
 ];
 
 const QUALITY_LABELS: Record<QualityMode, string> = {
-  economy: "Economy",
-  balanced: "Balanced",
-  premium: "Premium",
-  premium_webnovel: "Premium Webnovel"
+  economy: "省钱",
+  balanced: "均衡",
+  premium: "高质量",
+  premium_webnovel: "网文高级"
 };
+
+const LIVE_WORKFLOW_STAGES = [
+  { label: "读取大纲", nodes: ["prepare_context", "retrieve_memory"] },
+  { label: "拆场景", nodes: ["generate_chapter_outline", "generate_scene_cards"] },
+  { label: "起草正文", nodes: ["draft_chapter"] },
+  { label: "节奏审稿", nodes: ["webnovel_rhythm_audit"] },
+  { label: "连贯性审稿", nodes: ["continuity_audit"] },
+  { label: "改写成终稿", nodes: ["revise_draft"] },
+  { label: "人工确认", nodes: ["human_gate"] }
+] as const;
 
 export function WorkflowGeneratePanel({
   activeBook,
@@ -68,6 +79,9 @@ export function WorkflowGeneratePanel({
   const [modelProfiles, setModelProfiles] = useState<ModelProfileRecord[]>([]);
   const [routeOverrideModelProfileId, setRouteOverrideModelProfileId] = useState("");
   const [sourceOutline, setSourceOutline] = useState("");
+  const [outlineImportStatus, setOutlineImportStatus] = useState("拖入 .docx / .txt / .md");
+  const [dragActive, setDragActive] = useState(false);
+  const [optimisticStageIndex, setOptimisticStageIndex] = useState(0);
   const [allowStoryChanges, setAllowStoryChanges] = useState(true);
   const [desiredOutput, setDesiredOutput] = useState<
     "outline" | "scene_cards" | "draft" | "final_manuscript"
@@ -75,6 +89,13 @@ export function WorkflowGeneratePanel({
   const latestRevision = useMemo(() => findLatestArtifact(detail, "revision"), [detail]);
   const latestDraft = useMemo(() => findLatestArtifact(detail, "draft"), [detail]);
   const displayArtifact = latestRevision ?? latestDraft;
+  const completedNodes = useMemo(
+    () =>
+      new Set(
+        detail?.checkpoints.map((checkpoint) => checkpoint.nodeName) ?? []
+      ),
+    [detail]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -116,6 +137,18 @@ export function WorkflowGeneratePanel({
     };
   }, []);
 
+  useEffect(() => {
+    if (!busy) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setOptimisticStageIndex((current) =>
+        Math.min(current + 1, LIVE_WORKFLOW_STAGES.length - 2)
+      );
+    }, 700);
+    return () => window.clearInterval(timer);
+  }, [busy]);
+
   const refreshDetail = async (runId: string): Promise<ChapterWorkflowDetail | null> => {
     const next = await window.wenforge.generation.getRun(runId);
     setDetail(next);
@@ -133,15 +166,16 @@ export function WorkflowGeneratePanel({
     if (!activeProject || !activeBook || !activeChapter) return;
     const outline = sourceOutline.trim() || activeChapter.summary?.trim() || "";
     if (!outline) {
-      window.alert("Paste a detailed chapter outline before generating.");
+      window.alert("请先拖入或粘贴详细大纲。");
       return;
     }
     const confirmed =
       executionMode === "mock"
-        ? window.confirm(`${label} with the local mock workflow?`)
+        ? window.confirm(`${label}？`)
         : await confirmProviderPreflight();
     if (!confirmed) return;
     setBusy(true);
+    setOptimisticStageIndex(0);
     try {
       const run = await window.wenforge.generation.chapter.start({
         projectId: activeProject.id,
@@ -165,6 +199,26 @@ export function WorkflowGeneratePanel({
     }
   };
 
+  const importDroppedOutline = async (file: File): Promise<void> => {
+    try {
+      setOutlineImportStatus("读取中");
+      const imported = await importOutlineFile(file);
+      setSourceOutline(imported.text);
+      setOutlineImportStatus(`已导入：${imported.fileName}`);
+    } catch (error) {
+      setOutlineImportStatus(error instanceof Error ? error.message : "导入失败");
+    } finally {
+      setDragActive(false);
+    }
+  };
+
+  const handleOutlineDrop = (event: DragEvent<HTMLDivElement>): void => {
+    event.preventDefault();
+    const file = event.dataTransfer.files.item(0);
+    if (file) void importDroppedOutline(file);
+    else setDragActive(false);
+  };
+
   const confirmProviderPreflight = async (): Promise<boolean> => {
     const previews = await Promise.all(
       WORKFLOW_PREVIEW_TASKS.map((taskType) =>
@@ -181,7 +235,7 @@ export function WorkflowGeneratePanel({
     const unavailable = previews.filter((preview) => !preview.available);
     if (unavailable.length > 0) {
       window.alert(
-        `Provider workflow is not ready:\n${unavailable
+        `模型路线未就绪：\n${unavailable
           .map((preview) => `${preview.taskType}: ${preview.errors.join(", ")}`)
           .join("\n")}`
       );
@@ -199,27 +253,25 @@ export function WorkflowGeneratePanel({
       .join("\n");
     const premiumNote =
       qualityMode === "premium_webnovel"
-        ? "\n\nPremium Webnovel may add multi-model cross-check cost for book and key-chapter tasks."
+        ? "\n\n网文高级路线可能增加多模型检查成本。"
         : "";
     return window.confirm(
-      `Run provider workflow?\n\n${routeLines}\n\nEstimated max: $${maxCost.toFixed(6)}${premiumNote}\nNo canonical manuscript will be overwritten.`
+      `运行真实模型？\n\n${routeLines}\n\n最高预估：$${maxCost.toFixed(6)}${premiumNote}\n不会覆盖正文。`
     );
   };
 
   const runCrossCheck = async (type: CrossCheckType): Promise<void> => {
     if (!activeProject || !activeBook) return;
-    const confirmed = window.confirm(
-      "This will call multiple configured providers in parallel and may cost money. Continue?"
-    );
+    const confirmed = window.confirm("将调用多个模型，可能产生成本。继续？");
     if (!confirmed) return;
     setBusy(true);
     try {
       const contextText = [
-        `Project: ${activeProject.name}`,
-        `Book: ${activeBook.title}`,
-        activeVolume ? `Volume: ${activeVolume.title}` : null,
-        activeChapter ? `Chapter: ${activeChapter.title}` : null,
-        activeChapter?.summary ? `Summary: ${activeChapter.summary}` : null
+        `项目：${activeProject.name}`,
+        `书：${activeBook.title}`,
+        activeVolume ? `卷：${activeVolume.title}` : null,
+        activeChapter ? `章节：${activeChapter.title}` : null,
+        activeChapter?.summary ? `摘要：${activeChapter.summary}` : null
       ]
         .filter(Boolean)
         .join("\n");
@@ -233,7 +285,7 @@ export function WorkflowGeneratePanel({
         confirmed: true
       });
       await refreshDetail(result.generationRunId);
-      onWorkflowCostChange("Cross-check proposed", result.summary.costSummary.estimatedTotal, "");
+      onWorkflowCostChange("交叉检查完成", result.summary.costSummary.estimatedTotal, "");
     } finally {
       setBusy(false);
     }
@@ -255,7 +307,7 @@ export function WorkflowGeneratePanel({
 
   const requestRevision = async (): Promise<void> => {
     if (!detail) return;
-    const userInstruction = window.prompt("Revision instruction", "结尾钩子再具体一点");
+    const userInstruction = window.prompt("改写要求", "结尾钩子再具体一点");
     if (!userInstruction?.trim()) return;
     setBusy(true);
     try {
@@ -274,7 +326,7 @@ export function WorkflowGeneratePanel({
     const version = await window.wenforge.generation.acceptArtifactAsVersion({
       runId: detail.run.id,
       artifactId: latestRevision.id,
-      title: latestRevision.title ?? "Generated revision"
+      title: latestRevision.title ?? "生成终稿"
     });
     setAcceptedVersion(version);
     onVersionCreated(version);
@@ -282,7 +334,7 @@ export function WorkflowGeneratePanel({
 
   const setAcceptedCanonical = async (): Promise<void> => {
     if (!activeChapter || !acceptedVersion) return;
-    const confirmed = window.confirm("Set the accepted generated version as canonical?");
+    const confirmed = window.confirm("设为正式正文？");
     if (!confirmed) return;
     const canonical = await window.wenforge.generation.setAcceptedVersionCanonical({
       chapterId: activeChapter.id,
@@ -296,13 +348,32 @@ export function WorkflowGeneratePanel({
 
   const cancelWorkflow = async (): Promise<void> => {
     if (!detail) return;
-    const confirmed = window.confirm("Cancel this workflow? Artifacts will remain as records.");
+    const confirmed = window.confirm("取消本次工作流？记录会保留。");
     if (!confirmed) return;
     const run = await window.wenforge.generation.cancel(detail.run.id, true);
     if (run) {
       await refreshDetail(run.id);
     }
   };
+
+  const stageStates = LIVE_WORKFLOW_STAGES.map((stage, index) => {
+    const completed =
+      stage.nodes.every((node) => completedNodes.has(node)) ||
+      (detail?.run.status === "paused" && index === LIVE_WORKFLOW_STAGES.length - 1);
+    return {
+      ...stage,
+      active: busy
+        ? index === optimisticStageIndex
+        : !completed &&
+          index ===
+            LIVE_WORKFLOW_STAGES.findIndex(
+              (item, itemIndex) =>
+                !item.nodes.every((node) => completedNodes.has(node)) &&
+                !(detail?.run.status === "paused" && itemIndex === LIVE_WORKFLOW_STAGES.length - 1)
+            ),
+      completed
+    };
+  });
 
   return (
     <div className="h-full overflow-auto px-6 py-4">
@@ -311,47 +382,52 @@ export function WorkflowGeneratePanel({
           <div className="rounded-lg border border-forge-blue/25 bg-forge-blue/8 p-4">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
               <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-forge-blue">
-                  Outline to manuscript
-                </p>
+                <p className="text-xs font-medium tracking-[0.16em] text-forge-blue">大纲成稿</p>
                 <h3 className="mt-1 text-lg font-semibold text-white">
-                  Paste your detailed outline. WenForge turns it into a proposed final manuscript.
+                  拖入大纲，生成终稿候选。
                 </h3>
-                <label className="mt-3 block">
-                  <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                    Detailed chapter outline
-                  </span>
+                <div
+                  className={`mt-3 rounded-lg border p-3 transition ${
+                    dragActive
+                      ? "border-forge-blue/70 bg-forge-blue/15"
+                      : "border-white/10 bg-black/18"
+                  }`}
+                  onDragLeave={() => setDragActive(false)}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setDragActive(true);
+                  }}
+                  onDrop={handleOutlineDrop}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs font-medium tracking-[0.14em] text-slate-500">
+                      详细大纲
+                    </span>
+                    <span className="truncate text-xs text-slate-500">{outlineImportStatus}</span>
+                  </div>
                   <textarea
                     className="mt-2 min-h-40 w-full resize-y rounded-lg border border-white/10 bg-black/35 p-4 text-sm leading-7 text-slate-100 outline-none placeholder:text-slate-600 focus:border-forge-blue/50"
                     placeholder={`例：\n第一场：雨夜公交站，主角听见倒计时。\n第二场：倒计时指向即将出事的女孩。\n第三场：主角救人后能力失控。\n章末：女孩手腕出现同样符号。`}
                     value={sourceOutline}
                     onChange={(event) => setSourceOutline(event.target.value)}
                   />
-                </label>
+                </div>
               </div>
               <div className="rounded-lg border border-white/10 bg-black/24 p-3 text-xs text-slate-400">
-                <span className="font-medium uppercase tracking-[0.14em] text-slate-500">
-                  Agent path
-                </span>
-                <span className="mt-2 block text-slate-200">
-                  {"Outline -> Scenes -> Draft -> Audit -> Rewrite"}
-                </span>
+                <span className="font-medium tracking-[0.14em] text-slate-500">实时工作流</span>
+                <WorkflowStageRail stages={stageStates} reduceMotion={Boolean(reduceMotion)} />
                 <button
                   className="mt-3 w-full rounded-lg border border-forge-blue/40 bg-forge-blue/18 px-4 py-2.5 text-sm font-semibold text-forge-blue transition hover:bg-forge-blue/25 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={busy || !activeChapter}
-                  onClick={() => void startWorkflow("Generate final manuscript from outline")}
+                  onClick={() => void startWorkflow("生成终稿")}
                   type="button"
                 >
-                  Generate final manuscript
+                  生成终稿
                 </button>
-                <p className="mt-3 leading-5">
-                  Agents may suggest plot or setting edits when allowed, but canon changes still
-                  require your approval.
-                </p>
                 <div className="mt-4 space-y-3">
                   <label className="block">
-                    <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                      Execution
+                    <span className="text-[11px] font-medium tracking-[0.14em] text-slate-500">
+                      执行
                     </span>
                     <select
                       className="mt-1.5 h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-xs text-white outline-none focus:border-forge-blue/50"
@@ -360,13 +436,13 @@ export function WorkflowGeneratePanel({
                         setExecutionMode(event.target.value as "mock" | "provider")
                       }
                     >
-                      <option value="mock">Mock agents</option>
-                      <option value="provider">Configured real providers</option>
+                      <option value="mock">本地模拟</option>
+                      <option value="provider">真实模型</option>
                     </select>
                   </label>
                   <label className="block">
-                    <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                      Quality
+                    <span className="text-[11px] font-medium tracking-[0.14em] text-slate-500">
+                      质量
                     </span>
                     <select
                       className="mt-1.5 h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-xs text-white outline-none focus:border-forge-blue/50"
@@ -381,8 +457,8 @@ export function WorkflowGeneratePanel({
                     </select>
                   </label>
                   <label className="block">
-                    <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                      Output
+                    <span className="text-[11px] font-medium tracking-[0.14em] text-slate-500">
+                      输出
                     </span>
                     <select
                       className="mt-1.5 h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-xs text-white outline-none focus:border-forge-blue/50"
@@ -397,10 +473,10 @@ export function WorkflowGeneratePanel({
                         )
                       }
                     >
-                      <option value="final_manuscript">Final manuscript</option>
-                      <option value="draft">Draft only</option>
-                      <option value="scene_cards">Scene cards</option>
-                      <option value="outline">Refined outline</option>
+                      <option value="final_manuscript">终稿候选</option>
+                      <option value="draft">只起草</option>
+                      <option value="scene_cards">只拆场景</option>
+                      <option value="outline">只细化大纲</option>
                     </select>
                   </label>
                   <label className="flex items-start gap-2 rounded-lg border border-white/10 bg-black/24 px-3 py-2 text-xs text-slate-300">
@@ -410,7 +486,7 @@ export function WorkflowGeneratePanel({
                       onChange={(event) => setAllowStoryChanges(event.target.checked)}
                       type="checkbox"
                     />
-                    Allow plot or setting improvements
+                    允许改动情节/设定
                   </label>
                   {executionMode === "provider" ? (
                     <select
@@ -418,7 +494,7 @@ export function WorkflowGeneratePanel({
                       value={routeOverrideModelProfileId}
                       onChange={(event) => setRouteOverrideModelProfileId(event.target.value)}
                     >
-                      <option value="">Use task routes</option>
+                      <option value="">使用路线</option>
                       {modelProfiles.map((profile) => (
                         <option key={profile.id} value={profile.id}>
                           {profile.displayName} · {profile.provider}/{profile.model}
@@ -434,15 +510,13 @@ export function WorkflowGeneratePanel({
           <div className="rounded-lg border border-white/10 bg-black/25 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                  Final proposed manuscript
-                </p>
+                <p className="text-xs font-medium tracking-[0.16em] text-slate-500">终稿候选</p>
                 <h3 className="mt-1 text-base font-semibold text-white">
-                  {detail ? `Run ${detail.run.status}` : "No workflow run yet"}
+                  {detail ? workflowStatusLabel(detail.run.status) : "未开始"}
                 </h3>
               </div>
               <div className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-right">
-                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Cost</p>
+                <p className="text-[11px] tracking-[0.14em] text-slate-500">成本</p>
                 <p className="text-sm font-semibold text-forge-mint">
                   ${(detail?.costSummary.finalCost ?? 0).toFixed(6)}
                 </p>
@@ -456,10 +530,7 @@ export function WorkflowGeneratePanel({
                 </pre>
               ) : (
                 <div>
-                  <p className="max-w-2xl text-sm leading-7 text-slate-400">
-                    Paste an outline above and run the outline-to-manuscript workflow. Generated
-                    text stays proposed until you save it as a manuscript version.
-                  </p>
+                  <p className="max-w-2xl text-sm leading-7 text-slate-400">等待生成。</p>
                   <div className="mt-6 flex gap-2">
                     {[0, 1, 2].map((item) => (
                       <motion.span
@@ -486,20 +557,8 @@ export function WorkflowGeneratePanel({
         </section>
 
         <section className="space-y-3">
-          <div className="rounded-lg border border-white/10 bg-graphite-900/60 p-4">
-            <h4 className="text-sm font-semibold text-white">Agent plan</h4>
-            <ol className="mt-3 space-y-2 text-xs leading-5 text-slate-400">
-              <li>1. Planner parses your detailed outline.</li>
-              <li>2. Setting and continuity agents flag safe changes.</li>
-              <li>3. Webnovel rhythm agent strengthens hook and pacing.</li>
-              <li>4. Draft/rewrite agents produce the final proposed manuscript.</li>
-              <li>5. Human gate decides whether to save or set canon.</li>
-            </ol>
-          </div>
           <div className="rounded-lg border border-forge-violet/25 bg-forge-violet/10 p-3">
-            <p className="text-xs font-medium uppercase tracking-[0.14em] text-forge-violet">
-              Cross-check workflow
-            </p>
+            <p className="text-xs font-medium tracking-[0.14em] text-forge-violet">多模型检查</p>
             <div className="mt-3 space-y-2">
               {CROSS_CHECK_ACTIONS.map((action) => (
                 <button
@@ -511,7 +570,7 @@ export function WorkflowGeneratePanel({
                 >
                   {action.label}
                   <span className="mt-1 block text-[11px] text-slate-500">
-                    GPT/Claude independent pass, DeepSeek aggregation, Qwen/Kimi market fit.
+                    独立审稿 · 聚合分歧 · 市场适配
                   </span>
                 </button>
               ))}
@@ -540,10 +599,10 @@ function TimelineList({ detail }: { detail: ChapterWorkflowDetail | null }): JSX
   const checkpoints = detail?.checkpoints ?? [];
   return (
     <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-      <h4 className="text-sm font-semibold text-white">Workflow timeline</h4>
+      <h4 className="text-sm font-semibold text-white">节点记录</h4>
       <div className="mt-3 space-y-2">
         {checkpoints.length === 0 ? (
-          <p className="text-sm text-slate-500">No checkpoints yet.</p>
+          <p className="text-sm text-slate-500">暂无记录。</p>
         ) : (
           checkpoints.map((checkpoint) => (
             <div
@@ -566,10 +625,10 @@ function ArtifactList({ detail }: { detail: ChapterWorkflowDetail | null }): JSX
   const artifacts = detail?.artifacts ?? [];
   return (
     <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-      <h4 className="text-sm font-semibold text-white">Generated artifacts</h4>
+      <h4 className="text-sm font-semibold text-white">生成记录</h4>
       <div className="mt-3 space-y-2">
         {artifacts.length === 0 ? (
-          <p className="text-sm text-slate-500">Artifacts appear after a workflow run.</p>
+          <p className="text-sm text-slate-500">暂无记录。</p>
         ) : (
           artifacts.map((artifact) => (
             <div
@@ -587,6 +646,57 @@ function ArtifactList({ detail }: { detail: ChapterWorkflowDetail | null }): JSX
       </div>
     </div>
   );
+}
+
+function WorkflowStageRail({
+  stages,
+  reduceMotion
+}: {
+  stages: Array<{ label: string; active: boolean; completed: boolean }>;
+  reduceMotion: boolean;
+}): JSX.Element {
+  return (
+    <div className="mt-3 space-y-1.5">
+      {stages.map((stage, index) => (
+        <div
+          className={`flex items-center gap-2 rounded-md border px-2 py-1.5 ${
+            stage.completed
+              ? "border-forge-mint/25 bg-forge-mint/10 text-forge-mint"
+              : stage.active
+                ? "border-forge-blue/35 bg-forge-blue/12 text-forge-blue"
+                : "border-white/10 bg-black/20 text-slate-500"
+          }`}
+          key={stage.label}
+        >
+          <motion.span
+            className={`h-2 w-2 rounded-full ${
+              stage.completed ? "bg-forge-mint" : stage.active ? "bg-forge-blue" : "bg-slate-600"
+            }`}
+            {...(stage.active && !reduceMotion
+              ? {
+                  animate: { opacity: [0.35, 1, 0.35] },
+                  transition: { duration: 1, repeat: Infinity }
+                }
+              : {})}
+          />
+          <span className="w-5 text-[11px] tabular-nums">{index + 1}</span>
+          <span className="text-xs">{stage.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function workflowStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    queued: "排队中",
+    running: "运行中",
+    paused: "等待确认",
+    completed: "已完成",
+    error: "失败",
+    cancelled: "已取消"
+  };
+  return labels[status] ?? status;
 }
 
 function HumanGateControls({
@@ -613,11 +723,7 @@ function HumanGateControls({
   const paused = detail?.run.status === "paused";
   return (
     <div className="rounded-lg border border-forge-violet/20 bg-forge-violet/10 p-4">
-      <h4 className="text-sm font-semibold text-white">Human gate</h4>
-      <p className="mt-2 text-xs leading-5 text-slate-400">
-        Generated output is a proposal. Accepting creates a manuscript version; canonical status is
-        a separate confirmation.
-      </p>
+      <h4 className="text-sm font-semibold text-white">人工确认</h4>
       <div className="mt-4 space-y-2">
         <button
           className="w-full rounded-md border border-forge-mint/30 bg-forge-mint/10 px-3 py-2 text-left text-xs text-forge-mint disabled:cursor-not-allowed disabled:opacity-50"
@@ -625,7 +731,7 @@ function HumanGateControls({
           onClick={() => void onApproveWorkflow()}
           type="button"
         >
-          Approve Workflow And Propose State Updates
+          进入设定结算
         </button>
         <button
           className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-left text-xs text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
@@ -633,7 +739,7 @@ function HumanGateControls({
           onClick={() => void onAcceptRevision()}
           type="button"
         >
-          Save as manuscript version
+          保存为版本
         </button>
         <button
           className="w-full rounded-md border border-forge-amber/30 bg-forge-amber/10 px-3 py-2 text-left text-xs text-forge-amber disabled:cursor-not-allowed disabled:opacity-50"
@@ -641,7 +747,7 @@ function HumanGateControls({
           onClick={() => void onSetCanonical()}
           type="button"
         >
-          Set Accepted Version Canonical
+          设为正式正文
         </button>
         <button
           className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-left text-xs text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
@@ -649,7 +755,7 @@ function HumanGateControls({
           onClick={() => void onRequestRevision()}
           type="button"
         >
-          Request Another Revision
+          再改一版
         </button>
         <button
           className="w-full rounded-md border border-red-400/25 bg-red-400/10 px-3 py-2 text-left text-xs text-red-200 disabled:cursor-not-allowed disabled:opacity-50"
@@ -657,7 +763,7 @@ function HumanGateControls({
           onClick={() => void onCancel()}
           type="button"
         >
-          Discard / Cancel Workflow
+          取消工作流
         </button>
       </div>
     </div>
@@ -668,12 +774,10 @@ function RunAttemptDetails({ detail }: { detail: ChapterWorkflowDetail | null })
   const runs = detail?.llmRuns ?? [];
   return (
     <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-      <h4 className="text-sm font-semibold text-white">Route attempts</h4>
+      <h4 className="text-sm font-semibold text-white">模型调用</h4>
       <div className="mt-3 space-y-2">
         {runs.length === 0 ? (
-          <p className="text-xs leading-5 text-slate-500">
-            Provider, fallback, latency, and node cost details appear after model calls.
-          </p>
+          <p className="text-xs leading-5 text-slate-500">暂无调用。</p>
         ) : (
           runs.map((run) => (
             <div

@@ -33,7 +33,7 @@ export function QualityStatePanel({
     <section aria-label={copy.title} className="rounded-lg border border-white/10 bg-black/24 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className={`rounded-full border px-2.5 py-1 text-xs ${toneClass}`}>State</span>
+          <span className={`rounded-full border px-2.5 py-1 text-xs ${toneClass}`}>状态</span>
           <h3 className="mt-3 text-sm font-semibold text-white">{copy.title}</h3>
           <p className="mt-1 text-sm leading-6 text-slate-400">{copy.body}</p>
           {detail ? (
