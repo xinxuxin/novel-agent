@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { LLM_TASK_TYPES } from "./ai";
+import { QUALITY_MODES } from "@shared/domain/model-routing";
 
 export const EVAL_DIMENSIONS = [
   "opening_hook",
@@ -55,7 +56,7 @@ export const evalRunSchema = z.object({
   status: z.enum(["queued", "running", "completed", "cancelled", "error"]),
   modelProfileIdsJson: z.string(),
   routeTaskType: z.enum(LLM_TASK_TYPES),
-  qualityMode: z.enum(["economy", "balanced", "premium"]),
+  qualityMode: z.enum(QUALITY_MODES),
   startedAt: z.string(),
   finishedAt: z.string().nullable(),
   notes: z.string().nullable(),
@@ -115,7 +116,7 @@ export const evalStartRequestSchema = z.object({
   mode: evalModeSchema,
   modelProfileIds: z.array(z.string().min(1)).min(1),
   taskType: z.enum(LLM_TASK_TYPES),
-  qualityMode: z.enum(["economy", "balanced", "premium"]),
+  qualityMode: z.enum(QUALITY_MODES),
   executionMode: z.enum(["mock", "provider"]).default("mock")
 });
 export type EvalStartRequest = z.infer<typeof evalStartRequestSchema>;
@@ -132,7 +133,7 @@ export const evalPromoteRequestSchema = z.object({
   evalRunId: z.string().min(1),
   outputId: z.string().min(1),
   taskType: z.enum(LLM_TASK_TYPES),
-  qualityMode: z.enum(["economy", "balanced", "premium"]),
+  qualityMode: z.enum(QUALITY_MODES),
   confirmed: z.boolean().optional()
 });
 export type EvalPromoteRequest = z.infer<typeof evalPromoteRequestSchema>;

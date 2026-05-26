@@ -24,6 +24,7 @@ import { createId } from "./id";
 import { nowIso } from "./repositories/types";
 import { TASK_TYPES, type ProviderId, type TaskType } from "@shared/domain/model-routing";
 import { DEFAULT_PRIVACY_SETTINGS, DEFAULT_ROUTING_SETTINGS } from "@contracts/settings";
+import { applyPremiumWebnovelPreset } from "@main/providers/premium-webnovel-preset";
 
 export interface RepositoryRegistry {
   projects: ProjectRepository;
@@ -188,12 +189,14 @@ export function seedDemoData(db: WenForgeDatabase, repositories: RepositoryRegis
 const MODEL_SEEDS: Array<{
   provider: ProviderId;
   model: string;
+  alias?: string | undefined;
   displayName: string;
   recommendedTasks: TaskType[];
 }> = [
   {
     provider: "openai",
     model: "gpt-5.5",
+    alias: "gpt-5.5",
     displayName: "GPT-5.5",
     recommendedTasks: ["draft_chapter", "revise_chapter"]
   },
@@ -218,6 +221,7 @@ const MODEL_SEEDS: Array<{
   {
     provider: "anthropic",
     model: "claude-opus-4.7",
+    alias: "claude-opus-4.7",
     displayName: "Claude Opus 4.7",
     recommendedTasks: ["draft_chapter", "continuity_audit"]
   },
@@ -242,6 +246,7 @@ const MODEL_SEEDS: Array<{
   {
     provider: "deepseek",
     model: "deepseek-v4-pro",
+    alias: "deepseek-v4-pro",
     displayName: "DeepSeek V4-Pro",
     recommendedTasks: ["draft_chapter", "scene_cards"]
   },
@@ -253,13 +258,15 @@ const MODEL_SEEDS: Array<{
   },
   {
     provider: "dashscope_qwen",
-    model: "qwen3-max",
-    displayName: "Qwen3-Max",
+    model: "qwen3.7-max",
+    alias: "qwen3.7-max",
+    displayName: "Qwen3.7-Max",
     recommendedTasks: ["draft_chapter", "story_bible"]
   },
   {
     provider: "moonshot_kimi",
     model: "kimi-k2.6",
+    alias: "kimi-k2.6",
     displayName: "Kimi K2.6",
     recommendedTasks: ["story_bible", "continuity_audit"]
   },
@@ -297,6 +304,7 @@ export function seedModelRoutingData(repositories: RepositoryRegistry): void {
     const profile = repositories.modelProfiles.upsert({
       provider: seed.provider,
       model: seed.model,
+      alias: seed.alias,
       displayName: seed.displayName,
       supportsStreaming: true,
       supportsJson: true,
@@ -314,7 +322,9 @@ export function seedModelRoutingData(repositories: RepositoryRegistry): void {
         currency: "USD",
         effectiveDate: "2026-05-25",
         sourceNote:
-          "Placeholder seed price. User must verify and edit provider pricing before relying on cost estimates.",
+          seed.alias === "qwen3.7-max" || seed.alias === "kimi-k2.6"
+            ? "Editable placeholder price. User must confirm in provider console."
+            : "Placeholder seed price. User must verify and edit provider pricing before relying on cost estimates.",
         enabled: true
       });
     }
@@ -359,4 +369,5 @@ export function seedModelRoutingData(repositories: RepositoryRegistry): void {
       }
     }
   }
+  applyPremiumWebnovelPreset(repositories);
 }

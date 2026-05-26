@@ -32,6 +32,7 @@ import { runLangGraphSegment } from "./langgraph-runner";
 import { WorkflowModelExecutor } from "./workflow-model-executor";
 import { DEFAULT_ROUTING_SETTINGS } from "@contracts/settings";
 import type { RoutingSettings } from "@contracts/settings";
+import type { QualityMode } from "@shared/domain/model-routing";
 
 type ChapterWorkflowAction = "start" | "resume" | "revision";
 
@@ -41,10 +42,17 @@ interface ChapterWorkflowState extends Record<string, unknown> {
   bookId: string;
   volumeId: string | null;
   chapterId: string;
-  qualityMode: "economy" | "balanced" | "premium";
+  qualityMode: QualityMode;
   executionMode: "provider" | "mock";
   routeOverrideModelProfileId: string | null;
-  chapterImportance: "normal" | "opening" | "key_chapter" | "climax" | "finale";
+  chapterImportance:
+    | "normal"
+    | "opening"
+    | "key_chapter"
+    | "volume_start"
+    | "volume_climax"
+    | "climax"
+    | "finale";
   budgetMode: "strict" | "flexible";
   userInstruction: string | null;
   contextPack: ContextPreviewPack | null;

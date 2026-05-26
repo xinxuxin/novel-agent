@@ -224,6 +224,7 @@ Deferred from Phase 14: signed/notarized public installers, final branded icons,
 ## Phase 15: Release Polish And Native File Flows
 
 - [x] Phase 15a: add opt-in real provider bring-up, env credential hygiene, redacted conformance reports, Settings provider smoke controls, and fake-only automated coverage.
+- [x] Phase 15b: add Premium Webnovel model aliases, Qwen3.7-Max/Kimi K2.6 placeholders, `premium_webnovel` route preset import/export, and fake-tested multi-model cross-check workflows.
 - Add safe native file picker flows for saving exports and opening import packages.
 - Add automatic backup triggers for daily, app-close, and before-destructive-operation settings.
 - Add optional EPUB export if dependency and formatting risk stay low.

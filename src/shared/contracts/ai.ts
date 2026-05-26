@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { PROVIDERS, TASK_TYPES } from "@shared/domain/model-routing";
+import { QUALITY_MODES } from "@shared/domain/model-routing";
 import type { ProviderId, TaskType } from "@shared/domain/model-routing";
 
 export const AI_PROVIDER_IDS = [...PROVIDERS, "fake"] as const;
@@ -61,7 +62,7 @@ export const streamRequestSchema = z.object({
   model: z.string().trim().min(1).optional(),
   modelProfileId: z.string().min(1).optional(),
   taskType: z.enum(LLM_TASK_TYPES),
-  qualityMode: z.enum(["economy", "balanced", "premium"]).optional(),
+  qualityMode: z.enum(QUALITY_MODES).optional(),
   projectId: z.string().nullable().optional(),
   bookId: z.string().nullable().optional(),
   chapterId: z.string().nullable().optional(),
@@ -132,6 +133,7 @@ export const modelProfileForAiSchema = z.object({
   id: z.string(),
   provider: z.enum(PROVIDERS),
   model: z.string(),
+  alias: z.string().nullable().optional(),
   displayName: z.string(),
   contextWindow: z.number().nullable(),
   maxOutputTokens: z.number().nullable(),

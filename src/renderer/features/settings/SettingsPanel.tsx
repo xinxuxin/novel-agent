@@ -76,7 +76,8 @@ const TASK_LABELS: Record<TaskType, string> = {
 const QUALITY_LABELS: Record<QualityMode, string> = {
   economy: "Economy",
   balanced: "Balanced",
-  premium: "Premium"
+  premium: "Premium",
+  premium_webnovel: "Premium Webnovel"
 };
 
 const SETTINGS_TABS: Array<{ id: SettingsTab; label: string }> = [
@@ -153,6 +154,7 @@ export function SettingsPanel(): JSX.Element {
   const [modelDraft, setModelDraft] = useState({
     provider: "generic_openai_compatible" as ProviderId,
     model: "custom-model",
+    alias: "",
     displayName: "Custom model",
     contextWindow: "",
     maxOutputTokens: "",
@@ -301,6 +303,7 @@ export function SettingsPanel(): JSX.Element {
       await window.wenforge.modelProfiles.upsert({
         provider: modelDraft.provider,
         model: modelDraft.model,
+        alias: normalizeNullableText(modelDraft.alias),
         displayName: modelDraft.displayName,
         contextWindow: parseOptionalInteger(modelDraft.contextWindow),
         maxOutputTokens: parseOptionalInteger(modelDraft.maxOutputTokens),
@@ -378,6 +381,31 @@ export function SettingsPanel(): JSX.Element {
     await runAction(async () => {
       await window.wenforge.budgets.updatePolicies(patch);
     }, "Budget policy updated.");
+  };
+
+  const applyPremiumPreset = async (): Promise<void> => {
+    if (!window.confirm("Apply the Premium Webnovel route preset? Existing preset routes will be updated.")) {
+      return;
+    }
+    await runAction(async () => {
+      await window.wenforge.modelRoutes.applyPremiumWebnovelPreset(true);
+    }, "Premium Webnovel preset applied.");
+  };
+
+  const exportPremiumPreset = async (): Promise<void> => {
+    await runAction(async () => {
+      const preset = await window.wenforge.modelRoutes.exportPreset("premium_webnovel");
+      await navigator.clipboard?.writeText(JSON.stringify(preset, null, 2));
+    }, "Export preset copied to clipboard.");
+  };
+
+  const importPremiumPreset = async (): Promise<void> => {
+    const presetJson = window.prompt("Import preset JSON");
+    if (!presetJson?.trim()) return;
+    if (!window.confirm("Import preset and update Premium Webnovel routes?")) return;
+    await runAction(async () => {
+      await window.wenforge.modelRoutes.importPreset(presetJson, true);
+    }, "Import preset completed.");
   };
 
   return (
@@ -494,6 +522,9 @@ export function SettingsPanel(): JSX.Element {
             routes={data.routes}
             stalePriceIds={stalePriceIds}
             prices={data.prices}
+            onApplyPremiumPreset={() => void applyPremiumPreset()}
+            onExportPreset={() => void exportPremiumPreset()}
+            onImportPreset={() => void importPremiumPreset()}
             onUpdateRoute={updateRoute}
           />
         ) : null}
@@ -704,6 +735,7 @@ function ModelsTab({
   modelDraft: {
     provider: ProviderId;
     model: string;
+    alias: string;
     displayName: string;
     contextWindow: string;
     maxOutputTokens: string;
@@ -719,7 +751,7 @@ function ModelsTab({
 }): JSX.Element {
   return (
     <div className="space-y-4">
-      <section className="grid gap-3 rounded-xl border border-white/10 bg-graphite-900/55 p-4 xl:grid-cols-[180px_1fr_1fr_130px_130px_110px_auto]">
+      <section className="grid gap-3 rounded-xl border border-white/10 bg-graphite-900/55 p-4 xl:grid-cols-[180px_1fr_1fr_1fr_130px_130px_110px_auto]">
         <select
           className={fieldClassName}
           value={modelDraft.provider}
@@ -736,7 +768,14 @@ function ModelsTab({
         <input
           className={fieldClassName}
           value={modelDraft.model}
+          placeholder="Provider model id"
           onChange={(event) => onModelDraftChange({ ...modelDraft, model: event.target.value })}
+        />
+        <input
+          className={fieldClassName}
+          placeholder="Alias"
+          value={modelDraft.alias}
+          onChange={(event) => onModelDraftChange({ ...modelDraft, alias: event.target.value })}
         />
         <input
           className={fieldClassName}
@@ -776,10 +815,10 @@ function ModelsTab({
         </button>
       </section>
       <div className="overflow-hidden rounded-xl border border-white/10">
-        <TableHeader columns="grid-cols-[160px_1fr_100px_110px_130px_90px]" />
+        <TableHeader columns="grid-cols-[150px_1fr_130px_100px_110px_130px_90px]" />
         {profiles.map((profile) => (
           <div
-            className="grid grid-cols-[160px_1fr_100px_110px_130px_90px] items-center gap-3 border-t border-white/10 px-3 py-3 text-sm"
+            className="grid grid-cols-[150px_1fr_130px_100px_110px_130px_90px] items-center gap-3 border-t border-white/10 px-3 py-3 text-sm"
             key={profile.id}
           >
             <span className="text-slate-300">{PROVIDER_LABELS[profile.provider]}</span>
@@ -787,6 +826,7 @@ function ModelsTab({
               <span className="font-medium text-white">{profile.displayName}</span>
               <span className="ml-2 text-xs text-slate-500">{profile.model}</span>
             </span>
+            <span className="text-xs text-forge-violet">{profile.alias ?? "No alias"}</span>
             <span className="text-slate-400">{profile.contextWindow ?? "Unset"}</span>
             <span className="text-slate-400">{profile.maxOutputTokens ?? "Unset"}</span>
             <span className="text-xs text-slate-500">
@@ -960,6 +1000,9 @@ function RoutingTab({
   routes,
   stalePriceIds,
   prices,
+  onApplyPremiumPreset,
+  onExportPreset,
+  onImportPreset,
   onUpdateRoute
 }: {
   configuredProviders: Set<ProviderId>;
@@ -969,6 +1012,9 @@ function RoutingTab({
   routes: TaskRouteRecord[];
   stalePriceIds: Set<string>;
   prices: ModelPriceRecord[];
+  onApplyPremiumPreset: () => void;
+  onExportPreset: () => void;
+  onImportPreset: () => void;
   onUpdateRoute: (route: TaskRouteRecord, patch: Partial<TaskRouteRecord>) => Promise<void>;
 }): JSX.Element {
   const staleKeys = new Set(
@@ -981,9 +1027,36 @@ function RoutingTab({
   );
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10">
-      {sortedRoutes.map((route) => {
+    <div className="space-y-4">
+      <section className="rounded-xl border border-forge-violet/25 bg-forge-violet/10 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <SectionTitle title="Premium Webnovel Preset" />
+            <p className="mt-1 text-sm text-slate-400">
+              Multi-model tasks show GPT/Claude director cross-checks, DeepSeek aggregation, and
+              Qwen/Kimi market-fit review with additional cost warnings.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className={primaryButtonClassName} onClick={onApplyPremiumPreset} type="button">
+              Premium Webnovel
+            </button>
+            <button className={secondaryButtonClassName} onClick={onExportPreset} type="button">
+              Export preset
+            </button>
+            <button className={secondaryButtonClassName} onClick={onImportPreset} type="button">
+              Import preset
+            </button>
+          </div>
+        </div>
+      </section>
+      <div className="overflow-hidden rounded-xl border border-white/10">
+        {sortedRoutes.map((route) => {
         const profile = profileById.get(route.primaryModelProfileId) ?? null;
+        const fallbackModels = [route.fallbackModelProfileId1, route.fallbackModelProfileId2]
+          .map((id) => (id ? profileById.get(id) ?? null : null))
+          .filter((item): item is ModelProfileRecord => Boolean(item));
+        const multiModel = route.qualityMode === "premium_webnovel" && fallbackModels.length > 0;
         const warnings = getRouteWarnings({
           configuredProviders,
           priceKeys,
@@ -1039,6 +1112,7 @@ function RoutingTab({
                   {warning}
                 </StatusPill>
               ))}
+              {multiModel ? <StatusPill tone="neutral">multi-model cost</StatusPill> : null}
             </div>
             <ToggleButton
               active={route.enabled}
@@ -1047,7 +1121,8 @@ function RoutingTab({
             />
           </div>
         );
-      })}
+        })}
+      </div>
     </div>
   );
 }

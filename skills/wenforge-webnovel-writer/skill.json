@@ -112,6 +112,48 @@
       "version": "1.0.0",
       "language": "zh-CN",
       "taskType": "state_settlement"
+    },
+    {
+      "id": "worldbuilding-gpt-director",
+      "file": "worldbuilding-gpt-director.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "story_bible"
+    },
+    {
+      "id": "worldbuilding-claude-director",
+      "file": "worldbuilding-claude-director.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "story_bible"
+    },
+    {
+      "id": "worldbuilding-aggregator",
+      "file": "worldbuilding-aggregator.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "story_bible"
+    },
+    {
+      "id": "originality-audit",
+      "file": "originality-audit.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "suspense_hook_audit"
+    },
+    {
+      "id": "plot-logic-audit",
+      "file": "plot-logic-audit.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "continuity_audit"
+    },
+    {
+      "id": "webnovel-market-fit-audit",
+      "file": "webnovel-market-fit-audit.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "suspense_hook_audit"
     }
   ],
   "schemas": [

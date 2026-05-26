@@ -5,6 +5,7 @@ import type {
   ProviderSmokeRunAllRequest,
   ProviderSmokeRunRequest
 } from "./provider-smoke";
+import type { CrossCheckRequest, CrossCheckResult } from "./cross-check";
 import type {
   AIStreamEvent,
   CostSummary,
@@ -355,6 +356,9 @@ export interface WenForgeApi {
       qualityMode: QualityMode,
       context?: RoutePreviewContext
     ) => Promise<ModelRouteResolution>;
+    applyPremiumWebnovelPreset: (confirmed: boolean) => Promise<unknown>;
+    exportPreset: (qualityMode: QualityMode) => Promise<unknown>;
+    importPreset: (presetJson: string, confirmed: boolean) => Promise<unknown>;
   };
   budgets: {
     getPolicies: () => Promise<BudgetPolicyRecord>;
@@ -403,6 +407,9 @@ export interface WenForgeApi {
     run: (request: ProviderSmokeRunRequest) => Promise<ProviderSmokeResult>;
     runAll: (request: ProviderSmokeRunAllRequest) => Promise<ProviderSmokeResult[]>;
     report: () => Promise<ProviderSmokeResult[]>;
+  };
+  crossCheck: {
+    run: (request: CrossCheckRequest) => Promise<CrossCheckResult>;
   };
   privacy: {
     get: () => Promise<PrivacySettings>;

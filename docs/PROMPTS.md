@@ -71,3 +71,16 @@ Draft prompts intentionally have no JSON schema because they must output manuscr
 Prompt preview is disabled by default through `allowPromptPreview: false`. Enabling preview is a local privacy choice for debugging and inspection. Even when preview is enabled, prompt assembly redacts key-like strings before returning content to the renderer or tests.
 
 Full prompt and response logging remain controlled by separate privacy settings and are still off by default.
+
+## Phase 15b Cross-Check Templates
+
+The skill package now includes original WenForge templates for:
+
+- worldbuilding GPT director pass
+- worldbuilding Claude director pass
+- worldbuilding aggregation
+- originality audit
+- plot logic audit
+- Chinese webnovel market-fit audit
+
+These prompts are concise, schema-oriented, and written from scratch. Runtime prompts must not mention conceptual reference repositories or expose provider secrets.

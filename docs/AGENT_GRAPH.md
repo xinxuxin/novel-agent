@@ -51,3 +51,9 @@ Renderer access is limited to typed IPC:
 - `generation.cancel`
 
 The renderer does not import workflow, DB, prompt, or provider modules directly.
+
+## Phase 15b Cross-Check Runtime
+
+Cross-check runs are adjacent to `chapter_generation_v1` rather than replacements for it. `CrossCheckService` creates a generation run, executes independent director calls, runs an aggregator call, persists generated artifacts, and pauses with proposed results for human review.
+
+The current implementation uses the existing main-process AI gateway instead of a separate graph because the flow is short and must be budget-checked before any parallel provider calls begin. A future graph node can wrap this service when cross-checks need checkpointed multi-step resume behavior.

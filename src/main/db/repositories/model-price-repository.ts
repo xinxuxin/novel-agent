@@ -65,7 +65,7 @@ export class ModelPriceRepository {
       .prepare(
         `select * from model_prices
         where provider = ? and model = ? and enabled = 1
-        order by effective_date desc limit 1`
+        order by effective_date desc, rowid desc limit 1`
       )
       .get(provider, model);
     return row ? mapPrice(row as Record<string, unknown>) : null;

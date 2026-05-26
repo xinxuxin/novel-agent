@@ -23,7 +23,13 @@ const requiredPrompts = [
   "revise-chapter.zh.md",
   "state-settlement.zh.md",
   "summarize-chapter.zh.md",
-  "json-repair.zh.md"
+  "json-repair.zh.md",
+  "worldbuilding-gpt-director.zh.md",
+  "worldbuilding-claude-director.zh.md",
+  "worldbuilding-aggregator.zh.md",
+  "originality-audit.zh.md",
+  "plot-logic-audit.zh.md",
+  "webnovel-market-fit-audit.zh.md"
 ];
 
 const requiredSchemas = [

@@ -13,6 +13,7 @@ import {
   providerSmokeRunAllRequestSchema,
   providerSmokeRunRequestSchema
 } from "@contracts/provider-smoke";
+import { crossCheckRequestSchema, crossCheckResultSchema } from "@contracts/cross-check";
 import {
   costDashboardSummarySchema,
   costGroupSchema,
@@ -444,6 +445,7 @@ const modelProfileSchema = z.object({
   id: z.string(),
   provider: providerSchema,
   model: z.string(),
+  alias: z.string().nullable(),
   displayName: z.string(),
   contextWindow: z.number().nullable(),
   maxOutputTokens: z.number().nullable(),
@@ -519,7 +521,9 @@ const routeResolutionSchema = z.object({
 const routePreviewRequestSchema = z.object({
   taskType: taskTypeSchema,
   qualityMode: qualityModeSchema,
-  chapterImportance: z.enum(["normal", "opening", "key_chapter", "climax", "finale"]).optional(),
+  chapterImportance: z
+    .enum(["normal", "opening", "key_chapter", "volume_start", "volume_climax", "climax", "finale"])
+    .optional(),
   budgetMode: z.enum(["strict", "flexible"]).optional(),
   expectedTokens: z
     .object({
@@ -528,6 +532,19 @@ const routePreviewRequestSchema = z.object({
     })
     .optional(),
   userOverrideModelProfileId: z.string().min(1).nullable().optional()
+});
+const routePresetSchema = z.object({
+  quality_mode: qualityModeSchema,
+  chapter_importance_modes: z.array(z.string()),
+  routes: z.record(
+    z.string(),
+    z.object({
+      primary: z.union([z.string(), z.array(z.string())]),
+      fallback: z.array(z.string()).optional(),
+      mode: z.enum(["single", "parallel_cross_check"]).optional(),
+      aggregator: z.string().optional()
+    })
+  )
 });
 const budgetPolicySchema = z.object({
   id: z.string(),
@@ -1089,6 +1106,7 @@ export const IPC_CONTRACTS = {
         id: z.string().optional(),
         provider: providerSchema,
         model: z.string().trim().min(1),
+        alias: z.string().trim().min(1).nullable().optional(),
         displayName: z.string().trim().min(1),
         contextWindow: z.number().int().positive().nullable().optional(),
         maxOutputTokens: z.number().int().positive().nullable().optional(),
@@ -1155,6 +1173,21 @@ export const IPC_CONTRACTS = {
       "model-routes:resolve-preview",
       routePreviewRequestSchema,
       routeResolutionSchema
+    ),
+    applyPremiumWebnovelPreset: createContract(
+      "model-routes:apply-premium-webnovel-preset",
+      z.object({ confirmed: z.boolean().optional() }),
+      routePresetSchema
+    ),
+    exportPreset: createContract(
+      "model-routes:export-preset",
+      z.object({ qualityMode: qualityModeSchema }),
+      routePresetSchema
+    ),
+    importPreset: createContract(
+      "model-routes:import-preset",
+      z.object({ presetJson: z.string().min(1), confirmed: z.boolean().optional() }),
+      routePresetSchema
     )
   },
   budgets: {
@@ -1287,6 +1320,9 @@ export const IPC_CONTRACTS = {
       emptyRequestSchema,
       z.array(providerSmokeResultSchema)
     )
+  },
+  crossCheck: {
+    run: createContract("cross-check:run", crossCheckRequestSchema, crossCheckResultSchema)
   },
   reviews: {
     listByGenerationRun: createContract(
@@ -1667,6 +1703,9 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.taskRoutes.upsert,
   IPC_CONTRACTS.taskRoutes.resolve,
   IPC_CONTRACTS.modelRoutes.resolvePreview,
+  IPC_CONTRACTS.modelRoutes.applyPremiumWebnovelPreset,
+  IPC_CONTRACTS.modelRoutes.exportPreset,
+  IPC_CONTRACTS.modelRoutes.importPreset,
   IPC_CONTRACTS.budgets.getPolicies,
   IPC_CONTRACTS.budgets.updatePolicies,
   IPC_CONTRACTS.costs.getSummary,
@@ -1699,6 +1738,7 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.providerSmoke.run,
   IPC_CONTRACTS.providerSmoke.runAll,
   IPC_CONTRACTS.providerSmoke.report,
+  IPC_CONTRACTS.crossCheck.run,
   IPC_CONTRACTS.reviews.listByGenerationRun,
   IPC_CONTRACTS.reviews.updateStatus,
   IPC_CONTRACTS.reviews.rerunAudit,

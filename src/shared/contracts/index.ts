@@ -12,6 +12,13 @@ export type {
   ProviderSmokeRunAllRequest,
   ProviderSmokeRunRequest
 } from "./provider-smoke";
+export { CROSS_CHECK_TYPES } from "./cross-check";
+export type {
+  CrossCheckArtifactSummary,
+  CrossCheckRequest,
+  CrossCheckResult,
+  CrossCheckType
+} from "./cross-check";
 export type {
   BookRecord,
   ChapterRecord,

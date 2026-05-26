@@ -63,7 +63,9 @@ export const chapterGenerationStartRequestSchema = z.object({
   chapterId: z.string().min(1),
   qualityMode: z.enum(QUALITY_MODES),
   executionMode: z.enum(["provider", "mock"]).optional(),
-  chapterImportance: z.enum(["normal", "opening", "key_chapter", "climax", "finale"]).optional(),
+  chapterImportance: z
+    .enum(["normal", "opening", "key_chapter", "volume_start", "volume_climax", "climax", "finale"])
+    .optional(),
   budgetMode: z.enum(["strict", "flexible"]).optional(),
   routeOverrideModelProfileId: z.string().min(1).nullable().optional(),
   userInstruction: z.string().nullable().optional(),

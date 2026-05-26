@@ -29,6 +29,7 @@ import type {
   PriceImportResult,
   RoutePriceWarning
 } from "@contracts/cost-dashboard";
+import type { CrossCheckRequest, CrossCheckResult } from "@contracts/cross-check";
 import type { ProviderSmokeResult } from "@contracts/provider-smoke";
 import type {
   BackupRecord,
@@ -737,6 +738,27 @@ export function createPreloadApi(
           IPC_CONTRACTS.modelRoutes.resolvePreview.channel,
           IPC_CONTRACTS.modelRoutes.resolvePreview.response,
           { ...context, taskType, qualityMode }
+        ),
+      applyPremiumWebnovelPreset: (confirmed: boolean) =>
+        invokeContract(
+          invoke,
+          IPC_CONTRACTS.modelRoutes.applyPremiumWebnovelPreset.channel,
+          IPC_CONTRACTS.modelRoutes.applyPremiumWebnovelPreset.response,
+          { confirmed }
+        ),
+      exportPreset: (qualityMode: QualityMode) =>
+        invokeContract(
+          invoke,
+          IPC_CONTRACTS.modelRoutes.exportPreset.channel,
+          IPC_CONTRACTS.modelRoutes.exportPreset.response,
+          { qualityMode }
+        ),
+      importPreset: (presetJson: string, confirmed: boolean) =>
+        invokeContract(
+          invoke,
+          IPC_CONTRACTS.modelRoutes.importPreset.channel,
+          IPC_CONTRACTS.modelRoutes.importPreset.response,
+          { presetJson, confirmed }
         )
     },
     budgets: {
@@ -971,6 +993,15 @@ export function createPreloadApi(
           invoke,
           IPC_CONTRACTS.providerSmoke.report.channel,
           IPC_CONTRACTS.providerSmoke.report.response
+        )
+    },
+    crossCheck: {
+      run: (request: CrossCheckRequest) =>
+        invokeContract<CrossCheckResult>(
+          invoke,
+          IPC_CONTRACTS.crossCheck.run.channel,
+          IPC_CONTRACTS.crossCheck.run.response,
+          request
         )
     },
     privacy: {

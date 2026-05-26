@@ -8,6 +8,7 @@ export interface UpsertModelProfileInput {
   id?: string | undefined;
   provider: ProviderId;
   model: string;
+  alias?: string | null | undefined;
   displayName: string;
   contextWindow?: number | null | undefined;
   maxOutputTokens?: number | null | undefined;
@@ -31,6 +32,7 @@ function mapProfile(row: Record<string, unknown>): ModelProfileRecord {
     id: String(row.id),
     provider: String(row.provider) as ProviderId,
     model: String(row.model),
+    alias: nullableString(row.alias),
     displayName: String(row.display_name),
     contextWindow: row.context_window === null ? null : Number(row.context_window),
     maxOutputTokens: row.max_output_tokens === null ? null : Number(row.max_output_tokens),
@@ -69,6 +71,13 @@ export class ModelProfileRepository {
     return row ? mapProfile(row as Record<string, unknown>) : null;
   }
 
+  findByAlias(alias: string): ModelProfileRecord | null {
+    const row = this.db.sqlite
+      .prepare("select * from model_profiles where alias = ?")
+      .get(alias.trim());
+    return row ? mapProfile(row as Record<string, unknown>) : null;
+  }
+
   create(input: UpsertModelProfileInput): ModelProfileRecord {
     return this.upsert(input);
   }
@@ -79,16 +88,60 @@ export class ModelProfileRepository {
     const id = existing?.id ?? input.id ?? createId("model");
     const recommendedTasksJson =
       input.recommendedTasksJson ?? JSON.stringify(input.recommendedTasks ?? []);
+
+    if (existing && input.id) {
+      this.db.sqlite
+        .prepare(
+          `update model_profiles
+          set provider = @provider,
+            model = @model,
+            alias = @alias,
+            display_name = @displayName,
+            context_window = @contextWindow,
+            max_output_tokens = @maxOutputTokens,
+            supports_streaming = @supportsStreaming,
+            supports_json = @supportsJson,
+            supports_tools = @supportsTools,
+            supports_vision = @supportsVision,
+            supports_prompt_caching = @supportsPromptCaching,
+            default_temperature = @defaultTemperature,
+            recommended_tasks_json = @recommendedTasksJson,
+            enabled = @enabled,
+            updated_at = @updatedAt
+          where id = @id`
+        )
+        .run({
+          id,
+          provider: input.provider,
+          model: input.model,
+          alias: normalizeAlias(input.alias),
+          displayName: input.displayName,
+          contextWindow: input.contextWindow ?? null,
+          maxOutputTokens: input.maxOutputTokens ?? null,
+          supportsStreaming: input.supportsStreaming === false ? 0 : 1,
+          supportsJson: input.supportsJson ? 1 : 0,
+          supportsTools: input.supportsTools ? 1 : 0,
+          supportsVision: input.supportsVision ? 1 : 0,
+          supportsPromptCaching: input.supportsPromptCaching ? 1 : 0,
+          defaultTemperature: input.defaultTemperature ?? 0.7,
+          recommendedTasksJson,
+          enabled: input.enabled === false ? 0 : 1,
+          updatedAt: now
+        });
+      return this.get(id) as ModelProfileRecord;
+    }
+
     this.db.sqlite
       .prepare(
         `insert into model_profiles
-        (id, provider, model, display_name, context_window, max_output_tokens, supports_streaming,
+        (id, provider, model, alias, display_name, context_window, max_output_tokens, supports_streaming,
           supports_json, supports_tools, supports_vision, supports_prompt_caching, default_temperature,
           recommended_tasks_json, enabled, created_at, updated_at)
-        values (@id, @provider, @model, @displayName, @contextWindow, @maxOutputTokens,
+        values (@id, @provider, @model, @alias, @displayName, @contextWindow, @maxOutputTokens,
           @supportsStreaming, @supportsJson, @supportsTools, @supportsVision, @supportsPromptCaching,
           @defaultTemperature, @recommendedTasksJson, @enabled, @createdAt, @updatedAt)
         on conflict(provider, model) do update set
+          alias = excluded.alias,
           display_name = excluded.display_name,
           context_window = excluded.context_window,
           max_output_tokens = excluded.max_output_tokens,
@@ -106,6 +159,7 @@ export class ModelProfileRepository {
         id,
         provider: input.provider,
         model: input.model,
+        alias: normalizeAlias(input.alias),
         displayName: input.displayName,
         contextWindow: input.contextWindow ?? null,
         maxOutputTokens: input.maxOutputTokens ?? null,
@@ -122,4 +176,13 @@ export class ModelProfileRepository {
       });
     return this.find(input.provider, input.model) as ModelProfileRecord;
   }
+}
+
+function normalizeAlias(alias: string | null | undefined): string | null {
+  const trimmed = alias?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function nullableString(value: unknown): string | null {
+  return value === null || typeof value === "undefined" ? null : String(value);
 }

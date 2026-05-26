@@ -30,7 +30,7 @@ export const TASK_TYPES = [
 
 export type TaskType = (typeof TASK_TYPES)[number];
 
-export const QUALITY_MODES = ["economy", "balanced", "premium"] as const;
+export const QUALITY_MODES = ["economy", "balanced", "premium", "premium_webnovel"] as const;
 
 export type QualityMode = (typeof QUALITY_MODES)[number];
 

@@ -39,3 +39,7 @@ Prompt preview is returned only when `privacy.allowPromptPreview` is enabled. Al
 ## Current Boundary
 
 Phase 7 does not execute a LangGraph workflow or call providers. It creates the reusable skill assets and prompt assembly services that later workflow nodes can call.
+
+## Phase 15b Skill Additions
+
+Phase 15b extends the WenForge-native skill package with original cross-check templates for worldbuilding directors, aggregation, originality, plot logic, and market-fit review. These assets support the Premium Webnovel workflow while preserving the same license boundary: no reference prompt text is copied or closely translated.

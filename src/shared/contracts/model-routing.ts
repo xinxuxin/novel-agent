@@ -45,6 +45,7 @@ export interface ModelProfileRecord {
   id: string;
   provider: ProviderId;
   model: string;
+  alias: string | null;
   displayName: string;
   contextWindow: number | null;
   maxOutputTokens: number | null;
@@ -111,7 +112,14 @@ export interface ModelRouteResolution {
   errors: string[];
 }
 
-export type ChapterImportance = "normal" | "opening" | "key_chapter" | "climax" | "finale";
+export type ChapterImportance =
+  | "normal"
+  | "opening"
+  | "key_chapter"
+  | "volume_start"
+  | "volume_climax"
+  | "climax"
+  | "finale";
 export type BudgetMode = "strict" | "flexible";
 
 export interface RoutePreviewContext {

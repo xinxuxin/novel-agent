@@ -161,3 +161,16 @@ Real-provider validation is opt-in:
 - Provider conformance reports redact Authorization headers, API-key-like strings, and provider errors before writing under ignored `reports/`.
 
 Automated tests continue to use fake providers only.
+
+## Phase 15b Multi-Model Safety
+
+Premium Webnovel cross-checks do not change the provider security boundary:
+
+- renderer requests a cross-check through typed IPC only
+- provider credentials are checked and decrypted only in the main process by existing services
+- every provider call goes through the AI gateway and creates an `llm_runs` record
+- prompts and responses are hash-logged by default, not stored as full text in `llm_runs`
+- cross-check artifacts are proposals and cannot overwrite canonical manuscript or story bible data
+- budget caps are checked before parallel provider calls begin
+
+Automated coverage uses fake or recording adapters only; real provider calls remain opt-in.

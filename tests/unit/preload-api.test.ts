@@ -56,6 +56,7 @@ describe("preload API", () => {
       "context",
       "costs",
       "credentials",
+      "crossCheck",
       "diagnostics",
       "eval",
       "export",
@@ -86,6 +87,7 @@ describe("preload API", () => {
     expect(Object.keys(api.settings).sort()).toEqual(["getTheme", "setTheme"]);
     expect(Object.keys(api.diagnostics).sort()).toEqual(["exportBundle", "ping"]);
     expect(Object.keys(api.providerSmoke).sort()).toEqual(["report", "run", "runAll"]);
+    expect(Object.keys(api.crossCheck).sort()).toEqual(["run"]);
     expect(await api.app.getVersion()).toBe("0.1.0");
     expect(await api.app.getPlatform()).toBe("darwin");
     expect(await api.app.getEnvironment()).toEqual({ mode: "test", packaged: false });

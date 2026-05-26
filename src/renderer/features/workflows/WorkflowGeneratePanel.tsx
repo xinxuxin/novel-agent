@@ -3,6 +3,7 @@ import type { JSX } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import type { ChapterWorkflowDetail, WorkflowArtifactRecord } from "@contracts/workflow";
+import type { CrossCheckType } from "@contracts/cross-check";
 import type {
   BookRecord,
   ChapterRecord,
@@ -11,7 +12,8 @@ import type {
   VolumeRecord
 } from "@contracts/data";
 import type { ModelProfileRecord } from "@contracts/model-routing";
-import type { TaskType } from "@shared/domain/model-routing";
+import { QUALITY_MODES } from "@shared/domain/model-routing";
+import type { QualityMode, TaskType } from "@shared/domain/model-routing";
 
 interface WorkflowGeneratePanelProps {
   activeBook: BookRecord | null;
@@ -42,6 +44,21 @@ const WORKFLOW_PREVIEW_TASKS: TaskType[] = [
   "state_settlement"
 ];
 
+const CROSS_CHECK_ACTIONS: Array<{ label: string; type: CrossCheckType }> = [
+  { label: "Run Worldbuilding Cross-Check", type: "worldbuilding_cross_check" },
+  { label: "Run Originality Audit", type: "originality_audit" },
+  { label: "Run Plot Logic Audit", type: "main_plot_logic_audit" },
+  { label: "Run Volume Outline Cross-Check", type: "volume_outline_cross_check" },
+  { label: "Run Key Chapter Preflight", type: "key_chapter_preflight_cross_check" }
+];
+
+const QUALITY_LABELS: Record<QualityMode, string> = {
+  economy: "Economy",
+  balanced: "Balanced",
+  premium: "Premium",
+  premium_webnovel: "Premium Webnovel"
+};
+
 export function WorkflowGeneratePanel({
   activeBook,
   activeChapter,
@@ -56,6 +73,7 @@ export function WorkflowGeneratePanel({
   const [busy, setBusy] = useState(false);
   const [acceptedVersion, setAcceptedVersion] = useState<ManuscriptVersionRecord | null>(null);
   const [executionMode, setExecutionMode] = useState<"mock" | "provider">("mock");
+  const [qualityMode, setQualityMode] = useState<QualityMode>("balanced");
   const [modelProfiles, setModelProfiles] = useState<ModelProfileRecord[]>([]);
   const [routeOverrideModelProfileId, setRouteOverrideModelProfileId] = useState("");
   const latestRevision = useMemo(() => findLatestArtifact(detail, "revision"), [detail]);
@@ -129,7 +147,7 @@ export function WorkflowGeneratePanel({
         bookId: activeBook.id,
         volumeId: activeVolume?.id ?? activeChapter.volumeId,
         chapterId: activeChapter.id,
-        qualityMode: "balanced",
+        qualityMode,
         executionMode,
         routeOverrideModelProfileId: routeOverrideModelProfileId || null,
         userInstruction: label === "Full Chapter Workflow" ? null : label,
@@ -146,7 +164,7 @@ export function WorkflowGeneratePanel({
   const confirmProviderPreflight = async (): Promise<boolean> => {
     const previews = await Promise.all(
       WORKFLOW_PREVIEW_TASKS.map((taskType) =>
-        window.wenforge.modelRoutes.resolvePreview(taskType, "balanced", {
+        window.wenforge.modelRoutes.resolvePreview(taskType, qualityMode, {
           expectedTokens: {
             inputTokens: 4000,
             outputTokens:
@@ -175,9 +193,46 @@ export function WorkflowGeneratePanel({
           `${preview.taskType}: ${preview.modelProfile?.displayName ?? "unavailable"} · $${preview.estimatedCostRange.maxCost.toFixed(6)}`
       )
       .join("\n");
+    const premiumNote =
+      qualityMode === "premium_webnovel"
+        ? "\n\nPremium Webnovel may add multi-model cross-check cost for book and key-chapter tasks."
+        : "";
     return window.confirm(
-      `Run provider workflow?\n\n${routeLines}\n\nEstimated max: $${maxCost.toFixed(6)}\nNo canonical manuscript will be overwritten.`
+      `Run provider workflow?\n\n${routeLines}\n\nEstimated max: $${maxCost.toFixed(6)}${premiumNote}\nNo canonical manuscript will be overwritten.`
     );
+  };
+
+  const runCrossCheck = async (type: CrossCheckType): Promise<void> => {
+    if (!activeProject || !activeBook) return;
+    const confirmed = window.confirm(
+      "This will call multiple configured providers in parallel and may cost money. Continue?"
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    try {
+      const contextText = [
+        `Project: ${activeProject.name}`,
+        `Book: ${activeBook.title}`,
+        activeVolume ? `Volume: ${activeVolume.title}` : null,
+        activeChapter ? `Chapter: ${activeChapter.title}` : null,
+        activeChapter?.summary ? `Summary: ${activeChapter.summary}` : null
+      ]
+        .filter(Boolean)
+        .join("\n");
+      const result = await window.wenforge.crossCheck.run({
+        type,
+        projectId: activeProject.id,
+        bookId: activeBook.id,
+        chapterId: activeChapter?.id ?? null,
+        contextText,
+        budgetCapUsd: 0.5,
+        confirmed: true
+      });
+      await refreshDetail(result.generationRunId);
+      onWorkflowCostChange("Cross-check proposed", result.summary.costSummary.estimatedTotal, "");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const approveWorkflow = async (): Promise<void> => {
@@ -318,6 +373,19 @@ export function WorkflowGeneratePanel({
             {executionMode === "provider" ? (
               <select
                 className="mt-2 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-forge-blue/50"
+                value={qualityMode}
+                onChange={(event) => setQualityMode(event.target.value as QualityMode)}
+              >
+                {QUALITY_MODES.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {QUALITY_LABELS[mode]}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {executionMode === "provider" ? (
+              <select
+                className="mt-2 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-forge-blue/50"
                 value={routeOverrideModelProfileId}
                 onChange={(event) => setRouteOverrideModelProfileId(event.target.value)}
               >
@@ -346,6 +414,27 @@ export function WorkflowGeneratePanel({
               </span>
             </button>
           ))}
+          <div className="rounded-lg border border-forge-violet/25 bg-forge-violet/10 p-3">
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-forge-violet">
+              Cross-check workflow
+            </p>
+            <div className="mt-3 space-y-2">
+              {CROSS_CHECK_ACTIONS.map((action) => (
+                <button
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-left text-xs text-slate-200 hover:border-forge-violet/40 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={busy || !activeBook}
+                  key={action.type}
+                  onClick={() => void runCrossCheck(action.type)}
+                  type="button"
+                >
+                  {action.label}
+                  <span className="mt-1 block text-[11px] text-slate-500">
+                    GPT/Claude independent pass, DeepSeek aggregation, Qwen/Kimi market fit.
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <HumanGateControls
             acceptedVersion={acceptedVersion}

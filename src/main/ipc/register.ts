@@ -22,9 +22,15 @@ import type { StructuredLogger } from "@main/logging/logger";
 import { MemoryIndexService } from "@main/memory/memory-index-service";
 import type { CredentialService } from "@main/providers/credential-service";
 import { ModelRouter } from "@main/providers/model-router";
+import {
+  applyPremiumWebnovelPreset,
+  exportPremiumWebnovelPreset,
+  importPremiumWebnovelPreset
+} from "@main/providers/premium-webnovel-preset";
 import { ProviderSmokeService } from "@main/providers/provider-smoke-service";
 import { ReviewSettlementService } from "@main/review/review-settlement-service";
 import { ChapterWorkflowRuntime } from "@main/workflows/chapter-workflow-runtime";
+import { CrossCheckService } from "@main/workflows/cross-check-service";
 import { getEnvironment } from "@main/platform/environment";
 import { SafeIpcError } from "./safe-ipc-error";
 import { registerIpcContract } from "./typed-ipc";
@@ -173,6 +179,13 @@ function registerDataIpc(
           repositories,
           aiGateway,
           adapters: providerAdapters
+        })
+      : null;
+  const crossCheckService =
+    aiGateway && database
+      ? new CrossCheckService({
+          repositories,
+          aiGateway
         })
       : null;
   evaluationService?.ensureBuiltInSuite();
@@ -596,6 +609,24 @@ function registerDataIpc(
       settings: routingSettings
     }).resolveRoute(request.taskType, request.qualityMode, context);
   });
+  registerIpcContract(IPC_CONTRACTS.modelRoutes.applyPremiumWebnovelPreset, (request) => {
+    requireConfirmation(request.confirmed);
+    return applyPremiumWebnovelPreset(repositories, { forceRoutes: true });
+  });
+  registerIpcContract(IPC_CONTRACTS.modelRoutes.exportPreset, (request) => {
+    if (request.qualityMode !== "premium_webnovel") {
+      throw new SafeIpcError("ROUTE_PRESET_UNAVAILABLE", "Only premium_webnovel export is available");
+    }
+    return exportPremiumWebnovelPreset(repositories);
+  });
+  registerIpcContract(IPC_CONTRACTS.modelRoutes.importPreset, (request) => {
+    requireConfirmation(request.confirmed);
+    const parsed = JSON.parse(request.presetJson) as ReturnType<typeof exportPremiumWebnovelPreset>;
+    if (parsed.quality_mode !== "premium_webnovel") {
+      throw new SafeIpcError("INVALID_ROUTE_PRESET", "Only premium_webnovel presets can be imported");
+    }
+    return importPremiumWebnovelPreset(repositories, parsed);
+  });
   registerIpcContract(IPC_CONTRACTS.budgets.getPolicies, () =>
     repositories.budgetPolicies.getDefault()
   );
@@ -786,6 +817,13 @@ function registerDataIpc(
     IPC_CONTRACTS.providerSmoke.report,
     () => providerSmokeService?.buildUntestedReport() ?? []
   );
+  registerIpcContract(IPC_CONTRACTS.crossCheck.run, (request) => {
+    if (!crossCheckService) {
+      throw new SafeIpcError("CROSS_CHECK_UNAVAILABLE", "Cross-check service is unavailable");
+    }
+    requireConfirmation(request.confirmed);
+    return crossCheckService.run({ ...request, confirmed: true });
+  });
   registerIpcContract(IPC_CONTRACTS.reviews.listByGenerationRun, (request) => {
     if (!reviewSettlementService) {
       throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");

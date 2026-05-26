@@ -362,6 +362,7 @@ create table if not exists model_profiles (
   id text primary key,
   provider text not null,
   model text not null,
+  alias text,
   display_name text not null,
   context_window integer,
   max_output_tokens integer,
@@ -708,6 +709,7 @@ function ensureColumns(sqlite: SqliteDatabase): void {
   );
 
   ensureColumn(sqlite, "model_profiles", "context_window", "integer");
+  ensureColumn(sqlite, "model_profiles", "alias", "text");
   ensureColumn(sqlite, "model_profiles", "max_output_tokens", "integer");
   ensureColumn(sqlite, "model_profiles", "supports_streaming", "integer not null default 1");
   ensureColumn(sqlite, "model_profiles", "supports_json", "integer not null default 0");
@@ -727,6 +729,9 @@ function ensureColumns(sqlite: SqliteDatabase): void {
   ensureTaskRouteTableShape(sqlite);
   sqlite.exec(
     "create unique index if not exists model_profiles_provider_model_unique on model_profiles(provider, model)"
+  );
+  sqlite.exec(
+    "create unique index if not exists model_profiles_alias_unique on model_profiles(alias) where alias is not null"
   );
   sqlite.exec(
     "create unique index if not exists task_model_routes_task_quality_unique on task_model_routes(task_type, quality_mode)"

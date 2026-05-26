@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { LLM_TASK_TYPES } from "./ai";
-import { PROVIDERS } from "@shared/domain/model-routing";
+import { PROVIDERS, QUALITY_MODES } from "@shared/domain/model-routing";
 
 export const costScopeRequestSchema = z.object({
   projectId: z.string().optional(),
@@ -107,7 +107,7 @@ export type PriceImportResult = z.infer<typeof priceImportResultSchema>;
 export const routePriceWarningSchema = z.object({
   routeId: z.string(),
   taskType: z.enum(LLM_TASK_TYPES),
-  qualityMode: z.enum(["economy", "balanced", "premium"]),
+  qualityMode: z.enum(QUALITY_MODES),
   provider: z.string(),
   model: z.string(),
   warningType: z.enum(["missing_price", "stale_price"])

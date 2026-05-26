@@ -171,3 +171,16 @@ Real provider smoke tests are intentionally capped:
 - Every smoke call creates an `llm_runs` row, so spend is visible in cost summaries.
 
 Provider reports are redacted and do not include prompts, responses, manuscripts, or secrets.
+
+## Phase 15b Multi-Model Cost Controls
+
+Premium Webnovel cross-checks estimate the full parallel plan before execution:
+
+- independent GPT-5.5 director call
+- independent Claude Opus 4.7 director call
+- DeepSeek V4 Pro aggregation call
+- Qwen3.7-Max or Kimi K2.6 market-fit call
+
+If the estimated total exceeds the user-supplied cross-check budget cap, the run is blocked before provider execution and before any `llm_runs` are created. Successful calls still flow through the AI gateway, so each model attempt creates an `llm_runs` row with hashes, usage estimates/reported usage, and final cost.
+
+Cross-check artifacts store per-model cost metadata in `generated_artifacts.content_json` with `status = proposed`; they are not counted as accepted manuscript cost until the user later accepts a generated manuscript version.

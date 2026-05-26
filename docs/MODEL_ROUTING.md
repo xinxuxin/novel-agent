@@ -153,3 +153,32 @@ The conformance report records:
 - redacted errors
 
 Successful smoke tests update provider health and credential tested status. Route selection still depends on editable model profiles, prices, task routes, and budget policy.
+
+## Phase 15b Premium Webnovel Preset
+
+Phase 15b adds `premium_webnovel` as a fourth editable quality mode. It is a high-cost Chinese webnovel routing preset, not a replacement for the existing `premium` mode.
+
+Model aliases are now stored on model profiles so routes can refer to stable user-facing names while the actual provider model id remains editable in Settings:
+
+- `gpt-5.5`
+- `claude-opus-4.7`
+- `deepseek-v4-pro`
+- `qwen3.7-max`
+- `kimi-k2.6`
+
+The Premium Webnovel preset seeds Qwen3.7-Max and Kimi K2.6 as editable placeholders. Placeholder price rows are explicitly marked with `User must confirm in provider console.` and should not be treated as authoritative.
+
+Preset routing:
+
+- `story_bible` and `volume_outline`: GPT-5.5 plus Claude Opus 4.7 as parallel director models, DeepSeek V4 Pro as aggregator/fallback.
+- `chapter_outline`: DeepSeek V4 Pro, then GPT-5.5, then Qwen3.7-Max.
+- `scene_cards`: DeepSeek V4 Pro, then Kimi K2.6.
+- `draft_chapter`: Qwen3.7-Max, then Kimi K2.6, then Claude Opus 4.7.
+- `webnovel_style_rewrite`: Qwen3.7-Max, then Kimi K2.6.
+- `suspense_hook_audit`: Qwen3.7-Max, then DeepSeek V4 Pro.
+- `continuity_audit`: DeepSeek V4 Pro, then GPT-5.5, then Claude Opus 4.7.
+- `revise_chapter`: Claude Opus 4.7, then Qwen3.7-Max.
+- `state_settlement`: DeepSeek V4 Pro, then GPT-5.5.
+- `summarize_chapter`: DeepSeek V4 Pro, then Kimi K2.6.
+
+Settings > Routing can apply, export, and import the Premium Webnovel preset. Missing credentials still block provider execution with safe actionable errors, and missing/stale prices follow the routing/budget policy.

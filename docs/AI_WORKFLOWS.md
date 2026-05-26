@@ -184,3 +184,25 @@ Require explicit confirmation for:
 - credential deletion
 - route changes that affect an active run
 - retrying a failed run when the estimated cost changes materially
+
+## Phase 15b Cross-Check Workflows
+
+Phase 15b adds reusable multi-model cross-check runs for planning and audit-heavy tasks:
+
+- `worldbuilding_cross_check`
+- `originality_audit`
+- `main_plot_logic_audit`
+- `volume_outline_cross_check`
+- `key_chapter_preflight_cross_check`
+
+Cross-check runs are proposals. They create `generation_runs`, `llm_runs`, and `generated_artifacts`, but they do not mutate canonical manuscripts or accepted story bible records.
+
+Execution shape:
+
+1. GPT-5.5 and Claude Opus 4.7 receive the same context with different original WenForge role instructions.
+2. The first two models run independently; neither receives the other model output.
+3. DeepSeek V4 Pro receives both outputs plus the original context and aggregates agreements, disagreements, contradictions, originality risks, trope risks, unresolved decisions, recommended final plan, human decision points, and cost summary.
+4. Qwen3.7-Max is used for Chinese webnovel market-fit review when configured; Kimi K2.6 can serve as the market-fit fallback.
+5. The renderer shows the cross-check summary as reviewable generated artifacts. Human approval is still required before any downstream manuscript or state changes.
+
+Every cross-check requires confirmation because it can call multiple providers in parallel. Preflight blocks missing credentials and budget overages before provider calls or `llm_runs` are created.
