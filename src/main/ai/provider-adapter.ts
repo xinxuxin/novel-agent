@@ -2,6 +2,7 @@ import type {
   AIProviderId,
   NormalizedProviderResponse,
   ProviderError,
+  ProviderModelInfo,
   StreamRequest,
   TokenUsage
 } from "@contracts/ai";
@@ -41,6 +42,7 @@ export interface ProviderAdapter {
     abortSignal: AbortSignal,
     config?: ProviderAdapterConfig
   ) => Promise<NormalizedProviderResponse>;
+  listModels?: (config: ProviderAdapterConfig, abortSignal?: AbortSignal) => Promise<ProviderModelInfo[]>;
   normalizeUsage: (raw: unknown) => TokenUsage | null;
   normalizeError: (error: unknown) => ProviderError;
 }

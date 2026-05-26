@@ -64,7 +64,7 @@ Deferred from Phase 3: real provider adapters, network health checks, streaming 
 - [x] Add deterministic fake provider streaming for tests and local developer checks.
 - [x] Add OpenAI-compatible streaming adapter with SSE parsing and usage normalization.
 - [x] Add OpenAI, DeepSeek, DashScope/Qwen, Moonshot/Kimi, xAI, OpenRouter, and generic OpenAI-compatible adapter defaults.
-- [x] Add explicit `not_implemented` stubs for Anthropic and Gemini until reliable adapters are added.
+- [x] Add provider-specific REST adapters for Anthropic and Gemini after reliable docs/tests are in place.
 - [x] Add token estimation for Chinese and non-CJK text.
 - [x] Add live cost events and final cost reconciliation from provider-reported usage.
 - [x] Keep prompt and response text out of run records by default while storing hashes.

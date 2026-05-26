@@ -4,6 +4,7 @@ import type {
   QualityMode,
   TaskType
 } from "@shared/domain/model-routing";
+import type { ProviderModelInfo } from "./ai";
 
 export interface ProviderCredentialDto {
   id: string;
@@ -32,6 +33,15 @@ export interface CredentialTestResult {
   status: "configured_but_untested" | "test_passed" | "test_failed" | "not_configured";
   message: string;
   testedAt: string;
+}
+
+export interface ProviderModelListResult {
+  provider: ProviderId;
+  configured: boolean;
+  status: "skipped" | "passed" | "failed";
+  models: ProviderModelInfo[];
+  fetchedAt: string | null;
+  error: string | null;
 }
 
 export interface SaveCredentialInput {

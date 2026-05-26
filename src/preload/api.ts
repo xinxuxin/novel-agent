@@ -18,6 +18,7 @@ import type {
   ModelRouteResolution,
   ProviderCredentialDto,
   ProviderHealthRecord,
+  ProviderModelListResult,
   RoutePreviewContext,
   TaskRouteRecord
 } from "@contracts/model-routing";
@@ -699,6 +700,15 @@ export function createPreloadApi(
           IPC_CONTRACTS.modelProfiles.upsert.channel,
           IPC_CONTRACTS.modelProfiles.upsert.response,
           input
+        )
+    },
+    providerModels: {
+      list: (provider) =>
+        invokeContract<ProviderModelListResult>(
+          invoke,
+          IPC_CONTRACTS.providerModels.list.channel,
+          IPC_CONTRACTS.providerModels.list.response,
+          { provider }
         )
     },
     modelPrices: {

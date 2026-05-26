@@ -1,7 +1,8 @@
 import type { ProviderAdapter } from "@main/ai/provider-adapter";
+import { AnthropicAdapter } from "./anthropic-adapter";
 import { FakeProviderAdapter } from "./fake-provider-adapter";
+import { GeminiAdapter } from "./gemini-adapter";
 import { GenericOpenAICompatibleAdapter } from "./generic-openai-compatible-adapter";
-import { NotImplementedProviderAdapter } from "./not-implemented-provider-adapter";
 
 export function createDefaultProviderAdapters(): ProviderAdapter[] {
   return [
@@ -45,11 +46,13 @@ export function createDefaultProviderAdapters(): ProviderAdapter[] {
         "X-Title": "WenForge Studio"
       }
     }),
-    new NotImplementedProviderAdapter("anthropic", "Anthropic"),
-    new NotImplementedProviderAdapter("gemini", "Google Gemini")
+    new AnthropicAdapter(),
+    new GeminiAdapter()
   ];
 }
 
+export { AnthropicAdapter } from "./anthropic-adapter";
 export { FakeProviderAdapter } from "./fake-provider-adapter";
+export { GeminiAdapter } from "./gemini-adapter";
 export { GenericOpenAICompatibleAdapter } from "./generic-openai-compatible-adapter";
 export { NotImplementedProviderAdapter } from "./not-implemented-provider-adapter";

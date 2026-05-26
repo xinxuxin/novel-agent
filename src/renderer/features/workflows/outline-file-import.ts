@@ -1,4 +1,5 @@
 import { extractDocxText } from "@shared/domain/outline-document";
+import { combineImportedOutlineFiles } from "@shared/domain/outline-file-combine";
 
 export interface ImportedOutlineFile {
   fileName: string;
@@ -25,4 +26,9 @@ export async function importOutlineFile(file: File): Promise<ImportedOutlineFile
   }
 
   throw new Error("仅支持 .docx / .txt / .md");
+}
+
+export async function importOutlineFiles(files: File[]): Promise<ImportedOutlineFile> {
+  const imported = await Promise.all(files.map((file) => importOutlineFile(file)));
+  return combineImportedOutlineFiles(imported);
 }

@@ -51,6 +51,7 @@ export type {
   ModelProfile,
   NormalizedProviderResponse,
   ProviderError,
+  ProviderModelInfo,
   StreamCompleteEvent,
   StreamCostEvent,
   StreamDeltaEvent,
@@ -69,6 +70,7 @@ export type {
   ModelRouteResolution,
   ProviderHealthRecord,
   ProviderCredentialDto,
+  ProviderModelListResult,
   RoutePreviewContext,
   SaveCredentialInput,
   TaskRouteRecord

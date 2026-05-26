@@ -38,9 +38,7 @@ export async function createMainWindow(
     }, 250);
   };
 
-  mainWindow.on("ready-to-show", () => {
-    mainWindow.show();
-  });
+  revealMainWindow(mainWindow);
   mainWindow.on("resize", scheduleBoundsSave);
   mainWindow.on("move", scheduleBoundsSave);
   mainWindow.on("close", () => {
@@ -69,6 +67,18 @@ export async function createMainWindow(
   return mainWindow;
 }
 
+export function revealMainWindow(mainWindow: BrowserWindow): void {
+  const reveal = (): void => {
+    if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+  };
+
+  mainWindow.on("ready-to-show", reveal);
+  mainWindow.webContents.once("did-finish-load", reveal);
+  setTimeout(reveal, 1500);
+}
+
 export function buildMainWindowOptions(
   bounds: WindowBounds,
   preloadPath: string
@@ -77,7 +87,7 @@ export function buildMainWindowOptions(
     ...bounds,
     minWidth: 860,
     minHeight: 560,
-    show: false,
+    show: true,
     frame: false,
     transparent: false,
     backgroundColor: "#070a12",

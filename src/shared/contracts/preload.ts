@@ -40,6 +40,7 @@ import type {
   ProviderHealthRecord,
   RoutePreviewContext,
   ProviderCredentialDto,
+  ProviderModelListResult,
   SaveCredentialInput,
   TaskRouteRecord
 } from "./model-routing";
@@ -339,6 +340,9 @@ export interface WenForgeApi {
       input: Partial<ModelProfileRecord> &
         Pick<ModelProfileRecord, "provider" | "model" | "displayName">
     ) => Promise<ModelProfileRecord>;
+  };
+  providerModels: {
+    list: (provider: ProviderCredentialDto["provider"]) => Promise<ProviderModelListResult>;
   };
   modelPrices: {
     list: () => Promise<ModelPriceRecord[]>;

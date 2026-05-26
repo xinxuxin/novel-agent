@@ -14,7 +14,7 @@ import type {
 import type { ModelProfileRecord } from "@contracts/model-routing";
 import { QUALITY_MODES } from "@shared/domain/model-routing";
 import type { QualityMode, TaskType } from "@shared/domain/model-routing";
-import { importOutlineFile } from "./outline-file-import";
+import { importOutlineFiles } from "./outline-file-import";
 
 interface WorkflowGeneratePanelProps {
   activeBook: BookRecord | null;
@@ -79,7 +79,7 @@ export function WorkflowGeneratePanel({
   const [modelProfiles, setModelProfiles] = useState<ModelProfileRecord[]>([]);
   const [routeOverrideModelProfileId, setRouteOverrideModelProfileId] = useState("");
   const [sourceOutline, setSourceOutline] = useState("");
-  const [outlineImportStatus, setOutlineImportStatus] = useState("拖入 .docx / .txt / .md");
+  const [outlineImportStatus, setOutlineImportStatus] = useState("拖入多个 .docx / .txt / .md");
   const [dragActive, setDragActive] = useState(false);
   const [optimisticStageIndex, setOptimisticStageIndex] = useState(0);
   const [allowStoryChanges, setAllowStoryChanges] = useState(true);
@@ -124,6 +124,21 @@ export function WorkflowGeneratePanel({
       mounted = false;
     };
   }, [activeChapter, onWorkflowCostChange]);
+
+  useEffect(() => {
+    const saved = activeChapter?.outlineJson
+      ? parseSavedSourceOutline(activeChapter.outlineJson)
+      : null;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setSourceOutline(saved ?? "");
+      setOutlineImportStatus(saved ? "已载入本章保存的大纲" : "拖入多个 .docx / .txt / .md");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeChapter?.id, activeChapter?.outlineJson]);
 
   useEffect(() => {
     let mounted = true;
@@ -177,6 +192,13 @@ export function WorkflowGeneratePanel({
     setBusy(true);
     setOptimisticStageIndex(0);
     try {
+      await window.wenforge.chapters.update(activeChapter.id, {
+        outlineJson: JSON.stringify({
+          source_outline_text: outline,
+          source_outline_files: sourceOutline.trim() ? ["手动输入"] : ["章节摘要"],
+          imported_at: new Date().toISOString()
+        })
+      });
       const run = await window.wenforge.generation.chapter.start({
         projectId: activeProject.id,
         bookId: activeBook.id,
@@ -199,12 +221,21 @@ export function WorkflowGeneratePanel({
     }
   };
 
-  const importDroppedOutline = async (file: File): Promise<void> => {
+  const importDroppedOutline = async (files: File[]): Promise<void> => {
     try {
       setOutlineImportStatus("读取中");
-      const imported = await importOutlineFile(file);
+      const imported = await importOutlineFiles(files);
       setSourceOutline(imported.text);
-      setOutlineImportStatus(`已导入：${imported.fileName}`);
+      if (activeChapter) {
+        await window.wenforge.chapters.update(activeChapter.id, {
+          outlineJson: JSON.stringify({
+            source_outline_text: imported.text,
+            source_outline_files: imported.fileName.split(" + "),
+            imported_at: new Date().toISOString()
+          })
+        });
+      }
+      setOutlineImportStatus(`已导入并保存：${imported.fileName}`);
     } catch (error) {
       setOutlineImportStatus(error instanceof Error ? error.message : "导入失败");
     } finally {
@@ -214,8 +245,8 @@ export function WorkflowGeneratePanel({
 
   const handleOutlineDrop = (event: DragEvent<HTMLDivElement>): void => {
     event.preventDefault();
-    const file = event.dataTransfer.files.item(0);
-    if (file) void importDroppedOutline(file);
+    const files = Array.from(event.dataTransfer.files);
+    if (files.length > 0) void importDroppedOutline(files);
     else setDragActive(false);
   };
 
@@ -820,4 +851,20 @@ function buildOutlineInstruction(label: string, allowStoryChanges: boolean): str
     ? "可以提出并吸收情节或设定强化，但必须保留用户大纲的主线承诺。"
     : "不得改动用户大纲的关键设定、情节顺序和章末钩子。";
   return `${label}\n${changePolicy}\n最终输出必须是可保存的中文正文草稿，不要直接覆盖 canon。`;
+}
+
+function parseSavedSourceOutline(outlineJson: string): string | null {
+  try {
+    const parsed = JSON.parse(outlineJson) as unknown;
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof (parsed as { source_outline_text?: unknown }).source_outline_text === "string"
+    ) {
+      return (parsed as { source_outline_text: string }).source_outline_text;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }

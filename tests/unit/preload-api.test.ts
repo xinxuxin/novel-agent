@@ -75,6 +75,7 @@ describe("preload API", () => {
       "projects",
       "providerChapterCheck",
       "providerHealth",
+      "providerModels",
       "providerSmoke",
       "reviews",
       "routingSettings",
@@ -95,6 +96,7 @@ describe("preload API", () => {
       "run",
       "runAll"
     ]);
+    expect(Object.keys(api.providerModels).sort()).toEqual(["list"]);
     expect(Object.keys(api.providerChapterCheck).sort()).toEqual(["run"]);
     expect(Object.keys(api.crossCheck).sort()).toEqual(["run"]);
     expect(await api.app.getVersion()).toBe("0.1.0");

@@ -8,7 +8,9 @@ import type { ProviderAdapter } from "@main/ai/provider-adapter";
 import { ProviderAdapterError } from "@main/ai/provider-adapter";
 import { TokenEstimator } from "@main/ai/token-estimator";
 import type { RepositoryRegistry } from "@main/db/service";
+import type { CredentialService } from "@main/providers/credential-service";
 import { RedactionService } from "@main/security/redaction-service";
+import { selectSmokeModel } from "./provider-model-catalog-service";
 
 export type ProviderSmokeStatus = "skipped" | "passed" | "failed" | "blocked";
 
@@ -41,6 +43,7 @@ export interface ProviderSmokeServiceOptions {
   repositories: RepositoryRegistry;
   aiGateway: AiGateway;
   adapters: ProviderAdapter[];
+  credentialService?: CredentialService;
   tokenEstimator?: TokenEstimator;
   costCalculator?: CostCalculator;
 }
@@ -73,7 +76,7 @@ export class ProviderSmokeService {
     const credential = this.options.repositories.providerCredentials.listConfiguredByProvider(
       request.provider
     )[0];
-    const baseResult = this.createBaseResult(request.provider, {
+    let baseResult = this.createBaseResult(request.provider, {
       model: modelProfile?.model ?? null,
       configured: Boolean(credential && modelProfile),
       streamingSupported: Boolean(adapter?.capabilities.streaming),
@@ -111,9 +114,24 @@ export class ProviderSmokeService {
     const runIds: string[] = [];
     const startedAt = Date.now();
     try {
+      const decryptedCredential =
+        this.options.credentialService?.getDecryptedProviderCredential(request.provider) ?? null;
+      const availableModels = adapter.listModels && decryptedCredential
+        ? await adapter.listModels({
+            apiKey: decryptedCredential.apiKey,
+            baseUrl: decryptedCredential.baseUrl
+          })
+        : [];
+      const smokeModel = selectSmokeModel({
+        provider: request.provider,
+        configuredModel: modelProfile.model,
+        availableModels
+      });
+      baseResult = { ...baseResult, model: smokeModel };
+
       if (adapter.capabilities.streaming) {
         const streamStarted = await this.options.aiGateway.startStream(
-          this.createRequest(request.provider, modelProfile.model),
+          this.createRequest(request.provider, smokeModel),
           () => undefined
         );
         runIds.push(streamStarted.runId);
@@ -121,7 +139,7 @@ export class ProviderSmokeService {
       }
 
       const generated = await this.options.aiGateway.generateText(
-        this.createRequest(request.provider, modelProfile.model)
+        this.createRequest(request.provider, smokeModel)
       );
       runIds.push(generated.runId);
 
@@ -136,7 +154,7 @@ export class ProviderSmokeService {
       const finalCost = runs.reduce((sum, run) => sum + (run.finalCost ?? 0), 0);
       this.options.repositories.providerHealth.recordSuccess(
         request.provider,
-        modelProfile.model,
+        smokeModel,
         generated.runId
       );
       this.options.repositories.providerCredentials.updateStatus(
@@ -160,7 +178,7 @@ export class ProviderSmokeService {
       const safeError = this.safeError(error);
       this.options.repositories.providerHealth.recordFailure({
         provider: request.provider,
-        model: modelProfile.model,
+        model: baseResult.model ?? modelProfile.model,
         code: safeError.code,
         message: safeError.message,
         terminal: safeError.code.includes("auth")

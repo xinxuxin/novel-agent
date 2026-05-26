@@ -2,6 +2,7 @@ import type {
   AIProviderId,
   NormalizedProviderResponse,
   ProviderError,
+  ProviderModelInfo,
   StreamRequest,
   TokenUsage
 } from "@contracts/ai";
@@ -77,9 +78,10 @@ export class GenericOpenAICompatibleAdapter implements ProviderAdapter {
     });
 
     if (!response.ok) {
+      const detail = await readProviderError(response);
       throw new ProviderAdapterError({
         code: "provider_http_error",
-        message: `${this.displayName} returned HTTP ${response.status}`,
+        message: `${this.displayName} returned HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
         status: response.status
       });
     }
@@ -139,7 +141,79 @@ export class GenericOpenAICompatibleAdapter implements ProviderAdapter {
     abortSignal: AbortSignal,
     config?: ProviderAdapterConfig
   ): Promise<NormalizedProviderResponse> {
-    return this.streamChat(request, {}, abortSignal, config);
+    this.validateConfig(config ?? {});
+    const response = await this.fetchImpl(`${this.baseUrl(config ?? {})}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config?.apiKey}`,
+        "Content-Type": "application/json",
+        ...this.options.headers,
+        ...config?.headers
+      },
+      body: JSON.stringify({
+        model: request.model,
+        messages: request.messages,
+        temperature: request.temperature,
+        max_tokens: request.maxOutputTokens,
+        stream: false
+      }),
+      signal: abortSignal
+    });
+
+    if (!response.ok) {
+      const detail = await readProviderError(response);
+      throw new ProviderAdapterError({
+        code: "provider_http_error",
+        message: `${this.displayName} returned HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
+        status: response.status
+      });
+    }
+
+    const parsed = (await response.json()) as unknown;
+    const text = extractMessageText(parsed);
+    return {
+      text,
+      usage: this.normalizeUsage((parsed as { usage?: unknown }).usage),
+      raw: parsed
+    };
+  }
+
+  async listModels(
+    config: ProviderAdapterConfig,
+    abortSignal?: AbortSignal
+  ): Promise<ProviderModelInfo[]> {
+    this.validateConfig(config);
+    const response = await this.fetchImpl(`${this.baseUrl(config)}/models`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+        ...this.options.headers,
+        ...config.headers
+      },
+      ...(abortSignal ? { signal: abortSignal } : {})
+    });
+    if (!response.ok) {
+      const detail = await readProviderError(response);
+      throw new ProviderAdapterError({
+        code: "provider_http_error",
+        message: `${this.displayName} returned HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
+        status: response.status
+      });
+    }
+    const parsed = (await response.json()) as { data?: unknown };
+    const models = Array.isArray(parsed.data) ? parsed.data : [];
+    return models.flatMap((model): ProviderModelInfo[] => {
+        if (!model || typeof model !== "object") return [];
+        const value = model as { id?: unknown; owned_by?: unknown; object?: unknown };
+        if (typeof value.id !== "string") return [];
+        return [{
+          id: value.id,
+          displayName: value.id,
+          ownedBy: typeof value.owned_by === "string" ? value.owned_by : null,
+          supportsGeneration: isLikelyTextGenerationModel(value.id)
+        }];
+      });
   }
 
   normalizeUsage(raw: unknown): TokenUsage | null {
@@ -194,6 +268,37 @@ function extractDelta(value: unknown): string {
   return typeof content === "string" ? content : "";
 }
 
+function extractMessageText(value: unknown): string {
+  const choices = (value as { choices?: Array<{ message?: { content?: unknown } }> }).choices;
+  const content = choices?.[0]?.message?.content;
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part) =>
+        part && typeof part === "object" && typeof (part as { text?: unknown }).text === "string"
+          ? (part as { text: string }).text
+          : ""
+      )
+      .join("");
+  }
+  return "";
+}
+
+function isLikelyTextGenerationModel(modelId: string): boolean {
+  const lower = modelId.toLowerCase();
+  const nonGenerationMarkers = [
+    "embedding",
+    "moderation",
+    "whisper",
+    "tts",
+    "dall-e",
+    "image",
+    "audio",
+    "transcribe"
+  ];
+  return !nonGenerationMarkers.some((marker) => lower.includes(marker));
+}
+
 function safeJsonParse(value: string): unknown | null {
   try {
     return JSON.parse(value) as unknown;
@@ -204,4 +309,20 @@ function safeJsonParse(value: string): unknown | null {
 
 function numberOrNull(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+async function readProviderError(response: Response): Promise<string> {
+  try {
+    const text = await response.text();
+    if (!text) return "";
+    const parsed = safeJsonParse(text);
+    const message =
+      parsed && typeof parsed === "object"
+        ? ((parsed as { error?: { message?: unknown }; message?: unknown }).error?.message ??
+          (parsed as { message?: unknown }).message)
+        : null;
+    return String(typeof message === "string" ? message : text).slice(0, 500);
+  } catch {
+    return "";
+  }
 }

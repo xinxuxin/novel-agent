@@ -4,6 +4,7 @@ import {
   costSummaryRequestSchema,
   costSummarySchema,
   llmRunRecordSchema,
+  providerModelInfoSchema,
   streamRequestSchema,
   streamStartResultSchema
 } from "@contracts/ai";
@@ -456,6 +457,14 @@ const credentialTestResultSchema = z.object({
   status: z.enum(["configured_but_untested", "test_passed", "test_failed", "not_configured"]),
   message: z.string(),
   testedAt: z.string()
+});
+const providerModelListResultSchema = z.object({
+  provider: providerSchema,
+  configured: z.boolean(),
+  status: z.enum(["skipped", "passed", "failed"]),
+  models: z.array(providerModelInfoSchema),
+  fetchedAt: z.string().nullable(),
+  error: z.string().nullable()
 });
 const modelProfileSchema = z.object({
   id: z.string(),
@@ -1139,6 +1148,13 @@ export const IPC_CONTRACTS = {
       modelProfileSchema
     )
   },
+  providerModels: {
+    list: createContract(
+      "provider-models:list",
+      z.object({ provider: providerSchema }),
+      providerModelListResultSchema
+    )
+  },
   modelPrices: {
     list: createContract("model-prices:list", emptyRequestSchema, z.array(modelPriceSchema)),
     upsert: createContract(
@@ -1803,6 +1819,7 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.credentials.updateBaseUrl,
   IPC_CONTRACTS.modelProfiles.list,
   IPC_CONTRACTS.modelProfiles.upsert,
+  IPC_CONTRACTS.providerModels.list,
   IPC_CONTRACTS.modelPrices.list,
   IPC_CONTRACTS.modelPrices.upsert,
   IPC_CONTRACTS.taskRoutes.list,

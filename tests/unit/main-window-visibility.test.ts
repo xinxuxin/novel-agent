@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { buildMainWindowOptions } from "@main/app/window";
@@ -11,5 +13,13 @@ describe("main window visibility", () => {
 
     expect(options.transparent).toBe(false);
     expect(options.backgroundColor).toBe("#070a12");
+    expect(options.show).toBe(true);
+  });
+
+  it("has a fallback reveal path when ready-to-show does not fire", () => {
+    const source = readFileSync(join(process.cwd(), "src/main/app/window.ts"), "utf8");
+
+    expect(source).toContain("did-finish-load");
+    expect(source).toContain("setTimeout(reveal, 1500)");
   });
 });

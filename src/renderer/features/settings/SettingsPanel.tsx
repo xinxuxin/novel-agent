@@ -10,6 +10,7 @@ import type {
   ModelProfileRecord,
   BudgetPolicyRecord,
   ProviderHealthRecord,
+  ProviderModelListResult,
   ProviderSmokeResult,
   ProviderCredentialDto,
   TaskRouteRecord
@@ -58,28 +59,28 @@ const AI_PROVIDER_LABELS: Record<AIProviderId, string> = {
 };
 
 const TASK_LABELS: Record<TaskType, string> = {
-  brainstorm: "Brainstorm",
-  story_bible: "Story bible",
-  volume_outline: "Volume outline",
-  chapter_outline: "Chapter outline",
-  scene_cards: "Scene cards",
-  draft_chapter: "Draft chapter",
-  webnovel_style_rewrite: "Style rewrite",
-  originality_audit: "Originality audit",
-  plot_logic_audit: "Plot logic audit",
-  continuity_audit: "Continuity audit",
-  suspense_hook_audit: "Suspense audit",
-  revise_chapter: "Revise chapter",
-  state_settlement: "State settlement",
-  summarize_chapter: "Summarize chapter",
-  embedding_or_memory_indexing: "Memory indexing"
+  brainstorm: "脑暴",
+  story_bible: "故事圣经",
+  volume_outline: "卷纲",
+  chapter_outline: "章纲",
+  scene_cards: "场景卡",
+  draft_chapter: "起草正文",
+  webnovel_style_rewrite: "网文改写",
+  originality_audit: "原创性检查",
+  plot_logic_audit: "主线逻辑检查",
+  continuity_audit: "连贯性审稿",
+  suspense_hook_audit: "钩子审稿",
+  revise_chapter: "改写终稿",
+  state_settlement: "设定结算",
+  summarize_chapter: "章节总结",
+  embedding_or_memory_indexing: "记忆索引"
 };
 
 const QUALITY_LABELS: Record<QualityMode, string> = {
-  economy: "Economy",
-  balanced: "Balanced",
-  premium: "Premium",
-  premium_webnovel: "Premium Webnovel"
+  economy: "经济",
+  balanced: "均衡",
+  premium: "高级",
+  premium_webnovel: "网文高级"
 };
 
 const SETTINGS_TABS: Array<{ id: SettingsTab; label: string }> = [
@@ -148,6 +149,7 @@ export function SettingsPanel(): JSX.Element {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [providerCheckBudget, setProviderCheckBudget] = useState("0.05");
+  const [providerModels, setProviderModels] = useState<ProviderModelListResult[]>([]);
   const [credentialDraft, setCredentialDraft] = useState({
     provider: "openai" as ProviderId,
     displayName: PROVIDER_LABELS.openai,
@@ -231,6 +233,10 @@ export function SettingsPanel(): JSX.Element {
     () => new Map(data.providerSmoke.map((result) => [result.provider, result])),
     [data.providerSmoke]
   );
+  const modelsByProvider = useMemo(
+    () => new Map(providerModels.map((result) => [result.provider, result])),
+    [providerModels]
+  );
 
   const runAction = async (action: () => Promise<void>, success: string): Promise<void> => {
     try {
@@ -245,14 +251,30 @@ export function SettingsPanel(): JSX.Element {
 
   const saveCredential = async (): Promise<void> => {
     await runAction(async () => {
-      await window.wenforge.credentials.save({
+      const saved = await window.wenforge.credentials.save({
         provider: credentialDraft.provider,
         displayName: credentialDraft.displayName,
         apiKey: credentialDraft.apiKey,
         baseUrl: normalizeNullableText(credentialDraft.baseUrl)
       });
       setCredentialDraft((current) => ({ ...current, apiKey: "" }));
-    }, "Credential saved.");
+      await refreshProviderModels(saved.provider, false);
+    }, "密钥已加密保存。");
+  };
+
+  const refreshProviderModels = async (
+    provider: ProviderId,
+    showNotice = true
+  ): Promise<void> => {
+    const result = await window.wenforge.providerModels.list(provider);
+    setProviderModels((current) => upsertProviderModels(current, result));
+    if (showNotice) {
+      setNotice(
+        result.status === "passed"
+          ? `已刷新 ${PROVIDER_LABELS[provider]} 可用模型。`
+          : `模型列表刷新失败：${result.error ?? "未知错误"}`
+      );
+    }
   };
 
   const confirmSmokeCost = (): boolean =>
@@ -418,18 +440,17 @@ export function SettingsPanel(): JSX.Element {
           <p className="text-xs font-medium tracking-[0.16em] text-slate-500">设置</p>
           <h2 className="mt-1 text-xl font-semibold text-white">模型密钥 / 路线 / 预算</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            API Key 在「模型密钥」添加。密钥进入加密凭据库，renderer only sees redacted
-            credential status.
+            API Key 在「模型密钥」添加。密钥进入加密凭据库，界面只显示脱敏状态和可用模型。
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {data.credentials.length === 0 ? (
-            <StatusPill tone="warning">No credentials</StatusPill>
+            <StatusPill tone="warning">未配置密钥</StatusPill>
           ) : null}
           {data.prices.some((price) => stalePriceIds.has(price.id)) ? (
-            <StatusPill tone="warning">Stale prices</StatusPill>
+            <StatusPill tone="warning">价格过期</StatusPill>
           ) : null}
-          <StatusPill tone="neutral">{data.routes.length} routes</StatusPill>
+          <StatusPill tone="neutral">{data.routes.length} 条路线</StatusPill>
         </div>
       </div>
 
@@ -468,12 +489,13 @@ export function SettingsPanel(): JSX.Element {
         key={activeTab}
         transition={{ duration: 0.16 }}
       >
-        {loading ? <EmptyState text="Loading settings..." /> : null}
+        {loading ? <EmptyState text="正在加载设置..." /> : null}
         {!loading && activeTab === "providers" ? (
           <ProvidersTab
             credentialDraft={credentialDraft}
             credentials={data.credentials}
             providerHealth={data.providerHealth}
+            providerModelsByProvider={modelsByProvider}
             smokeByProvider={smokeByProvider}
             providerCheckBudget={providerCheckBudget}
             onCredentialDraftChange={setCredentialDraft}
@@ -497,6 +519,9 @@ export function SettingsPanel(): JSX.Element {
             }}
             onRunProviderSmoke={(provider) => {
               void runProviderSmoke(provider);
+            }}
+            onRefreshProviderModels={(provider) => {
+              void refreshProviderModels(provider);
             }}
             onProviderCheckBudgetChange={setProviderCheckBudget}
           />
@@ -569,6 +594,7 @@ function ProvidersTab({
   credentialDraft,
   credentials,
   providerHealth,
+  providerModelsByProvider,
   smokeByProvider,
   providerCheckBudget,
   onCredentialDraftChange,
@@ -577,6 +603,7 @@ function ProvidersTab({
   onTestCredential,
   onRunAllProviderSmoke,
   onRunProviderSmoke,
+  onRefreshProviderModels,
   onProviderCheckBudgetChange
 }: {
   credentialDraft: {
@@ -587,6 +614,7 @@ function ProvidersTab({
   };
   credentials: ProviderCredentialDto[];
   providerHealth: ProviderHealthRecord[];
+  providerModelsByProvider: Map<ProviderId, ProviderModelListResult>;
   smokeByProvider: Map<ProviderId, ProviderSmokeResult>;
   providerCheckBudget: string;
   onCredentialDraftChange: (draft: typeof credentialDraft) => void;
@@ -595,14 +623,15 @@ function ProvidersTab({
   onTestCredential: (credential: ProviderCredentialDto) => void;
   onRunAllProviderSmoke: () => void;
   onRunProviderSmoke: (provider: ProviderId) => void;
+  onRefreshProviderModels: (provider: ProviderId) => void;
   onProviderCheckBudgetChange: (value: string) => void;
 }): JSX.Element {
   return (
-    <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+    <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
-        <SectionTitle title="Save Credential" />
+        <SectionTitle title="添加 API Key" />
         <div className="mt-4 space-y-3">
-          <FieldLabel label="Provider">
+          <FieldLabel label="提供商">
             <select
               className={fieldClassName}
               value={credentialDraft.provider}
@@ -622,7 +651,7 @@ function ProvidersTab({
               ))}
             </select>
           </FieldLabel>
-          <FieldLabel label="Display name">
+          <FieldLabel label="显示名称">
             <input
               className={fieldClassName}
               value={credentialDraft.displayName}
@@ -641,7 +670,7 @@ function ProvidersTab({
               }
             />
           </FieldLabel>
-          <FieldLabel label="API key">
+          <FieldLabel label="API Key">
             <input
               className={fieldClassName}
               type="password"
@@ -657,13 +686,13 @@ function ProvidersTab({
             onClick={() => void onSaveCredential()}
             type="button"
           >
-            Save encrypted credential
+            加密保存
           </button>
         </div>
       </section>
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
         <div className="flex items-center justify-between gap-3">
-          <SectionTitle title="Configured Providers" />
+          <SectionTitle title="已保存密钥" />
           <div className="flex flex-wrap items-center gap-2">
             <input
               aria-label="Provider check budget cap"
@@ -677,69 +706,111 @@ function ProvidersTab({
               onClick={onRunAllProviderSmoke}
               type="button"
             >
-              Check all configured providers
+              全部检查
             </button>
           </div>
         </div>
-        <div className="mt-4 overflow-hidden rounded-lg border border-white/10">
-          {credentials.length === 0 ? <EmptyState text="No provider credentials saved." /> : null}
+        <div className="mt-4 grid gap-3">
+          {credentials.length === 0 ? <EmptyState text="还没有保存模型密钥。" /> : null}
           {credentials.map((credential) => {
             const smoke = smokeByProvider.get(credential.provider);
             const health = providerHealth.find((item) => item.provider === credential.provider);
+            const modelList = providerModelsByProvider.get(credential.provider);
+            const status = smoke?.status ?? health?.status ?? credential.lastStatus;
             return (
-              <div
-                className="grid gap-3 border-b border-white/10 px-3 py-3 last:border-b-0 md:grid-cols-[1fr_auto]"
+              <article
+                className="rounded-lg border border-white/10 bg-black/20 p-3"
                 key={credential.id}
               >
-                <div>
-                  <p className="text-sm font-medium text-white">{credential.displayName}</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {PROVIDER_LABELS[credential.provider]} · {credential.redactedKeyLabel}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {credential.baseUrl ?? "Default provider endpoint"} · {credential.lastStatus}
-                  </p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium text-white">{credential.displayName}</p>
+                      <StatusPill tone={status === "passed" || status === "healthy" ? "success" : "neutral"}>
+                        {formatProviderStatus(status)}
+                      </StatusPill>
+                    </div>
+                    <p className="mt-1 truncate text-xs text-slate-500">
+                      {PROVIDER_LABELS[credential.provider]} · {credential.redactedKeyLabel} ·{" "}
+                      {credential.baseUrl ? "自定义端点" : "默认端点"}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      className={secondaryButtonClassName}
+                      onClick={() => onRefreshProviderModels(credential.provider)}
+                      type="button"
+                    >
+                      刷新模型
+                    </button>
+                    <button
+                      className={secondaryButtonClassName}
+                      onClick={() => onRunProviderSmoke(credential.provider)}
+                      type="button"
+                    >
+                      检查连接
+                    </button>
+                    <button
+                      className="rounded-lg border border-red-400/25 px-3 py-2 text-xs text-red-200 transition hover:bg-red-400/10"
+                      onClick={() => onDeleteCredential(credential)}
+                      type="button"
+                    >
+                      删除
+                    </button>
+                  </div>
+                </div>
+
+                {modelList ? (
+                  <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.025] p-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-slate-400">
+                        可用模型：{modelList.models.length} 个
+                      </p>
+                      <span className="text-xs text-slate-500">
+                        {modelList.fetchedAt ? new Date(modelList.fetchedAt).toLocaleString() : ""}
+                      </span>
+                    </div>
+                    {modelList.error ? (
+                      <p className="mt-2 text-xs text-red-200">{modelList.error}</p>
+                    ) : (
+                      <div className="mt-2 flex max-h-20 flex-wrap gap-1 overflow-auto">
+                        {modelList.models.slice(0, 40).map((model) => (
+                          <span
+                            className="rounded-full border border-forge-blue/20 bg-forge-blue/8 px-2 py-0.5 text-[11px] text-forge-blue"
+                            key={model.id}
+                          >
+                            {model.id}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs text-slate-500">详细状态</summary>
                   <div className="mt-2 grid gap-1 text-xs text-slate-500 sm:grid-cols-2">
-                    <span>
-                      Last tested: {smoke?.testedAt ?? credential.lastTestedAt ?? "Never"}
-                    </span>
-                    <span>Status: {smoke?.status ?? health?.status ?? credential.lastStatus}</span>
-                    <span>Streaming: {smoke ? yesNo(smoke.streamingSupported) : "Unknown"}</span>
-                    <span>Usage: {smoke ? yesNo(smoke.usageParsed) : "Unknown"}</span>
-                    <span>Latency: {formatLatency(smoke?.latencyMs ?? null)}</span>
-                    <span>Estimated cost: {formatUsd(smoke?.estimatedCost ?? null)}</span>
-                    <span>Final cost: {formatUsd(smoke?.finalCost ?? null)}</span>
+                    <span>上次检查：{smoke?.testedAt ?? credential.lastTestedAt ?? "未检查"}</span>
+                    <span>流式：{smoke ? yesNo(smoke.streamingSupported) : "未知"}</span>
+                    <span>Usage：{smoke ? yesNo(smoke.usageParsed) : "未知"}</span>
+                    <span>延迟：{formatLatency(smoke?.latencyMs ?? null)}</span>
+                    <span>预估成本：{formatUsd(smoke?.estimatedCost ?? null)}</span>
+                    <span>最终成本：{formatUsd(smoke?.finalCost ?? null)}</span>
                   </div>
                   {(smoke?.error ?? health?.errorMessage) ? (
                     <p className="mt-2 rounded-md border border-red-400/20 bg-red-400/5 px-2 py-1 text-xs text-red-200">
                       {smoke?.error ?? health?.errorMessage}
                     </p>
                   ) : null}
-                </div>
-                <div className="flex flex-wrap items-center gap-2 md:justify-end">
                   <button
-                    className={secondaryButtonClassName}
+                    className={`${secondaryButtonClassName} mt-2`}
                     onClick={() => onTestCredential(credential)}
                     type="button"
                   >
-                    Test status
+                    本地状态
                   </button>
-                  <button
-                    className={secondaryButtonClassName}
-                    onClick={() => onRunProviderSmoke(credential.provider)}
-                    type="button"
-                  >
-                    Check provider connection
-                  </button>
-                  <button
-                    className="rounded-lg border border-red-400/25 px-3 py-2 text-xs text-red-200 transition hover:bg-red-400/10"
-                    onClick={() => onDeleteCredential(credential)}
-                    type="button"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
+                </details>
+              </article>
             );
           })}
         </div>
@@ -1048,104 +1119,116 @@ function RoutingTab({
       TASK_TYPES.indexOf(left.taskType) - TASK_TYPES.indexOf(right.taskType) ||
       QUALITY_MODES.indexOf(left.qualityMode) - QUALITY_MODES.indexOf(right.qualityMode)
   );
+  const primaryRoutes = sortedRoutes.filter((route) => route.qualityMode === "premium_webnovel");
+  const advancedRoutes = sortedRoutes.filter((route) => route.qualityMode !== "premium_webnovel");
+  const renderRoute = (route: TaskRouteRecord): JSX.Element => {
+    const profile = profileById.get(route.primaryModelProfileId) ?? null;
+    const fallbackModels = [route.fallbackModelProfileId1, route.fallbackModelProfileId2]
+      .map((id) => (id ? profileById.get(id) ?? null : null))
+      .filter((item): item is ModelProfileRecord => Boolean(item));
+    const multiModel = route.qualityMode === "premium_webnovel" && fallbackModels.length > 0;
+    const warnings = getRouteWarnings({
+      configuredProviders,
+      priceKeys,
+      profile,
+      staleKeys
+    });
+    return (
+      <div
+        className="grid gap-3 border-b border-white/10 px-3 py-3 text-sm last:border-b-0 lg:grid-cols-[150px_1fr_92px_108px_auto]"
+        key={route.id}
+      >
+        <div>
+          <p className="font-medium text-white">{TASK_LABELS[route.taskType]}</p>
+          <p className="mt-1 text-xs text-slate-500">{QUALITY_LABELS[route.qualityMode]}</p>
+        </div>
+        <select
+          className={fieldClassName}
+          value={route.primaryModelProfileId}
+          onChange={(event) =>
+            void onUpdateRoute(route, { primaryModelProfileId: event.target.value })
+          }
+        >
+          {profiles.map((modelProfile) => (
+            <option key={modelProfile.id} value={modelProfile.id}>
+              {PROVIDER_LABELS[modelProfile.provider]} · {modelProfile.displayName}
+            </option>
+          ))}
+        </select>
+        <input
+          className={fieldClassName}
+          defaultValue={String(route.temperature)}
+          inputMode="decimal"
+          onBlur={(event) => {
+            const temperature = Number(event.target.value);
+            if (!Number.isNaN(temperature)) {
+              void onUpdateRoute(route, { temperature });
+            }
+          }}
+        />
+        <input
+          className={fieldClassName}
+          defaultValue={String(route.maxOutputTokens)}
+          inputMode="numeric"
+          onBlur={(event) => {
+            const maxOutputTokens = Number.parseInt(event.target.value, 10);
+            if (Number.isFinite(maxOutputTokens) && maxOutputTokens > 0) {
+              void onUpdateRoute(route, { maxOutputTokens });
+            }
+          }}
+        />
+        <div className="flex flex-wrap items-center gap-1">
+          {warnings.length === 0 ? <StatusPill tone="success">就绪</StatusPill> : null}
+          {warnings.map((warning) => (
+            <StatusPill key={warning} tone="warning">
+              {warning}
+            </StatusPill>
+          ))}
+          {multiModel ? <StatusPill tone="neutral">多模型</StatusPill> : null}
+          <ToggleButton
+            active={route.enabled}
+            label={route.enabled ? "启用" : "停用"}
+            onClick={() => void onUpdateRoute(route, { enabled: !route.enabled })}
+          />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
       <section className="rounded-xl border border-forge-violet/25 bg-forge-violet/10 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <SectionTitle title="Premium Webnovel Preset" />
+            <SectionTitle title="网文高级路线" />
             <p className="mt-1 text-sm text-slate-400">
-              Multi-model tasks show GPT/Claude director cross-checks, DeepSeek aggregation, and
-              Qwen/Kimi market-fit review with additional cost warnings.
+              默认只显示生成正文会用到的高级路线。其他经济/均衡路线收进下方高级区。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className={primaryButtonClassName} onClick={onApplyPremiumPreset} type="button">
-              Premium Webnovel
+              应用高级预设
             </button>
             <button className={secondaryButtonClassName} onClick={onExportPreset} type="button">
-              Export preset
+              导出
             </button>
             <button className={secondaryButtonClassName} onClick={onImportPreset} type="button">
-              Import preset
+              导入
             </button>
           </div>
         </div>
       </section>
       <div className="overflow-hidden rounded-xl border border-white/10">
-        {sortedRoutes.map((route) => {
-        const profile = profileById.get(route.primaryModelProfileId) ?? null;
-        const fallbackModels = [route.fallbackModelProfileId1, route.fallbackModelProfileId2]
-          .map((id) => (id ? profileById.get(id) ?? null : null))
-          .filter((item): item is ModelProfileRecord => Boolean(item));
-        const multiModel = route.qualityMode === "premium_webnovel" && fallbackModels.length > 0;
-        const warnings = getRouteWarnings({
-          configuredProviders,
-          priceKeys,
-          profile,
-          staleKeys
-        });
-        return (
-          <div
-            className="grid grid-cols-[170px_92px_1fr_94px_116px_170px_90px] items-center gap-3 border-b border-white/10 px-3 py-3 text-sm last:border-b-0"
-            key={route.id}
-          >
-            <span className="font-medium text-white">{TASK_LABELS[route.taskType]}</span>
-            <span className="text-slate-400">{QUALITY_LABELS[route.qualityMode]}</span>
-            <select
-              className={fieldClassName}
-              value={route.primaryModelProfileId}
-              onChange={(event) =>
-                void onUpdateRoute(route, { primaryModelProfileId: event.target.value })
-              }
-            >
-              {profiles.map((modelProfile) => (
-                <option key={modelProfile.id} value={modelProfile.id}>
-                  {PROVIDER_LABELS[modelProfile.provider]} · {modelProfile.displayName}
-                </option>
-              ))}
-            </select>
-            <input
-              className={fieldClassName}
-              defaultValue={String(route.temperature)}
-              inputMode="decimal"
-              onBlur={(event) => {
-                const temperature = Number(event.target.value);
-                if (!Number.isNaN(temperature)) {
-                  void onUpdateRoute(route, { temperature });
-                }
-              }}
-            />
-            <input
-              className={fieldClassName}
-              defaultValue={String(route.maxOutputTokens)}
-              inputMode="numeric"
-              onBlur={(event) => {
-                const maxOutputTokens = Number.parseInt(event.target.value, 10);
-                if (Number.isFinite(maxOutputTokens) && maxOutputTokens > 0) {
-                  void onUpdateRoute(route, { maxOutputTokens });
-                }
-              }}
-            />
-            <div className="flex flex-wrap gap-1">
-              {warnings.length === 0 ? <StatusPill tone="success">Ready</StatusPill> : null}
-              {warnings.map((warning) => (
-                <StatusPill key={warning} tone="warning">
-                  {warning}
-                </StatusPill>
-              ))}
-              {multiModel ? <StatusPill tone="neutral">multi-model cost</StatusPill> : null}
-            </div>
-            <ToggleButton
-              active={route.enabled}
-              label={route.enabled ? "Enabled" : "Disabled"}
-              onClick={() => void onUpdateRoute(route, { enabled: !route.enabled })}
-            />
-          </div>
-        );
-        })}
+        {primaryRoutes.map(renderRoute)}
       </div>
+      <details className="rounded-xl border border-white/10 bg-black/20 p-3">
+        <summary className="cursor-pointer text-sm text-slate-300">
+          高级路线配置（{advancedRoutes.length}）
+        </summary>
+        <div className="mt-3 overflow-hidden rounded-lg border border-white/10">
+          {advancedRoutes.map(renderRoute)}
+        </div>
+      </details>
     </div>
   );
 }
@@ -1766,11 +1849,11 @@ function TableHeader({ columns }: { columns: string }): JSX.Element {
       className={`grid ${columns} gap-3 bg-white/[0.035] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-500`}
     >
       <span>Provider</span>
-      <span>Model</span>
-      <span>Context</span>
-      <span>Output</span>
-      <span>Caps</span>
-      <span>Status</span>
+      <span>模型</span>
+      <span>上下文</span>
+      <span>输出</span>
+      <span>能力</span>
+      <span>状态</span>
     </div>
   );
 }
@@ -1787,18 +1870,18 @@ function getRouteWarnings({
   staleKeys: Set<string>;
 }): string[] {
   if (!profile) {
-    return ["missing model"];
+    return ["缺模型"];
   }
   const key = priceKey(profile);
   const warnings: string[] = [];
   if (!configuredProviders.has(profile.provider)) {
-    warnings.push("credential");
+    warnings.push("缺密钥");
   }
   if (!priceKeys.has(key)) {
-    warnings.push("price");
+    warnings.push("缺价格");
   }
   if (staleKeys.has(key)) {
-    warnings.push("stale");
+    warnings.push("价格旧");
   }
   return warnings;
 }
@@ -1825,16 +1908,46 @@ function mergeSmokeResults(
   return [...byProvider.values()];
 }
 
+function upsertProviderModels(
+  current: ProviderModelListResult[],
+  result: ProviderModelListResult
+): ProviderModelListResult[] {
+  const byProvider = new Map(current.map((item) => [item.provider, item]));
+  byProvider.set(result.provider, result);
+  return [...byProvider.values()];
+}
+
 function yesNo(value: boolean): string {
-  return value ? "Yes" : "No";
+  return value ? "是" : "否";
 }
 
 function formatLatency(value: number | null): string {
-  return typeof value === "number" ? `${value} ms` : "Unknown";
+  return typeof value === "number" ? `${value} ms` : "未知";
 }
 
 function formatUsd(value: number | null): string {
-  return typeof value === "number" ? `$${value.toFixed(6)}` : "Unknown";
+  return typeof value === "number" ? `$${value.toFixed(6)}` : "未知";
+}
+
+function formatProviderStatus(status: string): string {
+  switch (status) {
+    case "passed":
+    case "test_passed":
+    case "healthy":
+      return "可用";
+    case "failed":
+    case "test_failed":
+    case "down":
+      return "失败";
+    case "configured":
+      return "已保存";
+    case "degraded":
+      return "不稳定";
+    case "skipped":
+      return "未检查";
+    default:
+      return "未知";
+  }
 }
 
 function isStaleDate(effectiveDate: string, staleAfterDays: number): boolean {

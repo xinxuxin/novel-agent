@@ -50,6 +50,15 @@ export const normalizedProviderResponseSchema = z.object({
 });
 export type NormalizedProviderResponse = z.infer<typeof normalizedProviderResponseSchema>;
 
+export const providerModelInfoSchema = z.object({
+  id: z.string(),
+  displayName: z.string().nullable().optional(),
+  ownedBy: z.string().nullable().optional(),
+  contextWindow: z.number().nullable().optional(),
+  supportsGeneration: z.boolean().optional()
+});
+export type ProviderModelInfo = z.infer<typeof providerModelInfoSchema>;
+
 export const streamRunOptionsSchema = z.object({
   storeFullPrompts: z.boolean().optional(),
   storeFullResponses: z.boolean().optional(),

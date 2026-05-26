@@ -93,4 +93,4 @@ The check layer adds stricter bring-up limits:
 
 The optional E2E provider chapter check also uses the normal gateway for every model node. It stops before canonical manuscript updates and story bible mutations, and reports only IDs/counts, costs, provider/model metadata, and redacted errors.
 
-Anthropic and Gemini remain safe `provider_not_implemented` adapters until reliable provider-specific support is added.
+Provider settings can now list models through the main process for OpenAI-compatible providers, Anthropic, and Gemini. Smoke checks use the listed models to avoid calling unavailable placeholder aliases.

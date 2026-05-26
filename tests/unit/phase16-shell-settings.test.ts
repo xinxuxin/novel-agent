@@ -17,7 +17,8 @@ describe("phase 16 shell and settings clarity", () => {
     expect(settingsSource).toContain("API Key");
     expect(settingsSource).toContain("加密凭据库");
     expect(settingsSource).toContain("redacted");
-    expect(settingsSource).toContain("credential status");
+    expect(settingsSource).toContain("可用模型");
+    expect(settingsSource).toContain("本地状态");
     expect(settingsSource).not.toContain("plaintext API key");
   });
 });

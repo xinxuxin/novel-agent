@@ -34,13 +34,14 @@ Real provider connectivity checks are opt-in.
 - Confirm `.env.local` exists for local CLI tests.
 - In the app UI, save an encrypted credential and confirm the provider-check warning.
 
-### Provider Not Implemented
+### Provider Connectivity Or Model List Fails
 
-Some provider-specific adapters are still intentionally stubbed.
+Provider checks use the encrypted credential, the configured base URL, and the model IDs returned by the provider model-list endpoint when available.
 
-- Anthropic and Gemini currently return `provider_not_implemented`.
-- Use OpenAI-compatible providers where supported.
-- Do not add guessed endpoints; implement provider-specific adapters only with reliable docs/tests.
+- Refresh the model list after saving a key.
+- Choose a listed generation model instead of an editable placeholder alias.
+- For custom endpoints, verify the base URL points to the provider API root.
+- Do not add guessed endpoints; provider-specific adapters should follow reliable provider docs and tests.
 
 ### Context Length Exceeded
 

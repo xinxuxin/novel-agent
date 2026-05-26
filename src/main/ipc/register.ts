@@ -31,6 +31,7 @@ import {
 } from "@main/providers/premium-webnovel-preset";
 import { ProviderSmokeService } from "@main/providers/provider-smoke-service";
 import { readLatestProviderCheckReport } from "@main/providers/provider-check-service";
+import { ProviderModelCatalogService } from "@main/providers/provider-model-catalog-service";
 import { ReviewSettlementService } from "@main/review/review-settlement-service";
 import { ChapterWorkflowRuntime } from "@main/workflows/chapter-workflow-runtime";
 import { CrossCheckService } from "@main/workflows/cross-check-service";
@@ -196,8 +197,13 @@ function registerDataIpc(
       ? new ProviderSmokeService({
           repositories,
           aiGateway,
-          adapters: providerAdapters
+          adapters: providerAdapters,
+          ...(credentialService ? { credentialService } : {})
         })
+      : null;
+  const providerModelCatalogService =
+    credentialService && providerAdapters.length > 0
+      ? new ProviderModelCatalogService(credentialService, providerAdapters)
       : null;
   const providerChapterCheckService =
     aiGateway && database
@@ -601,6 +607,15 @@ function registerDataIpc(
       request as Parameters<typeof repositories.modelProfiles.upsert>[0]
     )
   );
+  registerIpcContract(IPC_CONTRACTS.providerModels.list, (request) => {
+    if (!providerModelCatalogService) {
+      throw new SafeIpcError(
+        "PROVIDER_MODELS_UNAVAILABLE",
+        "Provider model catalog is unavailable"
+      );
+    }
+    return providerModelCatalogService.listModels(request.provider);
+  });
   registerIpcContract(IPC_CONTRACTS.modelPrices.list, () => repositories.modelPrices.list());
   registerIpcContract(IPC_CONTRACTS.modelPrices.upsert, (request) =>
     repositories.modelPrices.upsert(

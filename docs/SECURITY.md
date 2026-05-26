@@ -113,7 +113,7 @@ Phase 4 adds a main-process-only AI gateway:
 - `llm_runs` are created before the adapter is called.
 - Full prompts and responses are not written to `llm_runs`; hashes are stored instead.
 - Provider errors are normalized to safe `code` and `message` fields.
-- Anthropic and Gemini remain explicit `not_implemented` stubs until reliable provider-specific adapters are added.
+- Anthropic and Gemini provider-specific REST adapters run in the main process only and keep decrypted credentials out of renderer DTOs.
 
 The Developer Test Generation panel can use the fake local provider without credentials. Real provider runs still require configured encrypted credentials.
 
