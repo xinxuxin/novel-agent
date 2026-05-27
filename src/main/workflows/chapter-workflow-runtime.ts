@@ -213,7 +213,7 @@ export class ChapterWorkflowRuntime {
       payload: { workflowId: CHAPTER_GENERATION_WORKFLOW_ID }
     });
 
-    const state = await this.runNodes(START_TO_GATE_NODES, initialState, "start");
+    const state = await this.runNodes(this.startNodesForState(initialState), initialState, "start");
     return this.toWorkflowRunRecord(state);
   }
 
@@ -362,6 +362,38 @@ export class ChapterWorkflowRuntime {
     return runLangGraphSegment(nodes, state, async (node, current) =>
       this.executeNode(node, current, action)
     );
+  }
+
+  private startNodesForState(state: ChapterWorkflowState): ChapterWorkflowNode[] {
+    const hasAcceptedPlan = Boolean(
+      this.options.repositories.planning.getAcceptedChapterPlan(state.chapterId)
+    );
+    if (state.desiredOutput === "outline") {
+      return ["prepare_context", "retrieve_memory", "generate_chapter_outline", "human_gate"];
+    }
+    if (state.desiredOutput === "scene_cards") {
+      return [
+        "prepare_context",
+        "retrieve_memory",
+        ...(hasAcceptedPlan && !state.sourceOutline
+          ? []
+          : (["generate_chapter_outline"] as ChapterWorkflowNode[])),
+        "generate_scene_cards",
+        "human_gate"
+      ];
+    }
+    if (hasAcceptedPlan && !state.sourceOutline) {
+      return [
+        "prepare_context",
+        "retrieve_memory",
+        "draft_chapter",
+        "continuity_audit",
+        "webnovel_rhythm_audit",
+        "revise_draft",
+        "human_gate"
+      ];
+    }
+    return START_TO_GATE_NODES;
   }
 
   private async executeNode(
@@ -597,12 +629,28 @@ export class ChapterWorkflowRuntime {
 
   private async draftChapter(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
     const outlineLines = outlineBeats(state.sourceOutline);
+    const acceptedPlan = this.options.repositories.planning.getAcceptedChapterPlan(state.chapterId);
+    const acceptedSceneCards =
+      acceptedPlan && !state.sourceOutline ? safeJsonArray(acceptedPlan.sceneCardsJson) : [];
+    const acceptedBeats =
+      acceptedSceneCards.length > 0
+        ? acceptedSceneCards
+        : acceptedPlan && !state.sourceOutline
+          ? [
+              acceptedPlan.openingHook,
+              acceptedPlan.mainConflict,
+              acceptedPlan.conflictEscalation,
+              acceptedPlan.payoff,
+              acceptedPlan.endingHook
+            ].filter((value): value is string => Boolean(value))
+          : [];
+    const plannedLines = outlineLines.length > 0 ? outlineLines : acceptedBeats;
     const draft =
-      outlineLines.length > 0
+      plannedLines.length > 0
         ? [
-            "雨声压低了整座城市的呼吸。",
+            acceptedPlan?.openingHook ?? "雨声压低了整座城市的呼吸。",
             "",
-            ...outlineLines.flatMap((beat, index) => [
+            ...plannedLines.flatMap((beat, index) => [
               `第${index + 1}场，${beat}`,
               "沈照没有立刻相信自己的判断。他先看见水光里的倒影乱了一拍，才听见那道像从钟楼深处拖出来的倒计时。",
               "危险没有解释自己的来处，只把他一步步推向更窄的选择。"
@@ -610,9 +658,10 @@ export class ChapterWorkflowRuntime {
             "",
             state.allowStoryChanges
               ? "他可以接受 agent 对桥段的强化，但主线仍被那枚失踪案编号牢牢钉住。"
-              : "他不能偏离大纲指定的主线，因为每一个名字和编号都可能在后文兑现。",
+              : "他不能偏离已确认细纲，因为每一个名字和编号都可能在后文兑现。",
             "",
-            "章末，门后的声音贴着锁孔响起，准确说出了母亲旧案日期。雾灯在同一秒闪了一下，墙上只剩那个失踪案编号。"
+            acceptedPlan?.endingHook ??
+              "章末，门后的声音贴着锁孔响起，准确说出了母亲旧案日期。雾灯在同一秒闪了一下，墙上只剩那个失踪案编号。"
           ].join("\n\n")
         : [
             "雨从钟楼背面的檐角连成线，落在沈照肩上时，像一只只冰冷的手。",
@@ -924,7 +973,18 @@ export class ChapterWorkflowRuntime {
       return [{ role: "user", content: fallbackContent }];
     }
     try {
-    const assemblyInput = {
+      const acceptedPlan = this.options.repositories.planning.getAcceptedChapterPlan(
+        state.chapterId
+      );
+      const acceptedSceneCards =
+        state.sceneCards.length > 0
+          ? state.sceneCards
+          : acceptedPlan
+            ? safeJsonArray(acceptedPlan.sceneCardsJson).map((item) =>
+                typeof item === "string" ? { beat: item } : { value: item }
+              )
+            : [];
+      const assemblyInput = {
         templateId,
         privacy: { ...this.privacy, allowPromptPreview: false },
         variables: {
@@ -951,7 +1011,7 @@ export class ChapterWorkflowRuntime {
             null,
             2
           ),
-          sceneCards: JSON.stringify(state.sceneCards, null, 2)
+          sceneCards: JSON.stringify(acceptedSceneCards, null, 2)
         }
       };
       return this.promptAssembly.assemble(

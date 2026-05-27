@@ -114,6 +114,59 @@ create table if not exists outline_versions (
 );
 create index if not exists outline_versions_book_idx on outline_versions(book_id);
 
+create table if not exists material_digests (
+  id text primary key,
+  book_id text not null references books(id) on delete cascade,
+  intake_session_id text,
+  outline_version_id text,
+  source_summary_json text not null,
+  digest_json text not null,
+  missing_information_json text not null default '[]',
+  ambiguity_warnings_json text not null default '[]',
+  warnings_json text not null default '[]',
+  accepted_at text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists material_digests_book_idx on material_digests(book_id);
+
+create table if not exists intake_sessions (
+  id text primary key,
+  project_id text not null references projects(id) on delete cascade,
+  book_id text references books(id) on delete set null,
+  title text not null,
+  status text not null default 'draft',
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists intake_sessions_project_idx on intake_sessions(project_id);
+create index if not exists intake_sessions_book_idx on intake_sessions(book_id);
+
+create table if not exists intake_messages (
+  id text primary key,
+  session_id text not null references intake_sessions(id) on delete cascade,
+  role text not null,
+  content text not null,
+  linked_artifact_id text,
+  created_at text not null
+);
+create index if not exists intake_messages_session_idx on intake_messages(session_id);
+
+create table if not exists intake_artifacts (
+  id text primary key,
+  session_id text not null references intake_sessions(id) on delete cascade,
+  artifact_type text not null,
+  title text not null,
+  content_json text not null,
+  content_markdown text not null default '',
+  status text not null default 'proposed',
+  source_message_ids_json text not null default '[]',
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists intake_artifacts_session_idx on intake_artifacts(session_id);
+create index if not exists intake_artifacts_status_idx on intake_artifacts(status);
+
 create table if not exists volume_plans (
   id text primary key,
   book_id text not null references books(id) on delete cascade,
@@ -141,15 +194,28 @@ create table if not exists chapter_plans (
   target_words integer not null default 3000,
   min_words integer,
   max_words integer,
+  word_count_priority text not null default 'normal',
+  chapter_summary text,
   chapter_promise text,
   opening_hook text,
   main_conflict text,
+  conflict_escalation text,
+  key_events_json text not null default '[]',
+  scene_cards_json text not null default '[]',
   emotional_turn text,
   payoff text,
   ending_hook text,
   continuity_dependencies_json text not null default '[]',
+  characters_involved_json text not null default '[]',
+  story_bible_facts_used_json text not null default '[]',
+  foreshadowing_seeded_json text not null default '[]',
+  foreshadowing_resolved_json text not null default '[]',
+  unresolved_hooks_carried_forward_json text not null default '[]',
   user_notes text,
+  risk_notes text,
   status text not null default 'draft',
+  accepted_at text,
+  accepted_by text,
   created_at text not null,
   updated_at text not null
 );
@@ -174,6 +240,19 @@ create table if not exists plan_edit_proposals (
   updated_at text not null
 );
 create index if not exists plan_edit_proposals_book_idx on plan_edit_proposals(book_id);
+
+create table if not exists chapter_generation_queue (
+  id text primary key,
+  book_id text not null references books(id) on delete cascade,
+  generation_run_id text,
+  chapter_ids_json text not null default '[]',
+  status text not null default 'queued',
+  current_chapter_id text,
+  options_json text not null default '{}',
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists chapter_generation_queue_book_idx on chapter_generation_queue(book_id);
 
 create table if not exists manuscript_versions (
   id text primary key,
@@ -937,22 +1016,27 @@ function ensureColumns(sqlite: SqliteDatabase): void {
     "supports_frequency_penalty",
     "integer not null default 0"
   );
+  ensureColumn(sqlite, "model_profiles", "supports_presence_penalty", "integer not null default 0");
+  ensureColumn(sqlite, "model_profiles", "supports_stop", "integer not null default 1");
+  ensureColumn(sqlite, "model_profiles", "supports_reasoning_effort", "integer not null default 0");
   ensureColumn(
     sqlite,
     "model_profiles",
-    "supports_presence_penalty",
+    "supports_adaptive_thinking",
     "integer not null default 0"
   );
-  ensureColumn(sqlite, "model_profiles", "supports_stop", "integer not null default 1");
-  ensureColumn(sqlite, "model_profiles", "supports_reasoning_effort", "integer not null default 0");
-  ensureColumn(sqlite, "model_profiles", "supports_adaptive_thinking", "integer not null default 0");
   ensureColumn(
     sqlite,
     "model_profiles",
     "supports_manual_thinking_budget",
     "integer not null default 0"
   );
-  ensureColumn(sqlite, "model_profiles", "max_output_param_name", "text not null default 'max_tokens'");
+  ensureColumn(
+    sqlite,
+    "model_profiles",
+    "max_output_param_name",
+    "text not null default 'max_tokens'"
+  );
   ensureColumn(
     sqlite,
     "model_profiles",
@@ -969,6 +1053,46 @@ function ensureColumns(sqlite: SqliteDatabase): void {
   ensureColumn(sqlite, "chapters", "lock_word_count", "integer not null default 0");
   ensureColumn(sqlite, "chapters", "word_count_priority", "text not null default 'normal'");
 
+  ensureColumn(sqlite, "material_digests", "intake_session_id", "text");
+  ensureColumn(
+    sqlite,
+    "material_digests",
+    "missing_information_json",
+    "text not null default '[]'"
+  );
+  ensureColumn(sqlite, "material_digests", "ambiguity_warnings_json", "text not null default '[]'");
+  ensureColumn(sqlite, "material_digests", "accepted_at", "text");
+  ensureColumn(sqlite, "material_digests", "updated_at", "text");
+
+  ensureColumn(sqlite, "chapter_plans", "word_count_priority", "text not null default 'normal'");
+  ensureColumn(sqlite, "chapter_plans", "chapter_summary", "text");
+  ensureColumn(sqlite, "chapter_plans", "conflict_escalation", "text");
+  ensureColumn(sqlite, "chapter_plans", "key_events_json", "text not null default '[]'");
+  ensureColumn(sqlite, "chapter_plans", "scene_cards_json", "text not null default '[]'");
+  ensureColumn(sqlite, "chapter_plans", "characters_involved_json", "text not null default '[]'");
+  ensureColumn(
+    sqlite,
+    "chapter_plans",
+    "story_bible_facts_used_json",
+    "text not null default '[]'"
+  );
+  ensureColumn(sqlite, "chapter_plans", "foreshadowing_seeded_json", "text not null default '[]'");
+  ensureColumn(
+    sqlite,
+    "chapter_plans",
+    "foreshadowing_resolved_json",
+    "text not null default '[]'"
+  );
+  ensureColumn(
+    sqlite,
+    "chapter_plans",
+    "unresolved_hooks_carried_forward_json",
+    "text not null default '[]'"
+  );
+  ensureColumn(sqlite, "chapter_plans", "risk_notes", "text");
+  ensureColumn(sqlite, "chapter_plans", "accepted_at", "text");
+  ensureColumn(sqlite, "chapter_plans", "accepted_by", "text");
+
   ensureColumn(sqlite, "scenes", "target_words", "integer");
   ensureColumn(sqlite, "scenes", "beat_list_json", "text not null default '[]'");
   ensureColumn(sqlite, "scenes", "user_notes", "text");
@@ -981,8 +1105,18 @@ function ensureColumns(sqlite: SqliteDatabase): void {
   ensureColumn(sqlite, "task_model_routes", "fallback_model_profile_id_1", "text");
   ensureColumn(sqlite, "task_model_routes", "fallback_model_profile_id_2", "text");
   ensureColumn(sqlite, "task_model_routes", "temperature", "real not null default 0.7");
-  ensureColumn(sqlite, "task_model_routes", "creativity_intent", "text not null default 'balanced'");
-  ensureColumn(sqlite, "task_model_routes", "context_budget_mode", "text not null default 'max_safe'");
+  ensureColumn(
+    sqlite,
+    "task_model_routes",
+    "creativity_intent",
+    "text not null default 'balanced'"
+  );
+  ensureColumn(
+    sqlite,
+    "task_model_routes",
+    "context_budget_mode",
+    "text not null default 'max_safe'"
+  );
   ensureColumn(sqlite, "task_model_routes", "max_output_tokens", "integer not null default 4000");
   ensureColumn(sqlite, "task_model_routes", "budget_cap_per_call", "real");
   ensureTaskRouteTableShape(sqlite);

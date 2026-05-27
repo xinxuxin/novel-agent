@@ -161,6 +161,53 @@ describe("chapter_generation_v1 workflow runtime", () => {
     );
   });
 
+  it("drafts from an accepted chapter plan without regenerating outline or scene cards", async () => {
+    const { repositories, runtime, project, book, volume, chapter } = createWorkflowFixture();
+    repositories.planning.upsertChapterPlan({
+      bookId: book.id,
+      volumeId: volume.id,
+      chapterId: chapter.id,
+      chapterIndex: chapter.chapterIndex,
+      title: "钟楼背面确认版",
+      targetWords: 3200,
+      wordCountPriority: "strict",
+      chapterSummary: "沈照进入钟楼背面，确认雾灯异常不是幻觉。",
+      chapterPromise: "确认雾灯与旧案编号有关",
+      openingHook: "雾灯照出不该存在的编号",
+      mainConflict: "是否进入钟楼验证编号来源",
+      conflictEscalation: "门后的脚步声开始模仿沈照",
+      sceneCardsJson: JSON.stringify(["雾灯编号", "脚步声模仿", "门后同声"]),
+      endingHook: "门后的人用沈照的声音说出旧案日期",
+      status: "accepted"
+    });
+
+    const paused = await runtime.startChapterWorkflow({
+      projectId: project.id,
+      bookId: book.id,
+      volumeId: volume.id,
+      chapterId: chapter.id,
+      qualityMode: "balanced",
+      executionMode: "mock",
+      desiredOutput: "draft",
+      confirmed: true
+    });
+
+    const detail = runtime.getRun(paused.id);
+    expect(detail?.artifacts.map((artifact) => artifact.artifactType)).toEqual([
+      "draft",
+      "continuity_audit",
+      "rhythm_audit",
+      "revision"
+    ]);
+    expect(detail?.checkpoints.map((checkpoint) => checkpoint.nodeName)).not.toContain(
+      "generate_chapter_outline"
+    );
+    expect(detail?.artifacts.find((artifact) => artifact.artifactType === "draft")?.contentText).toContain(
+      "雾灯编号"
+    );
+    expect(repositories.manuscripts.getCanonical(chapter.id)?.title).toBe("人工正稿");
+  });
+
   it("resumes after approval, persists settlement proposals, and requires confirmation for canon", async () => {
     const { repositories, runtime, project, book, volume, chapter } = createWorkflowFixture();
     const paused = await runtime.startChapterWorkflow({

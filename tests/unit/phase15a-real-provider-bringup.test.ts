@@ -168,6 +168,9 @@ describe("phase 15a real provider bring-up safety", () => {
     expect(settingsPanel).not.toContain("encryptedSecretBase64");
     expect(settingsPanel).not.toContain("credential.apiKey");
     expect(settingsPanel).toContain("redactedKeyLabel");
+    expect(settingsPanel).toContain("providerSmoke.runAll");
+    expect(settingsPanel).toContain("summarizeSmokeResults");
+    expect(settingsPanel).toContain("checkingProviders");
     expect(ci).not.toContain("providers:smoke");
     expect(ci).not.toContain("RUN_REAL_PROVIDER_TESTS=true");
   });

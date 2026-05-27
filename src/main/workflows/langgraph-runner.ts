@@ -1,5 +1,3 @@
-import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
-
 import type { ChapterWorkflowNode } from "@contracts/workflow";
 
 interface WrappedState<State extends Record<string, unknown>> {
@@ -21,9 +19,17 @@ interface DynamicStateGraphBuilder {
   };
 }
 
-const WrappedStateAnnotation = Annotation.Root({
-  stateJson: Annotation<Record<string, unknown>>()
-});
+interface LangGraphModule {
+  Annotation: {
+    Root(schema: Record<string, unknown>): unknown;
+    <Value>(): unknown;
+  };
+  END: string;
+  START: string;
+  StateGraph: new (annotation: unknown) => DynamicStateGraphBuilder;
+}
+
+const LANGGRAPH_PACKAGE = "@langchain/langgraph";
 
 export async function runLangGraphSegment<State extends Record<string, unknown>>(
   nodes: ChapterWorkflowNode[],
@@ -34,7 +40,13 @@ export async function runLangGraphSegment<State extends Record<string, unknown>>
     return initialState;
   }
 
-  const builder = new StateGraph(WrappedStateAnnotation) as unknown as DynamicStateGraphBuilder;
+  const { Annotation, END, START, StateGraph } = (await import(
+    LANGGRAPH_PACKAGE
+  )) as unknown as LangGraphModule;
+  const wrappedStateAnnotation = Annotation.Root({
+    stateJson: Annotation<Record<string, unknown>>()
+  });
+  const builder = new StateGraph(wrappedStateAnnotation);
   for (const node of nodes) {
     builder.addNode(node, async (wrapped) => ({
       stateJson: await executeNode(node, wrapped.stateJson as State)

@@ -259,7 +259,53 @@ const outlineVersionSchema = z.object({
   isActive: z.boolean(),
   createdAt: z.string()
 });
-const planStatusSchema = z.enum(["draft", "proposed", "accepted", "archived"]);
+const materialDigestSchema = z.object({
+  id: z.string(),
+  bookId: z.string(),
+  intakeSessionId: z.string().nullable(),
+  outlineVersionId: z.string().nullable(),
+  sourceSummaryJson: z.string(),
+  digestJson: z.string(),
+  missingInformationJson: z.string(),
+  ambiguityWarningsJson: z.string(),
+  warningsJson: z.string(),
+  acceptedAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+const planStatusSchema = z.enum(["draft", "proposed", "accepted", "rejected", "archived"]);
+const intakeStatusSchema = z.enum(["draft", "proposed", "accepted", "rejected", "archived"]);
+const intakeMessageRoleSchema = z.enum(["user", "assistant", "system"]);
+const intakeSessionSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  bookId: z.string().nullable(),
+  title: z.string(),
+  status: intakeStatusSchema,
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+const intakeMessageSchema = z.object({
+  id: z.string(),
+  sessionId: z.string(),
+  role: intakeMessageRoleSchema,
+  content: z.string(),
+  linkedArtifactId: z.string().nullable(),
+  createdAt: z.string()
+});
+const intakeArtifactSchema = z.object({
+  id: z.string(),
+  sessionId: z.string(),
+  artifactType: z.string(),
+  title: z.string(),
+  contentJson: z.string(),
+  contentMarkdown: z.string(),
+  status: intakeStatusSchema,
+  sourceMessageIdsJson: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+const wordCountPrioritySchema = z.enum(["loose", "normal", "strict"]);
 const chapterPlanSchema = z.object({
   id: z.string(),
   bookId: z.string(),
@@ -271,15 +317,28 @@ const chapterPlanSchema = z.object({
   targetWords: z.number(),
   minWords: z.number().nullable(),
   maxWords: z.number().nullable(),
+  wordCountPriority: wordCountPrioritySchema,
+  chapterSummary: z.string().nullable(),
   chapterPromise: z.string().nullable(),
   openingHook: z.string().nullable(),
   mainConflict: z.string().nullable(),
+  conflictEscalation: z.string().nullable(),
+  keyEventsJson: z.string(),
+  sceneCardsJson: z.string(),
   emotionalTurn: z.string().nullable(),
   payoff: z.string().nullable(),
   endingHook: z.string().nullable(),
   continuityDependenciesJson: z.string(),
+  charactersInvolvedJson: z.string(),
+  storyBibleFactsUsedJson: z.string(),
+  foreshadowingSeededJson: z.string(),
+  foreshadowingResolvedJson: z.string(),
+  unresolvedHooksCarriedForwardJson: z.string(),
   userNotes: z.string().nullable(),
+  riskNotes: z.string().nullable(),
   status: planStatusSchema,
+  acceptedAt: z.string().nullable(),
+  acceptedBy: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string()
 });
@@ -936,6 +995,72 @@ export const IPC_CONTRACTS = {
     delete: createContract("chapters:delete", confirmedDeleteSchema, z.boolean())
   },
   planning: {
+    intake: {
+      sessions: {
+        list: createContract(
+          "planning:intake-sessions:list",
+          z.object({ projectId: z.string().min(1) }),
+          z.array(intakeSessionSchema)
+        ),
+        create: createContract(
+          "planning:intake-sessions:create",
+          z.object({
+            projectId: z.string().min(1),
+            bookId: z.string().min(1).nullable().optional(),
+            title: z.string().trim().min(1),
+            status: intakeStatusSchema.optional()
+          }),
+          intakeSessionSchema
+        ),
+        setStatus: createContract(
+          "planning:intake-sessions:set-status",
+          z.object({ id: z.string().min(1), status: intakeStatusSchema }),
+          intakeSessionSchema.nullable()
+        )
+      },
+      messages: {
+        list: createContract(
+          "planning:intake-messages:list",
+          z.object({ sessionId: z.string().min(1) }),
+          z.array(intakeMessageSchema)
+        ),
+        add: createContract(
+          "planning:intake-messages:add",
+          z.object({
+            sessionId: z.string().min(1),
+            role: intakeMessageRoleSchema,
+            content: z.string().min(1),
+            linkedArtifactId: z.string().min(1).nullable().optional()
+          }),
+          intakeMessageSchema
+        )
+      },
+      artifacts: {
+        list: createContract(
+          "planning:intake-artifacts:list",
+          z.object({ sessionId: z.string().min(1) }),
+          z.array(intakeArtifactSchema)
+        ),
+        create: createContract(
+          "planning:intake-artifacts:create",
+          z.object({
+            sessionId: z.string().min(1),
+            artifactType: z.string().min(1),
+            title: z.string().trim().min(1),
+            contentJson: z.string().min(1),
+            contentMarkdown: z.string().optional(),
+            status: intakeStatusSchema.optional(),
+            sourceMessageIdsJson: z.string().optional()
+          }),
+          intakeArtifactSchema
+        ),
+        setStatus: createContract(
+          "planning:intake-artifacts:set-status",
+          z.object({ id: z.string().min(1), status: intakeStatusSchema }),
+          intakeArtifactSchema.nullable()
+        )
+      }
+    },
     outlineSources: {
       list: createContract(
         "planning:outline-sources:list",
@@ -981,6 +1106,23 @@ export const IPC_CONTRACTS = {
         outlineVersionSchema.nullable()
       )
     },
+    materialDigests: {
+      list: createContract(
+        "planning:material-digests:list",
+        z.object({ bookId: z.string().min(1) }),
+        z.array(materialDigestSchema)
+      ),
+      latest: createContract(
+        "planning:material-digests:latest",
+        z.object({ bookId: z.string().min(1) }),
+        materialDigestSchema.nullable()
+      ),
+      createFromMaterials: createContract(
+        "planning:material-digests:create-from-materials",
+        z.object({ bookId: z.string().min(1) }),
+        materialDigestSchema
+      )
+    },
     chapterPlans: {
       list: createContract(
         "planning:chapter-plans:list",
@@ -1005,15 +1147,27 @@ export const IPC_CONTRACTS = {
           targetWords: z.number().int().positive().optional(),
           minWords: z.number().int().positive().nullable().optional(),
           maxWords: z.number().int().positive().nullable().optional(),
+          wordCountPriority: wordCountPrioritySchema.optional(),
+          chapterSummary: z.string().nullable().optional(),
           chapterPromise: z.string().nullable().optional(),
           openingHook: z.string().nullable().optional(),
           mainConflict: z.string().nullable().optional(),
+          conflictEscalation: z.string().nullable().optional(),
+          keyEventsJson: z.string().optional(),
+          sceneCardsJson: z.string().optional(),
           emotionalTurn: z.string().nullable().optional(),
           payoff: z.string().nullable().optional(),
           endingHook: z.string().nullable().optional(),
           continuityDependenciesJson: z.string().optional(),
+          charactersInvolvedJson: z.string().optional(),
+          storyBibleFactsUsedJson: z.string().optional(),
+          foreshadowingSeededJson: z.string().optional(),
+          foreshadowingResolvedJson: z.string().optional(),
+          unresolvedHooksCarriedForwardJson: z.string().optional(),
           userNotes: z.string().nullable().optional(),
-          status: planStatusSchema.optional()
+          riskNotes: z.string().nullable().optional(),
+          status: planStatusSchema.optional(),
+          acceptedBy: z.string().nullable().optional()
         }),
         chapterPlanSchema
       )
@@ -1923,11 +2077,7 @@ export const IPC_CONTRACTS = {
     },
     score: {
       human: createContract("eval:score:human", evalHumanScoreRequestSchema, evalScoreSchema),
-      llmJudge: createContract(
-        "eval:score:llm-judge",
-        evalJudgeRequestSchema,
-        evalScoreSchema
-      )
+      llmJudge: createContract("eval:score:llm-judge", evalJudgeRequestSchema, evalScoreSchema)
     },
     leaderboard: createContract(
       "eval:leaderboard",
@@ -2081,11 +2231,22 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.chapters.reorder,
   IPC_CONTRACTS.chapters.setStatus,
   IPC_CONTRACTS.chapters.delete,
+  IPC_CONTRACTS.planning.intake.sessions.list,
+  IPC_CONTRACTS.planning.intake.sessions.create,
+  IPC_CONTRACTS.planning.intake.sessions.setStatus,
+  IPC_CONTRACTS.planning.intake.messages.list,
+  IPC_CONTRACTS.planning.intake.messages.add,
+  IPC_CONTRACTS.planning.intake.artifacts.list,
+  IPC_CONTRACTS.planning.intake.artifacts.create,
+  IPC_CONTRACTS.planning.intake.artifacts.setStatus,
   IPC_CONTRACTS.planning.outlineSources.list,
   IPC_CONTRACTS.planning.outlineSources.create,
   IPC_CONTRACTS.planning.outlineVersions.list,
   IPC_CONTRACTS.planning.outlineVersions.create,
   IPC_CONTRACTS.planning.outlineVersions.setActive,
+  IPC_CONTRACTS.planning.materialDigests.list,
+  IPC_CONTRACTS.planning.materialDigests.latest,
+  IPC_CONTRACTS.planning.materialDigests.createFromMaterials,
   IPC_CONTRACTS.planning.chapterPlans.list,
   IPC_CONTRACTS.planning.chapterPlans.getAccepted,
   IPC_CONTRACTS.planning.chapterPlans.upsert,

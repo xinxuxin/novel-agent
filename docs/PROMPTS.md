@@ -104,3 +104,20 @@ The skill package now includes original WenForge templates for planning and part
 Planning prompts return structured proposals and must preserve canon unless the user explicitly asks for a story change. Selected-text rewrite prompts return replacement text only so the UI can show a clean diff.
 
 Prompt assembly should pass accepted plan fields, target/min/max word counts, selected scope, user instruction, relevant story bible, and privacy-safe context. Prompt previews remain redacted and disabled by default.
+
+## Universal Intake Prompts
+
+Phase 22 adds original WenForge-native intake templates:
+
+- `universal-intake-classify.zh.md`
+- `material-digest-from-anything.zh.md`
+- `auto-complete-missing-settings.zh.md`
+- `creative-directions.zh.md`
+- `intake-chat-response.zh.md`
+- `intake-to-story-bible-proposal.zh.md`
+- `intake-to-volume-outline.zh.md`
+- `intake-to-chapter-plans.zh.md`
+
+These prompts distinguish user-provided facts from AI suggestions, avoid inventing canon, preserve
+user constraints, and produce structured proposal JSON for the UI. Generated intake output remains
+draft/proposed until the user accepts it.

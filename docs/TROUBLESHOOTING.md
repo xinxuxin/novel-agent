@@ -96,6 +96,16 @@ A workflow node expected JSON and the provider returned malformed content.
 - Use a model with stronger structured-output behavior.
 - Inspect prompt preview only if privacy settings allow it.
 
+### Kimi Invalid Temperature
+
+Moonshot / Kimi can return `HTTP 400: invalid temperature: only 1 is allowed for this model`.
+
+- Keep the Kimi base URL on the official OpenAI-compatible endpoint: `https://api.moonshot.ai/v1`.
+- Let `ModelParameterPolicy` normalize smoke checks and workflow calls.
+- Do not force deterministic `temperature=0` for Kimi; WenForge omits unsupported temperature
+  fields for Kimi/Moonshot profiles and retries known parameter-compatibility errors once.
+- Real provider checks still require explicit user confirmation and a small budget cap.
+
 ### Budget Exceeded
 
 The configured budget policy paused or blocked a run.

@@ -20,13 +20,7 @@ import type { PrivacySettings, RoutingSettings } from "@contracts/settings";
 import { PROVIDERS, QUALITY_MODES, TASK_TYPES } from "@shared/domain/model-routing";
 import type { ProviderId, QualityMode, TaskType } from "@shared/domain/model-routing";
 
-type SettingsTab =
-  | "providers"
-  | "models"
-  | "costs"
-  | "routing"
-  | "privacy"
-  | "advanced";
+type SettingsTab = "providers" | "models" | "costs" | "routing" | "privacy" | "advanced";
 
 interface SettingsData {
   credentials: ProviderCredentialDto[];
@@ -83,12 +77,12 @@ const QUALITY_LABELS: Record<QualityMode, string> = {
 };
 
 const SETTINGS_TABS: Array<{ id: SettingsTab; label: string }> = [
-  { id: "providers", label: "Providers" },
-  { id: "models", label: "Models" },
-  { id: "routing", label: "Routing" },
-  { id: "costs", label: "Costs" },
-  { id: "privacy", label: "Privacy" },
-  { id: "advanced", label: "Advanced" }
+  { id: "providers", label: "模型密钥" },
+  { id: "models", label: "模型" },
+  { id: "routing", label: "路线" },
+  { id: "costs", label: "成本" },
+  { id: "privacy", label: "隐私" },
+  { id: "advanced", label: "高级" }
 ];
 
 const today = new Date().toISOString().slice(0, 10);
@@ -147,6 +141,7 @@ export function SettingsPanel(): JSX.Element {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [providerCheckBudget, setProviderCheckBudget] = useState("0.05");
+  const [checkingProviders, setCheckingProviders] = useState<Set<ProviderId>>(() => new Set());
   const [providerModels, setProviderModels] = useState<ProviderModelListResult[]>([]);
   const [credentialDraft, setCredentialDraft] = useState({
     provider: "openai" as ProviderId,
@@ -260,10 +255,7 @@ export function SettingsPanel(): JSX.Element {
     }, "密钥已加密保存。");
   };
 
-  const refreshProviderModels = async (
-    provider: ProviderId,
-    showNotice = true
-  ): Promise<void> => {
+  const refreshProviderModels = async (provider: ProviderId, showNotice = true): Promise<void> => {
     const result = await window.wenforge.providerModels.list(provider);
     setProviderModels((current) => upsertProviderModels(current, result));
     if (showNotice) {
@@ -282,6 +274,7 @@ export function SettingsPanel(): JSX.Element {
     if (!confirmSmokeCost()) {
       return;
     }
+    setCheckingProviders(new Set([provider]));
     try {
       setError(null);
       const result = await window.wenforge.providerSmoke.run({
@@ -297,6 +290,8 @@ export function SettingsPanel(): JSX.Element {
       setNotice("Provider connection check finished.");
     } catch (nextError) {
       setError(readError(nextError));
+    } finally {
+      setCheckingProviders(new Set());
     }
   };
 
@@ -304,6 +299,7 @@ export function SettingsPanel(): JSX.Element {
     if (!confirmSmokeCost()) {
       return;
     }
+    setCheckingProviders(new Set(PROVIDERS));
     try {
       setError(null);
       const results = await window.wenforge.providerSmoke.runAll({
@@ -315,9 +311,11 @@ export function SettingsPanel(): JSX.Element {
         ...current,
         providerSmoke: mergeSmokeResults(current.providerSmoke, results)
       }));
-      setNotice("Configured provider connection checks finished.");
+      setNotice(`批量检查完成：${summarizeSmokeResults(results)}`);
     } catch (nextError) {
       setError(readError(nextError));
+    } finally {
+      setCheckingProviders(new Set());
     }
   };
 
@@ -407,7 +405,11 @@ export function SettingsPanel(): JSX.Element {
   };
 
   const applyPremiumPreset = async (): Promise<void> => {
-    if (!window.confirm("Apply the Premium Webnovel route preset? Existing preset routes will be updated.")) {
+    if (
+      !window.confirm(
+        "Apply the Premium Webnovel route preset? Existing preset routes will be updated."
+      )
+    ) {
       return;
     }
     await runAction(async () => {
@@ -492,10 +494,12 @@ export function SettingsPanel(): JSX.Element {
           <ProvidersTab
             credentialDraft={credentialDraft}
             credentials={data.credentials}
+            profiles={data.profiles}
             providerHealth={data.providerHealth}
             providerModelsByProvider={modelsByProvider}
             smokeByProvider={smokeByProvider}
             providerCheckBudget={providerCheckBudget}
+            checkingProviders={checkingProviders}
             onCredentialDraftChange={setCredentialDraft}
             onDeleteCredential={(credential) =>
               runAction(async () => {
@@ -587,10 +591,12 @@ export function SettingsPanel(): JSX.Element {
 function ProvidersTab({
   credentialDraft,
   credentials,
+  profiles,
   providerHealth,
   providerModelsByProvider,
   smokeByProvider,
   providerCheckBudget,
+  checkingProviders,
   onCredentialDraftChange,
   onDeleteCredential,
   onSaveCredential,
@@ -607,10 +613,12 @@ function ProvidersTab({
     apiKey: string;
   };
   credentials: ProviderCredentialDto[];
+  profiles: ModelProfileRecord[];
   providerHealth: ProviderHealthRecord[];
   providerModelsByProvider: Map<ProviderId, ProviderModelListResult>;
   smokeByProvider: Map<ProviderId, ProviderSmokeResult>;
   providerCheckBudget: string;
+  checkingProviders: Set<ProviderId>;
   onCredentialDraftChange: (draft: typeof credentialDraft) => void;
   onDeleteCredential: (credential: ProviderCredentialDto) => void;
   onSaveCredential: () => Promise<void>;
@@ -697,10 +705,11 @@ function ProvidersTab({
             />
             <button
               className={secondaryButtonClassName}
+              disabled={checkingProviders.size > 0}
               onClick={onRunAllProviderSmoke}
               type="button"
             >
-              全部检查
+              {checkingProviders.size > 0 ? "检查中" : "全部检查"}
             </button>
           </div>
         </div>
@@ -710,7 +719,16 @@ function ProvidersTab({
             const smoke = smokeByProvider.get(credential.provider);
             const health = providerHealth.find((item) => item.provider === credential.provider);
             const modelList = providerModelsByProvider.get(credential.provider);
-            const status = smoke?.status ?? health?.status ?? credential.lastStatus;
+            const isChecking = checkingProviders.has(credential.provider);
+            const status = isChecking
+              ? "checking"
+              : smoke?.tested
+                ? smoke.status
+                : (health?.status ?? credential.lastStatus);
+            const localProfiles = profiles
+              .filter((profile) => profile.provider === credential.provider && profile.enabled)
+              .sort(compareModelProfilesForDisplay);
+            const statusHint = credentialStatusHint(credential, health);
             return (
               <article
                 className="rounded-lg border border-white/10 bg-black/20 p-3"
@@ -720,7 +738,7 @@ function ProvidersTab({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-medium text-white">{credential.displayName}</p>
-                      <StatusPill tone={status === "passed" || status === "healthy" ? "success" : "neutral"}>
+                      <StatusPill tone={providerStatusTone(status)}>
                         {formatProviderStatus(status)}
                       </StatusPill>
                     </div>
@@ -728,6 +746,9 @@ function ProvidersTab({
                       {PROVIDER_LABELS[credential.provider]} · {credential.redactedKeyLabel} ·{" "}
                       {credential.baseUrl ? "自定义端点" : "默认端点"}
                     </p>
+                    {statusHint ? (
+                      <p className="mt-1 text-xs text-forge-amber">{statusHint}</p>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <button
@@ -739,10 +760,11 @@ function ProvidersTab({
                     </button>
                     <button
                       className={secondaryButtonClassName}
+                      disabled={checkingProviders.size > 0}
                       onClick={() => onRunProviderSmoke(credential.provider)}
                       type="button"
                     >
-                      检查连接
+                      {isChecking ? "检查中" : "检查连接"}
                     </button>
                     <button
                       className="rounded-lg border border-red-400/25 px-3 py-2 text-xs text-red-200 transition hover:bg-red-400/10"
@@ -758,7 +780,7 @@ function ProvidersTab({
                   <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.025] p-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-xs text-slate-400">
-                        可用模型：{modelList.models.length} 个
+                        API 可用模型：{modelList.models.length} 个
                       </p>
                       <span className="text-xs text-slate-500">
                         {modelList.fetchedAt ? new Date(modelList.fetchedAt).toLocaleString() : ""}
@@ -778,6 +800,22 @@ function ProvidersTab({
                         ))}
                       </div>
                     )}
+                  </div>
+                ) : null}
+                {localProfiles.length > 0 ? (
+                  <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.02] p-2">
+                    <p className="text-xs text-slate-400">WenForge 模型别名</p>
+                    <div className="mt-2 flex max-h-20 flex-wrap gap-1 overflow-auto">
+                      {localProfiles.slice(0, 24).map((profile) => (
+                        <span
+                          className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[11px] text-slate-300"
+                          key={profile.id}
+                          title={`${profile.model} · ${profile.endpointFamily} · ${profile.maxOutputParamName}`}
+                        >
+                          {profile.alias ?? profile.displayName}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
 
@@ -837,6 +875,10 @@ function ModelsTab({
     patch: Partial<ModelProfileRecord>
   ) => Promise<void>;
 }): JSX.Element {
+  const sortedProfiles = useMemo(
+    () => [...profiles].sort(compareModelProfilesForDisplay),
+    [profiles]
+  );
   return (
     <div className="space-y-4">
       <section className="grid gap-3 rounded-xl border border-white/10 bg-graphite-900/55 p-4 xl:grid-cols-[180px_1fr_1fr_1fr_130px_130px_110px_auto]">
@@ -904,7 +946,7 @@ function ModelsTab({
       </section>
       <div className="overflow-hidden rounded-xl border border-white/10">
         <TableHeader columns="grid-cols-[130px_1fr_170px_150px_180px_90px]" />
-        {profiles.map((profile) => (
+        {sortedProfiles.map((profile) => (
           <div
             className="grid grid-cols-[130px_1fr_170px_150px_180px_90px] items-center gap-3 border-t border-white/10 px-3 py-3 text-sm"
             key={profile.id}
@@ -1182,7 +1224,7 @@ function RoutingTab({
   const renderRoute = (route: TaskRouteRecord): JSX.Element => {
     const profile = profileById.get(route.primaryModelProfileId) ?? null;
     const fallbackModels = [route.fallbackModelProfileId1, route.fallbackModelProfileId2]
-      .map((id) => (id ? profileById.get(id) ?? null : null))
+      .map((id) => (id ? (profileById.get(id) ?? null) : null))
       .filter((item): item is ModelProfileRecord => Boolean(item));
     const multiModel = route.qualityMode === "premium_webnovel" && fallbackModels.length > 0;
     const warnings = getRouteWarnings({
@@ -1482,7 +1524,9 @@ function AdvancedTab({
   };
   const loadLatestProviderReport = async (): Promise<void> => {
     const report = await window.wenforge.providerSmoke.latestReport();
-    setLatestReport(report ? `${report.path}\n\n${report.content}` : "No provider check report found.");
+    setLatestReport(
+      report ? `${report.path}\n\n${report.content}` : "No provider check report found."
+    );
   };
   const runProviderChapterCheck = async (): Promise<void> => {
     if (chapterCheckConfirmation !== "RUN REAL SMOKE") {
@@ -1563,7 +1607,7 @@ function AdvancedTab({
               onClick={() => void copyBundle()}
               type="button"
             >
-            Copy redacted diagnostic info
+              Copy redacted diagnostic info
             </button>
             <button
               className={secondaryButtonClassName}
@@ -1608,9 +1652,11 @@ function AdvancedTab({
           </div>
           <button
             className={primaryButtonClassName}
-            onClick={() => void runProviderChapterCheck().catch((nextError: unknown) => {
-              setChapterCheckStatus(readError(nextError));
-            })}
+            onClick={() =>
+              void runProviderChapterCheck().catch((nextError: unknown) => {
+                setChapterCheckStatus(readError(nextError));
+              })
+            }
             type="button"
           >
             Run provider chapter connectivity check
@@ -1951,6 +1997,25 @@ function priceKey(value: { provider: ProviderId; model: string }): string {
   return `${value.provider}:${value.model}`;
 }
 
+const PRIORITY_MODEL_ALIASES = [
+  "gpt-5.5",
+  "claude-opus-4.7",
+  "qwen3.7-max",
+  "kimi-k2.6",
+  "deepseek-v4-pro"
+];
+
+function compareModelProfilesForDisplay(a: ModelProfileRecord, b: ModelProfileRecord): number {
+  const aPriority = PRIORITY_MODEL_ALIASES.indexOf(a.alias ?? a.model);
+  const bPriority = PRIORITY_MODEL_ALIASES.indexOf(b.alias ?? b.model);
+  if (aPriority !== bPriority) {
+    if (aPriority === -1) return 1;
+    if (bPriority === -1) return -1;
+    return aPriority - bPriority;
+  }
+  return `${a.provider}:${a.displayName}`.localeCompare(`${b.provider}:${b.displayName}`);
+}
+
 function upsertSmokeResult(
   current: ProviderSmokeResult[],
   result: ProviderSmokeResult
@@ -1992,6 +2057,8 @@ function formatUsd(value: number | null): string {
 
 function formatProviderStatus(status: string): string {
   switch (status) {
+    case "checking":
+      return "检查中";
     case "passed":
     case "test_passed":
     case "healthy":
@@ -2009,6 +2076,45 @@ function formatProviderStatus(status: string): string {
     default:
       return "未知";
   }
+}
+
+function providerStatusTone(status: string): "success" | "warning" | "neutral" {
+  if (["passed", "test_passed", "healthy"].includes(status)) return "success";
+  if (["failed", "test_failed", "degraded", "down", "blocked"].includes(status)) return "warning";
+  return "neutral";
+}
+
+function summarizeSmokeResults(results: ProviderSmokeResult[]): string {
+  const passed = results.filter((result) => result.status === "passed").length;
+  const failed = results.filter((result) => result.status === "failed").length;
+  const skipped = results.filter((result) => result.status === "skipped").length;
+  const blocked = results.filter((result) => result.status === "blocked").length;
+  const totalCost = results.reduce(
+    (sum, result) => sum + (result.finalCost ?? result.estimatedCost ?? 0),
+    0
+  );
+  return `通过 ${passed}，失败 ${failed}，跳过 ${skipped}，阻止 ${blocked}，成本约 $${totalCost.toFixed(6)}`;
+}
+
+function credentialStatusHint(
+  credential: ProviderCredentialDto,
+  health?: ProviderHealthRecord
+): string | null {
+  const errorText = `${health?.errorCode ?? ""} ${health?.errorMessage ?? ""}`.toLowerCase();
+  const authFailed =
+    credential.lastStatus === "test_failed" ||
+    health?.status === "down" ||
+    errorText.includes("401") ||
+    errorText.includes("authentication") ||
+    errorText.includes("api key");
+  if (!authFailed) return null;
+  if (
+    ["deepseek", "dashscope_qwen"].includes(credential.provider) &&
+    credential.redactedKeyLabel.startsWith("Sk-")
+  ) {
+    return "认证失败。密钥标签显示为 Sk- 开头，请确认控制台复制的是小写 sk-，没有被输入法或自动更正改写。";
+  }
+  return "认证失败。请重新保存该服务控制台里的有效 API Key，并确认账号权限、余额和 Base URL。";
 }
 
 function isStaleDate(effectiveDate: string, staleAfterDays: number): boolean {

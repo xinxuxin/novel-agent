@@ -36,6 +36,7 @@ export class ContextBuilder {
     const readerPositioning = this.repositories.storyBible.listReaderPositioning({
       bookId: input.bookId
     });
+    const acceptedMaterialDigest = this.getAcceptedMaterialDigestText(input.bookId);
     const memoryQuery = [chapter?.title, chapter?.summary, input.userInstruction]
       .filter(Boolean)
       .join(" ");
@@ -68,7 +69,7 @@ export class ContextBuilder {
           .join("\n")
       ),
       bookPremise: this.redact(
-        [book?.title, book?.logline, book?.genre].filter(Boolean).join("\n")
+        [book?.title, book?.logline, book?.genre, acceptedMaterialDigest].filter(Boolean).join("\n")
       ),
       volumeGoal: this.redact(volume?.summary ?? volume?.title ?? ""),
       currentChapterMetadata: this.redact(
@@ -235,6 +236,22 @@ export class ContextBuilder {
       .map((row) =>
         this.safeJson(String((row as { raw_card_json: string | null }).raw_card_json ?? "{}"))
       );
+  }
+
+  private getAcceptedMaterialDigestText(bookId: string): string {
+    const digest = this.repositories.planning
+      .listMaterialDigests(bookId)
+      .find((item) => Boolean(item.acceptedAt));
+    if (!digest) return "";
+    const data = this.safeJson(digest.digestJson);
+    if (!data || typeof data !== "object") return digest.digestJson.slice(0, 1200);
+    return Object.entries(data as Record<string, unknown>)
+      .map(([key, value]) => {
+        const rendered = Array.isArray(value) ? value.join("；") : String(value ?? "");
+        return `${key}: ${rendered}`;
+      })
+      .join("\n")
+      .slice(0, 1200);
   }
 
   private safeJson(value: string): unknown | null {

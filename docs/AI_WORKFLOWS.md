@@ -321,3 +321,28 @@ All candidates receive the same accepted chapter plan, scene cards, target words
 Fusion requires a base candidate. Reference candidates are optional. The fusion model receives the base, selected references, and a natural-language instruction such as "Use Kimi's prose and DeepSeek's plot structure." The result is a proposal artifact and can be saved as a non-canonical version before entering review.
 
 No candidate or fused draft becomes canonical automatically.
+
+## Phase 22 Universal Intake
+
+Universal Intake (`整理素材`) is the planning-first front door. It accepts arbitrary user material:
+single-line ideas, pasted brainstorms, outlines, settings, character notes, existing chapter
+summaries, manuscript fragments, style preferences, dislikes, and constraints.
+
+The workflow is deliberately not a one-click pipeline:
+
+1. User chats or pastes material.
+2. Intake classifies facts, drafts, user notes, AI suggestions, missing information, and ambiguity.
+3. The right panel displays structured artifacts such as Material Digest, Story Bible Draft,
+   Reader Positioning, Style Guide Draft, Volume Outline, Chapter Detailed Outline, Scene Cards,
+   Risks and Ambiguities.
+4. AI outputs default to `proposed`.
+5. User edits, accepts, rejects, or regenerates proposal artifacts.
+6. Accepted chapter plans can feed chapter generation; rejected proposal artifacts are excluded.
+7. Draft generation still pauses at human gates and saves non-canonical versions first.
+
+The renderer never calls providers and never receives decrypted credentials. Current guided
+actions use typed IPC to save chat messages and artifacts locally; provider-backed intake prompts
+must run through the main-process AI gateway, budget checks, `llm_runs`, and redacted diagnostics.
+
+Accepted Material Digests are included in `ContextBuilder` chapter packs. Rejected intake
+artifacts and rejected planning proposals are not canonical context.

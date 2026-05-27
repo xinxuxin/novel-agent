@@ -205,7 +205,8 @@ function ensurePremiumModelAliases(
         supportsTools: false,
         supportsVision: false,
         supportsPromptCaching: false,
-        defaultTemperature: 0.7,
+        defaultTemperature: seed.provider === "moonshot_kimi" ? 1 : 0.7,
+        supportsTemperature: seed.provider !== "moonshot_kimi",
         recommendedTasks: seed.recommendedTasks,
         enabled: true
       });

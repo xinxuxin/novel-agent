@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { CostCalculator } from "@main/ai/cost-calculator";
 import { SseParser } from "@main/ai/sse-parser";
@@ -6,6 +6,7 @@ import { TokenEstimator } from "@main/ai/token-estimator";
 import { AnthropicAdapter } from "@main/ai/adapters/anthropic-adapter";
 import { FakeProviderAdapter } from "@main/ai/adapters/fake-provider-adapter";
 import { GeminiAdapter } from "@main/ai/adapters/gemini-adapter";
+import { createDefaultProviderAdapters } from "@main/ai/adapters";
 import { GenericOpenAICompatibleAdapter } from "@main/ai/adapters/generic-openai-compatible-adapter";
 import { selectSmokeModel } from "@main/providers/provider-model-catalog-service";
 
@@ -178,6 +179,43 @@ describe("AI primitive services", () => {
     ]);
   });
 
+  it("uses the official Moonshot / Kimi OpenAI-compatible endpoint by default", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({
+        choices: [{ message: { content: "pong" } }],
+        usage: { prompt_tokens: 1, completion_tokens: 1 }
+      })
+    );
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchImpl as unknown as typeof fetch;
+    const adapter = createDefaultProviderAdapters().find(
+      (candidate) => candidate.id === "moonshot_kimi"
+    );
+    globalThis.fetch = originalFetch;
+
+    expect(adapter).toBeTruthy();
+    await adapter?.generateText(
+      {
+        provider: "moonshot_kimi",
+        model: "kimi-k2.6",
+        taskType: "brainstorm",
+        messages: [{ role: "user", content: "ping" }]
+      },
+      new AbortController().signal,
+      { apiKey: "sk-test" }
+    );
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://api.moonshot.ai/v1/chat/completions",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer sk-test",
+          "Content-Type": "application/json"
+        })
+      })
+    );
+  });
+
   it("chooses a listed smoke model instead of an unavailable placeholder alias", () => {
     expect(
       selectSmokeModel({
@@ -191,21 +229,56 @@ describe("AI primitive services", () => {
     ).toBe("gpt-4o-mini");
   });
 
+  it("prefers latest OpenAI GPT aliases when they are available", () => {
+    expect(
+      selectSmokeModel({
+        provider: "openai",
+        configuredModel: "legacy-placeholder",
+        availableModels: [
+          { id: "gpt-4o", supportsGeneration: true },
+          { id: "gpt-5.4", supportsGeneration: true },
+          { id: "gpt-5.5", supportsGeneration: true }
+        ]
+      })
+    ).toBe("gpt-5.5");
+  });
+
+  it("prefers WenForge Chinese webnovel model aliases for compatible providers", () => {
+    expect(
+      selectSmokeModel({
+        provider: "dashscope_qwen",
+        configuredModel: "qwen-placeholder",
+        availableModels: [
+          { id: "qwen-plus", supportsGeneration: true },
+          { id: "qwen3.7-max", supportsGeneration: true }
+        ]
+      })
+    ).toBe("qwen3.7-max");
+    expect(
+      selectSmokeModel({
+        provider: "moonshot_kimi",
+        configuredModel: "kimi-placeholder",
+        availableModels: [
+          { id: "moonshot-v1-8k", supportsGeneration: true },
+          { id: "kimi-k2.6", supportsGeneration: true }
+        ]
+      })
+    ).toBe("kimi-k2.6");
+  });
+
   it("generates Anthropic text and parses usage through the REST adapter", async () => {
-    const adapter = new AnthropicAdapter(
-      async (_url, init) => {
-        expect(init?.headers).toMatchObject({
-          "x-api-key": "sk-ant-test",
-          "anthropic-version": "2023-06-01"
-        });
-        return Response.json({
-          id: "msg_test",
-          type: "message",
-          content: [{ type: "text", text: '{"ok":true,"message":"pong"}' }],
-          usage: { input_tokens: 11, output_tokens: 7, cache_read_input_tokens: 2 }
-        });
-      }
-    );
+    const adapter = new AnthropicAdapter(async (_url, init) => {
+      expect(init?.headers).toMatchObject({
+        "x-api-key": "sk-ant-test",
+        "anthropic-version": "2023-06-01"
+      });
+      return Response.json({
+        id: "msg_test",
+        type: "message",
+        content: [{ type: "text", text: '{"ok":true,"message":"pong"}' }],
+        usage: { input_tokens: 11, output_tokens: 7, cache_read_input_tokens: 2 }
+      });
+    });
 
     await expect(
       adapter.generateText(
@@ -228,9 +301,7 @@ describe("AI primitive services", () => {
   it("lists Anthropic models for the provider settings panel", async () => {
     const adapter = new AnthropicAdapter(async () =>
       Response.json({
-        data: [
-          { id: "claude-opus-4-1", display_name: "Claude Opus 4.1", type: "model" }
-        ]
+        data: [{ id: "claude-opus-4-1", display_name: "Claude Opus 4.1", type: "model" }]
       })
     );
 
@@ -244,28 +315,26 @@ describe("AI primitive services", () => {
   });
 
   it("generates Gemini text and parses usage through the REST adapter", async () => {
-    const adapter = new GeminiAdapter(
-      async (_url, init) => {
-        expect(init?.headers).toMatchObject({
-          "x-goog-api-key": "AIza-test",
-          "Content-Type": "application/json"
-        });
-        return Response.json({
-          candidates: [
-            {
-              content: {
-                parts: [{ text: '{"ok":true,"message":"pong"}' }]
-              }
+    const adapter = new GeminiAdapter(async (_url, init) => {
+      expect(init?.headers).toMatchObject({
+        "x-goog-api-key": "AIza-test",
+        "Content-Type": "application/json"
+      });
+      return Response.json({
+        candidates: [
+          {
+            content: {
+              parts: [{ text: '{"ok":true,"message":"pong"}' }]
             }
-          ],
-          usageMetadata: {
-            promptTokenCount: 9,
-            candidatesTokenCount: 6,
-            totalTokenCount: 15
           }
-        });
-      }
-    );
+        ],
+        usageMetadata: {
+          promptTokenCount: 9,
+          candidatesTokenCount: 6,
+          totalTokenCount: 15
+        }
+      });
+    });
 
     await expect(
       adapter.generateText(

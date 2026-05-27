@@ -317,7 +317,10 @@ const MODEL_SEEDS: Array<{
     model: "kimi-k2.6",
     alias: "kimi-k2.6",
     displayName: "Kimi K2.6",
-    recommendedTasks: ["story_bible", "continuity_audit"]
+    recommendedTasks: ["story_bible", "continuity_audit"],
+    endpointFamily: "moonshot_openai_compatible",
+    maxOutputParamName: "max_tokens",
+    supportsTemperature: false
   },
   {
     provider: "xai",

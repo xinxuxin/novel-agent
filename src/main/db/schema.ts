@@ -124,6 +124,77 @@ export const outlineVersions = sqliteTable("outline_versions", {
   createdAt: text("created_at").notNull()
 });
 
+export const materialDigests = sqliteTable("material_digests", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  intakeSessionId: text("intake_session_id"),
+  outlineVersionId: text("outline_version_id"),
+  sourceSummaryJson: text("source_summary_json").notNull(),
+  digestJson: text("digest_json").notNull(),
+  missingInformationJson: text("missing_information_json").notNull().default("[]"),
+  ambiguityWarningsJson: text("ambiguity_warnings_json").notNull().default("[]"),
+  warningsJson: text("warnings_json").notNull().default("[]"),
+  acceptedAt: text("accepted_at"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const intakeSessions = sqliteTable(
+  "intake_sessions",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    bookId: text("book_id").references(() => books.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    status: text("status").notNull().default("draft"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull()
+  },
+  (table) => [
+    index("intake_sessions_project_idx").on(table.projectId),
+    index("intake_sessions_book_idx").on(table.bookId)
+  ]
+);
+
+export const intakeMessages = sqliteTable(
+  "intake_messages",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => intakeSessions.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    linkedArtifactId: text("linked_artifact_id"),
+    createdAt: text("created_at").notNull()
+  },
+  (table) => [index("intake_messages_session_idx").on(table.sessionId)]
+);
+
+export const intakeArtifacts = sqliteTable(
+  "intake_artifacts",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => intakeSessions.id, { onDelete: "cascade" }),
+    artifactType: text("artifact_type").notNull(),
+    title: text("title").notNull(),
+    contentJson: text("content_json").notNull(),
+    contentMarkdown: text("content_markdown").notNull().default(""),
+    status: text("status").notNull().default("proposed"),
+    sourceMessageIdsJson: text("source_message_ids_json").notNull().default("[]"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull()
+  },
+  (table) => [
+    index("intake_artifacts_session_idx").on(table.sessionId),
+    index("intake_artifacts_status_idx").on(table.status)
+  ]
+);
+
 export const volumePlans = sqliteTable("volume_plans", {
   id: text("id").primaryKey(),
   bookId: text("book_id").notNull(),
@@ -150,15 +221,30 @@ export const chapterPlans = sqliteTable("chapter_plans", {
   targetWords: integer("target_words").notNull().default(3000),
   minWords: integer("min_words"),
   maxWords: integer("max_words"),
+  wordCountPriority: text("word_count_priority").notNull().default("normal"),
+  chapterSummary: text("chapter_summary"),
   chapterPromise: text("chapter_promise"),
   openingHook: text("opening_hook"),
   mainConflict: text("main_conflict"),
+  conflictEscalation: text("conflict_escalation"),
+  keyEventsJson: text("key_events_json").notNull().default("[]"),
+  sceneCardsJson: text("scene_cards_json").notNull().default("[]"),
   emotionalTurn: text("emotional_turn"),
   payoff: text("payoff"),
   endingHook: text("ending_hook"),
   continuityDependenciesJson: text("continuity_dependencies_json").notNull().default("[]"),
+  charactersInvolvedJson: text("characters_involved_json").notNull().default("[]"),
+  storyBibleFactsUsedJson: text("story_bible_facts_used_json").notNull().default("[]"),
+  foreshadowingSeededJson: text("foreshadowing_seeded_json").notNull().default("[]"),
+  foreshadowingResolvedJson: text("foreshadowing_resolved_json").notNull().default("[]"),
+  unresolvedHooksCarriedForwardJson: text("unresolved_hooks_carried_forward_json")
+    .notNull()
+    .default("[]"),
   userNotes: text("user_notes"),
+  riskNotes: text("risk_notes"),
   status: text("status").notNull().default("draft"),
+  acceptedAt: text("accepted_at"),
+  acceptedBy: text("accepted_by"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull()
 });
@@ -177,6 +263,18 @@ export const planEditProposals = sqliteTable("plan_edit_proposals", {
   modelName: text("model_name"),
   llmRunId: text("llm_run_id"),
   status: text("status").notNull().default("proposed"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
+export const chapterGenerationQueue = sqliteTable("chapter_generation_queue", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull(),
+  generationRunId: text("generation_run_id"),
+  chapterIdsJson: text("chapter_ids_json").notNull().default("[]"),
+  status: text("status").notNull().default("queued"),
+  currentChapterId: text("current_chapter_id"),
+  optionsJson: text("options_json").notNull().default("{}"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull()
 });
@@ -773,9 +871,14 @@ export const schema = {
   scenes,
   outlineSources,
   outlineVersions,
+  materialDigests,
+  intakeSessions,
+  intakeMessages,
+  intakeArtifacts,
   volumePlans,
   chapterPlans,
   planEditProposals,
+  chapterGenerationQueue,
   manuscriptVersions,
   generatedArtifacts,
   draftCandidateGroups,

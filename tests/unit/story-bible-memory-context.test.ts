@@ -183,6 +183,30 @@ describe("Phase 6 story bible, memory, and context", () => {
       tags: ["雾灯"],
       importance: 8
     });
+    const intakeSession = repositories.planning.createIntakeSession({
+      projectId: project.id,
+      bookId: book.id,
+      title: "霜城素材整理"
+    });
+    repositories.planning.createIntakeArtifact({
+      sessionId: intakeSession.id,
+      artifactType: "creative_direction",
+      title: "拒绝的系统面板方向",
+      contentJson: JSON.stringify({ suggestion: "加入系统面板" }),
+      contentMarkdown: "加入系统面板",
+      status: "rejected"
+    });
+    repositories.planning.createMaterialDigest({
+      bookId: book.id,
+      intakeSessionId: intakeSession.id,
+      sourceSummaryJson: JSON.stringify({ canon: ["用户确认雾灯网络"], rejected: ["系统面板"] }),
+      digestJson: JSON.stringify({
+        book_premise: "城市低语来自雾灯网络",
+        missing_information: [],
+        ambiguity_warnings: []
+      }),
+      acceptedAt: new Date().toISOString()
+    });
     repositories.memory.createChunk({
       bookId: book.id,
       sourceType: "settlement_proposal",
@@ -214,6 +238,7 @@ describe("Phase 6 story bible, memory, and context", () => {
     });
 
     const json = JSON.stringify(context);
+    expect(context.bookPremise).toContain("城市低语来自雾灯网络");
     expect(context.readerPositioning).toContain("都市异能升级");
     expect(context.styleGuide).toContain("冷雨");
     expect(context.recentChapterSummaries).toHaveLength(1);
@@ -223,5 +248,6 @@ describe("Phase 6 story bible, memory, and context", () => {
     expect(context.estimatedTokens).toBeLessThanOrEqual(120);
     expect(json).not.toContain("sk-test-secret1234567890");
     expect(json).not.toContain("不可采纳的秘密");
+    expect(json).not.toContain("系统面板");
   });
 });

@@ -306,6 +306,30 @@ function registerDataIpc(
     return repositories.chapters.delete(request.id, true);
   });
 
+  registerIpcContract(IPC_CONTRACTS.planning.intake.sessions.list, (request) =>
+    repositories.planning.listIntakeSessions(request.projectId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.intake.sessions.create, (request) =>
+    repositories.planning.createIntakeSession(request)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.intake.sessions.setStatus, (request) =>
+    repositories.planning.updateIntakeSessionStatus(request.id, request.status)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.intake.messages.list, (request) =>
+    repositories.planning.listIntakeMessages(request.sessionId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.intake.messages.add, (request) =>
+    repositories.planning.addIntakeMessage(request)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.intake.artifacts.list, (request) =>
+    repositories.planning.listIntakeArtifacts(request.sessionId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.intake.artifacts.create, (request) =>
+    repositories.planning.createIntakeArtifact(request)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.intake.artifacts.setStatus, (request) =>
+    repositories.planning.updateIntakeArtifactStatus(request.id, request.status)
+  );
   registerIpcContract(IPC_CONTRACTS.planning.outlineSources.list, (request) =>
     repositories.planning.listOutlineSources(request.bookId)
   );
@@ -320,6 +344,15 @@ function registerDataIpc(
   );
   registerIpcContract(IPC_CONTRACTS.planning.outlineVersions.setActive, (request) =>
     repositories.planning.setActiveOutlineVersion(request.bookId, request.id)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.materialDigests.list, (request) =>
+    repositories.planning.listMaterialDigests(request.bookId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.materialDigests.latest, (request) =>
+    repositories.planning.getLatestMaterialDigest(request.bookId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.materialDigests.createFromMaterials, (request) =>
+    createMaterialDigestFromMaterials(repositories, request.bookId)
   );
   registerIpcContract(IPC_CONTRACTS.planning.chapterPlans.list, (request) =>
     repositories.planning.listChapterPlans(request.bookId)
@@ -707,7 +740,10 @@ function registerDataIpc(
   });
   registerIpcContract(IPC_CONTRACTS.modelRoutes.exportPreset, (request) => {
     if (request.qualityMode !== "premium_webnovel") {
-      throw new SafeIpcError("ROUTE_PRESET_UNAVAILABLE", "Only premium_webnovel export is available");
+      throw new SafeIpcError(
+        "ROUTE_PRESET_UNAVAILABLE",
+        "Only premium_webnovel export is available"
+      );
     }
     return exportPremiumWebnovelPreset(repositories);
   });
@@ -715,7 +751,10 @@ function registerDataIpc(
     requireConfirmation(request.confirmed);
     const parsed = JSON.parse(request.presetJson) as ReturnType<typeof exportPremiumWebnovelPreset>;
     if (parsed.quality_mode !== "premium_webnovel") {
-      throw new SafeIpcError("INVALID_ROUTE_PRESET", "Only premium_webnovel presets can be imported");
+      throw new SafeIpcError(
+        "INVALID_ROUTE_PRESET",
+        "Only premium_webnovel presets can be imported"
+      );
     }
     return importPremiumWebnovelPreset(repositories, parsed);
   });
@@ -1347,6 +1386,207 @@ function registerDataIpc(
     }
     return workflowRuntime.cancel(request);
   });
+}
+
+function createMaterialDigestFromMaterials(repositories: RepositoryRegistry, bookId: string) {
+  const book = repositories.books.get(bookId);
+  if (!book) {
+    throw new SafeIpcError("BOOK_NOT_FOUND", "Book not found");
+  }
+  const project = repositories.projects.get(book.projectId);
+  const volumes = repositories.volumes.listByBook(bookId);
+  const chapters = repositories.chapters.listByBook(bookId);
+  const outlineSources = repositories.planning.listOutlineSources(bookId);
+  const outlineVersions = repositories.planning.listOutlineVersions(bookId);
+  const activeOutline =
+    outlineVersions.find((version) => version.isActive) ?? outlineVersions[0] ?? null;
+  const chapterPlans = repositories.planning.listChapterPlans(bookId);
+  const acceptedPlans = chapterPlans.filter((plan) => plan.status === "accepted");
+  const storyEntries = repositories.storyBible
+    .list(bookId)
+    .filter((entry) => entry.status !== "rejected");
+  const characters = repositories.storyBible.listCharacters({ bookId });
+  const factions = repositories.storyBible.listFactions({ bookId });
+  const locations = repositories.storyBible.listLocations({ bookId });
+  const artifacts = repositories.storyBible.listArtifacts({ bookId });
+  const powerRules = repositories.storyBible.listPowerSystem({ bookId });
+  const timeline = repositories.storyBible.listTimeline({ bookId });
+  const foreshadowing = repositories.storyBible.listForeshadowing({ bookId });
+  const hooks = repositories.storyBible.listHooks({ bookId });
+  const styleGuides = repositories.storyBible.listStyleGuides({ bookId });
+  const readerPositioning = repositories.storyBible.listReaderPositioning({ bookId });
+  const canon = chapters
+    .map((chapter) => ({
+      chapter_index: chapter.chapterIndex,
+      title: chapter.title,
+      summary: chapter.summary,
+      canonical_excerpt: trimText(
+        repositories.manuscripts.getCanonical(chapter.id)?.contentPlaintext ?? "",
+        240
+      )
+    }))
+    .filter((entry) => entry.summary || entry.canonical_excerpt);
+  const acceptedMemory = repositories.memory.searchRelevant({
+    bookId,
+    query: `${book.title} ${book.genre ?? ""} ${book.logline ?? ""}`.trim() || book.title,
+    limit: 12
+  });
+  const sourceSummary = {
+    canon: {
+      book,
+      project: project
+        ? {
+            id: project.id,
+            name: project.name,
+            description: project.description,
+            genre: project.genre,
+            targetReader: project.targetReader
+          }
+        : null,
+      volumes,
+      chapter_summaries_and_canon: canon,
+      accepted_chapter_plans: acceptedPlans
+    },
+    user_provided: {
+      outline_sources: outlineSources.map((source) => ({
+        id: source.id,
+        title: source.title,
+        sourceType: source.sourceType,
+        excerpt: trimText(source.originalText, 360)
+      })),
+      active_outline_version: activeOutline
+        ? {
+            id: activeOutline.id,
+            title: activeOutline.title,
+            excerpt: trimText(activeOutline.contentMarkdown, 480)
+          }
+        : null
+    },
+    story_bible: {
+      entries: storyEntries.map((entry) => ({
+        type: entry.entryType,
+        title: entry.title,
+        provenance: entry.provenance,
+        excerpt: trimText(entry.content, 220)
+      })),
+      characters: characters.map((item) => ({
+        name: item.name,
+        role: item.role,
+        summary: item.summary
+      })),
+      factions: factions.map((item) => ({ name: item.name, summary: item.summary })),
+      locations: locations.map((item) => ({ name: item.name, summary: item.summary })),
+      artifacts: artifacts.map((item) => ({ name: item.name, summary: item.summary })),
+      power_system_rules: powerRules.map((item) => ({
+        name: item.rankLevelName,
+        ruleType: item.ruleType,
+        summary: item.notes ?? item.advancementConditions ?? item.limitsCosts
+      })),
+      timeline_events: timeline.map((item) => ({ title: item.title, summary: item.content })),
+      foreshadowing_items: foreshadowing.map((item) => ({
+        title: item.hintText,
+        status: item.status,
+        hintText: item.hintText
+      })),
+      unresolved_hooks: hooks.map((item) => ({ title: item.hookText, hookText: item.hookText })),
+      style_guides: styleGuides.map((item) => ({
+        title: item.title,
+        content: trimText(item.content, 260)
+      })),
+      reader_positioning: readerPositioning.map((item) => ({
+        title: item.title,
+        targetReader: item.targetReader,
+        platformStyle: item.platformStyle,
+        emotionalPromise: item.emotionalPromise
+      }))
+    },
+    memory: acceptedMemory.map((item) => ({
+      sourceType: item.sourceType,
+      title: item.title,
+      summary: item.summary ?? trimText(item.content, 220)
+    })),
+    excluded: {
+      rejected_or_archived_plans: chapterPlans.filter((plan) =>
+        ["rejected", "archived"].includes(plan.status)
+      ).length,
+      draft_or_proposed_plans: chapterPlans.filter((plan) =>
+        ["draft", "proposed"].includes(plan.status)
+      ).length
+    }
+  };
+  const warnings = [
+    !book.logline ? "缺少书籍前提或 logline。" : null,
+    outlineSources.length === 0 && outlineVersions.length === 0
+      ? "缺少导入或粘贴的大纲来源。"
+      : null,
+    characters.length === 0 ? "缺少角色记录。" : null,
+    styleGuides.length === 0 ? "缺少风格指南。" : null,
+    hooks.length === 0 ? "未记录未解钩子。" : null
+  ].filter((warning): warning is string => Boolean(warning));
+  const digest = {
+    book_premise: book.logline ?? project?.description ?? "",
+    genre: book.genre ?? project?.genre ?? "",
+    target_reader: readerPositioning[0]?.targetReader ?? project?.targetReader ?? "未明确目标读者",
+    core_hook: book.logline ?? activeOutline?.title ?? book.title,
+    current_story_state:
+      canon.at(-1)?.summary ?? canon.at(-1)?.canonical_excerpt ?? "未形成正史正文。",
+    key_characters: characters.slice(0, 12).map((item) => ({
+      name: item.name,
+      role: item.role,
+      state: item.currentState ?? item.summary
+    })),
+    key_conflicts: [
+      ...hooks.slice(0, 8).map((item) => item.hookText),
+      ...storyEntries
+        .filter((entry) => entry.entryType.includes("conflict"))
+        .slice(0, 6)
+        .map((entry) => entry.title)
+    ].filter(Boolean),
+    existing_outline_summary: activeOutline
+      ? trimText(activeOutline.contentMarkdown, 900)
+      : outlineSources.map((source) => trimText(source.originalText, 220)).join("\n"),
+    volume_structure: volumes.map((volume) => ({
+      index: volume.volumeIndex,
+      title: volume.title,
+      summary: volume.summary
+    })),
+    known_chapter_requirements: chapters.map((chapter) => ({
+      index: chapter.chapterIndex,
+      title: chapter.title,
+      target_words: chapter.targetWords,
+      summary: chapter.summary,
+      accepted_plan: acceptedPlans.some((plan) => plan.chapterId === chapter.id)
+    })),
+    unresolved_hooks: hooks.map((item) => item.hookText).filter(Boolean),
+    continuity_constraints: [
+      ...storyEntries
+        .slice(0, 12)
+        .map((entry) => `${entry.title}: ${trimText(entry.content, 120)}`),
+      ...powerRules
+        .slice(0, 8)
+        .map(
+          (rule) =>
+            `${rule.rankLevelName}: ${rule.notes ?? rule.advancementConditions ?? rule.ruleType ?? ""}`
+        )
+    ],
+    style_constraints: styleGuides.map((guide) => trimText(guide.content, 260)),
+    missing_information: warnings,
+    ambiguity_warnings: warnings
+  };
+  return repositories.planning.createMaterialDigest({
+    bookId,
+    outlineVersionId: activeOutline?.id ?? null,
+    sourceSummaryJson: JSON.stringify(sourceSummary, null, 2),
+    digestJson: JSON.stringify(digest, null, 2),
+    missingInformationJson: JSON.stringify(digest.missing_information, null, 2),
+    ambiguityWarningsJson: JSON.stringify(digest.ambiguity_warnings, null, 2),
+    warningsJson: JSON.stringify(warnings, null, 2)
+  });
+}
+
+function trimText(value: string, limit: number): string {
+  const compact = value.replace(/\s+/g, " ").trim();
+  return compact.length > limit ? `${compact.slice(0, limit)}...` : compact;
 }
 
 function withoutUndefined<T extends Record<string, unknown>>(value: T): Partial<T> {

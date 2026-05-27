@@ -225,7 +225,12 @@ export class AiGateway {
         outputTokens: outputTokensEstimated
       };
       const usageSource = response.usage ? "provider" : "estimated";
-      const finalCost = this.calculateCost(usage, resolved.price, resolved.priceTiers, !response.usage);
+      const finalCost = this.calculateCost(
+        usage,
+        resolved.price,
+        resolved.priceTiers,
+        !response.usage
+      );
       const latencyMs = Date.now() - startedAt;
       this.options.repositories.cost.finishRun(run.id, {
         status: "succeeded",
@@ -590,6 +595,44 @@ export class AiGateway {
       };
     }
 
+    if (request.modelProfileId) {
+      const profile = this.options.repositories.modelProfiles.get(request.modelProfileId);
+      if (!profile?.enabled) {
+        throw new SafeIpcError(
+          "MODEL_PROFILE_UNAVAILABLE",
+          "Selected model profile is unavailable"
+        );
+      }
+      const credential = this.options.credentialService.getDecryptedProviderCredential(
+        profile.provider
+      );
+      if (!credential) {
+        throw new SafeIpcError("MISSING_CREDENTIAL", "No configured credential is available");
+      }
+      const normalizedParams = this.createNormalizedParams(request, {
+        provider: profile.provider,
+        model: profile.model,
+        profile
+      });
+      return {
+        provider: profile.provider,
+        model: profile.model,
+        price: this.options.repositories.modelPrices.findActive(profile.provider, profile.model),
+        priceTiers: this.options.repositories.modelPriceTiers.list({
+          provider: profile.provider,
+          model: profile.model
+        }),
+        config: { apiKey: credential.apiKey, baseUrl: credential.baseUrl, normalizedParams },
+        temperature: request.temperature ?? profile.defaultTemperature,
+        maxOutputTokens: request.maxOutputTokens ?? normalizedParams.effectiveMaxOutputTokens,
+        normalizedParams,
+        warnings: [
+          ...normalizedParams.warnings,
+          ...normalizedParams.omittedParams.map((param) => `omitted ${param.name}: ${param.reason}`)
+        ]
+      };
+    }
+
     if (request.provider && request.model) {
       const providerId = toModelProviderId(request.provider);
       if (!providerId) {
@@ -682,12 +725,17 @@ export class AiGateway {
       provider: AIProviderId;
       model: string;
       profile?: ModelProfileRecord | null | undefined;
-      route?: { creativityIntent?: string; contextBudgetMode?: string; maxOutputTokens?: number } | undefined;
+      route?:
+        | { creativityIntent?: string; contextBudgetMode?: string; maxOutputTokens?: number }
+        | undefined;
     }
   ): NormalizedProviderParams {
     const profile = input.profile ?? null;
     const outputTokenBudget =
-      request.maxOutputTokens ?? input.route?.maxOutputTokens ?? profile?.maxOutputTokens ?? undefined;
+      request.maxOutputTokens ??
+      input.route?.maxOutputTokens ??
+      profile?.maxOutputTokens ??
+      undefined;
     return this.parameterPolicy.normalize({
       provider: input.provider,
       model: input.model,
@@ -697,7 +745,8 @@ export class AiGateway {
       contextWindow: profile?.contextWindow,
       contextBudgetMode:
         request.contextBudgetMode ?? normalizeContextBudgetMode(input.route?.contextBudgetMode),
-      creativityIntent: request.creativityIntent ?? normalizeCreativityIntent(input.route?.creativityIntent),
+      creativityIntent:
+        request.creativityIntent ?? normalizeCreativityIntent(input.route?.creativityIntent),
       requestedTemperature: request.temperature ?? profile?.defaultTemperature,
       supportsTemperature: profile?.supportsTemperature,
       supportsTopP: profile?.supportsTopP,
@@ -778,13 +827,19 @@ export class AiGateway {
 }
 
 function normalizeCreativityIntent(value: unknown) {
-  return value === "deterministic" || value === "creative" || value === "wild" || value === "balanced"
+  return value === "deterministic" ||
+    value === "creative" ||
+    value === "wild" ||
+    value === "balanced"
     ? value
     : undefined;
 }
 
 function normalizeContextBudgetMode(value: unknown) {
-  return value === "conservative" || value === "balanced" || value === "manual" || value === "max_safe"
+  return value === "conservative" ||
+    value === "balanced" ||
+    value === "manual" ||
+    value === "max_safe"
     ? value
     : undefined;
 }

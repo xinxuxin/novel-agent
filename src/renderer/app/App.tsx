@@ -25,6 +25,7 @@ import { createSimpleDiff, manuscriptStats } from "@features/editor/manuscript-u
 import { ModelRouteCard } from "@features/model-router/ModelRouteCard";
 import { OnboardingPanel } from "@features/onboarding/OnboardingPanel";
 import { PlanningLab } from "@features/planning/PlanningLab";
+import { UniversalIntake } from "@features/planning/UniversalIntake";
 import type {
   OnboardingBookMode,
   OnboardingSettingsPatch
@@ -46,9 +47,25 @@ import type {
   WorkflowReviewCard
 } from "@contracts/workflow";
 import { useUiStore } from "@renderer/stores/ui-store";
+import type { ProviderId } from "@shared/domain/model-routing";
 
-type WorkspaceView = "chapter" | "planning" | "storyBible" | "costs" | "eval" | "data" | "settings";
+type WorkspaceView =
+  | "chapter"
+  | "intake"
+  | "planning"
+  | "storyBible"
+  | "costs"
+  | "eval"
+  | "data"
+  | "settings";
 type WorkspaceTab = "manuscript" | "generate" | "candidates" | "review" | "timeline" | "versions";
+type ProviderConnectionStatus = {
+  provider: ProviderId;
+  configured: boolean;
+  status: string;
+  label: string;
+  models: string[];
+};
 
 const CHAPTER_STATUSES = [
   "planned",
@@ -60,6 +77,25 @@ const CHAPTER_STATUSES = [
   "published"
 ] as const;
 const ONBOARDING_STORAGE_KEY = "wenforge:onboarding:v1";
+const HEADER_PROVIDER_ORDER: ProviderId[] = [
+  "openai",
+  "anthropic",
+  "gemini",
+  "deepseek",
+  "dashscope_qwen",
+  "moonshot_kimi"
+];
+const HEADER_PROVIDER_LABELS: Record<ProviderId, string> = {
+  openai: "GPT",
+  anthropic: "Claude",
+  gemini: "Gemini",
+  deepseek: "DeepSeek",
+  dashscope_qwen: "Qwen",
+  moonshot_kimi: "Kimi",
+  xai: "xAI",
+  openrouter: "OpenRouter",
+  generic_openai_compatible: "Custom"
+};
 
 function draftStorageKey(chapterId: string): string {
   return `wenforge:draft:${chapterId}`;
@@ -103,6 +139,7 @@ export function App(): JSX.Element {
   const [sessionCost, setSessionCost] = useState(0);
   const [costWarning, setCostWarning] = useState("prices local");
   const [providerConfigured, setProviderConfigured] = useState(false);
+  const [providerConnections, setProviderConnections] = useState<ProviderConnectionStatus[]>([]);
   const [onboardingOpen, setOnboardingOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "complete";
@@ -175,12 +212,44 @@ export function App(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    void window.wenforge.credentials
-      .list()
-      .then((credentials) =>
-        setProviderConfigured(credentials.some((credential) => credential.isConfigured))
-      )
-      .catch(() => setProviderConfigured(false));
+    let mounted = true;
+    async function loadProviderConnections(): Promise<void> {
+      const [credentials, health, profiles] = await Promise.all([
+        window.wenforge.credentials.list(),
+        window.wenforge.providerHealth.list().catch(() => []),
+        window.wenforge.modelProfiles.list().catch(() => [])
+      ]);
+      if (!mounted) return;
+      setProviderConfigured(credentials.some((credential) => credential.isConfigured));
+      setProviderConnections(
+        HEADER_PROVIDER_ORDER.map((provider) => {
+          const credential = credentials
+            .filter((item) => item.provider === provider && item.isConfigured)
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+          const providerHealth = health.find((item) => item.provider === provider);
+          const providerProfiles = profiles
+            .filter((profile) => profile.provider === provider && profile.enabled)
+            .sort((a, b) => compareHeaderModelNames(a.alias ?? a.model, b.alias ?? b.model))
+            .slice(0, 3)
+            .map((profile) => profile.alias ?? profile.displayName);
+          return {
+            provider,
+            configured: Boolean(credential),
+            status: providerHealth?.status ?? credential?.lastStatus ?? "unknown",
+            label: HEADER_PROVIDER_LABELS[provider],
+            models: providerProfiles
+          };
+        })
+      );
+    }
+    void loadProviderConnections().catch(() => {
+      if (!mounted) return;
+      setProviderConfigured(false);
+      setProviderConnections([]);
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -746,6 +815,7 @@ export function App(): JSX.Element {
   };
   const showInspector =
     !compact &&
+    workspaceView !== "intake" &&
     workspaceView !== "planning" &&
     !(workspaceView === "chapter" && (activeTab === "generate" || activeTab === "candidates"));
 
@@ -764,9 +834,7 @@ export function App(): JSX.Element {
             </div>
             <div>
               <h1 className="text-sm font-semibold tracking-normal text-white">WenForge Studio</h1>
-              <p className="text-xs text-slate-500">
-                {activeProject?.name ?? "本地写作台"}
-              </p>
+              <p className="text-xs text-slate-500">{activeProject?.name ?? "本地写作台"}</p>
             </div>
           </div>
 
@@ -782,12 +850,16 @@ export function App(): JSX.Element {
           </button>
 
           <div className="app-no-drag flex items-center gap-2">
-            <StatusPill label={activeRunLabel === "No active run" ? "无运行" : activeRunLabel} tone="blue" />
+            <StatusPill
+              label={activeRunLabel === "No active run" ? "无运行" : activeRunLabel}
+              tone="blue"
+            />
             <StatusPill label={`本轮 $${sessionCost.toFixed(6)}`} tone="mint" />
             <StatusPill
               label={routeResolution?.available ? "路线就绪" : "路线待配置"}
               tone={routeResolution?.available ? "mint" : "amber"}
             />
+            <ProviderConnectionStrip providers={providerConnections} />
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
                 workspaceView === "chapter" && activeTab !== "generate"
@@ -801,6 +873,17 @@ export function App(): JSX.Element {
               type="button"
             >
               写作
+            </button>
+            <button
+              className={`rounded-md border px-3 py-1.5 text-xs transition ${
+                workspaceView === "intake"
+                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
+                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
+              }`}
+              onClick={() => setWorkspaceView("intake")}
+              type="button"
+            >
+              整理素材
             </button>
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
@@ -838,6 +921,7 @@ export function App(): JSX.Element {
               value=""
             >
               <option value="">更多</option>
+              <option value="intake">整理素材</option>
               <option value="planning">规划实验室</option>
               <option value="storyBible">故事圣经</option>
               <option value="costs">成本</option>
@@ -933,11 +1017,26 @@ export function App(): JSX.Element {
                 reducedMotion={Boolean(reduceMotion)}
                 sessionCost={sessionCost}
               />
+            ) : workspaceView === "intake" ? (
+              <UniversalIntake
+                book={activeBook}
+                chapters={chapters}
+                onOpenGenerate={() => {
+                  setActiveTab("generate");
+                  setWorkspaceView("chapter");
+                }}
+                project={activeProject}
+              />
             ) : workspaceView === "planning" ? (
               <PlanningLab
                 book={activeBook}
                 chapters={chapters}
-                onSelectChapter={selectChapter}
+                onOpenIntake={() => setWorkspaceView("intake")}
+                onOpenGenerate={() => {
+                  setActiveTab("generate");
+                  setWorkspaceView("chapter");
+                }}
+                onSelectChapter={(chapter) => setSelectedChapterId(chapter.id)}
                 project={activeProject}
                 selectedChapter={activeChapter}
               />
@@ -1089,6 +1188,92 @@ function StatusPill({
   );
 }
 
+function ProviderConnectionStrip({
+  providers
+}: {
+  providers: ProviderConnectionStatus[];
+}): JSX.Element | null {
+  if (providers.length === 0) return null;
+  return (
+    <div className="flex max-w-[42vw] items-center gap-1 overflow-x-auto" aria-label="模型连接状态">
+      {providers.map((provider) => {
+        const tone = providerConnectionTone(provider);
+        return (
+          <span
+            className={`inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] ${tone.className}`}
+            key={provider.provider}
+            title={`${provider.label}：${tone.label}${
+              provider.models.length > 0 ? ` · ${provider.models.join(", ")}` : ""
+            }`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${tone.dotClassName}`} />
+            {provider.label}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function providerConnectionTone(provider: ProviderConnectionStatus): {
+  label: string;
+  className: string;
+  dotClassName: string;
+} {
+  if (!provider.configured) {
+    return {
+      label: "未配置",
+      className: "border-white/10 bg-white/[0.025] text-slate-500",
+      dotClassName: "bg-slate-600"
+    };
+  }
+  if (["passed", "test_passed", "healthy"].includes(provider.status)) {
+    return {
+      label: "可用",
+      className: "border-forge-mint/25 bg-forge-mint/10 text-forge-mint",
+      dotClassName: "bg-forge-mint"
+    };
+  }
+  if (["failed", "test_failed", "down"].includes(provider.status)) {
+    return {
+      label: "失败",
+      className: "border-red-400/25 bg-red-400/10 text-red-200",
+      dotClassName: "bg-red-300"
+    };
+  }
+  if (["degraded", "blocked"].includes(provider.status)) {
+    return {
+      label: "需检查",
+      className: "border-forge-amber/25 bg-forge-amber/10 text-forge-amber",
+      dotClassName: "bg-forge-amber"
+    };
+  }
+  return {
+    label: "已保存",
+    className: "border-forge-amber/25 bg-forge-amber/10 text-forge-amber",
+    dotClassName: "bg-forge-amber"
+  };
+}
+
+function compareHeaderModelNames(a: string, b: string): number {
+  const priority = [
+    "gpt-5.5",
+    "claude-opus-4.7",
+    "gemini",
+    "deepseek-v4-pro",
+    "qwen3.7-max",
+    "kimi-k2.6"
+  ];
+  const aRank = priority.findIndex((item) => a.toLowerCase().includes(item));
+  const bRank = priority.findIndex((item) => b.toLowerCase().includes(item));
+  if (aRank !== bRank) {
+    if (aRank === -1) return 1;
+    if (bRank === -1) return -1;
+    return aRank - bRank;
+  }
+  return a.localeCompare(b);
+}
+
 function CompactLauncher({
   activeBook,
   activeChapter,
@@ -1221,9 +1406,7 @@ function CompactLauncher({
           </div>
         ) : null}
         <div className="mt-5 space-y-2">
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-            最近章节
-          </p>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">最近章节</p>
           {chapters.slice(0, 5).map((chapter) => (
             <button
               className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-left text-sm text-slate-300 hover:border-forge-blue/35"
@@ -2193,9 +2376,7 @@ function TimelineWorkspace({
   return (
     <div className="h-full overflow-auto px-6 py-5">
       <section className="rounded-lg border border-white/10 bg-black/25 p-5">
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-          章节流程
-        </p>
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">章节流程</p>
         <h3 className="mt-2 text-lg font-semibold text-white">
           {activeChapter?.title ?? "未选择章节"}
         </h3>

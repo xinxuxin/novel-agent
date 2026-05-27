@@ -160,6 +160,11 @@ import type {
 } from "./review-settlement";
 import type {
   ChapterPlanRecord,
+  IntakeArtifactRecord,
+  IntakeMessageRecord,
+  IntakeSessionRecord,
+  IntakeStatus,
+  MaterialDigestRecord,
   OutlineSourceRecord,
   OutlineVersionRecord,
   PlanEditProposalRecord
@@ -250,6 +255,40 @@ export interface WenForgeApi {
     delete: (id: string, confirmed: boolean) => Promise<boolean>;
   };
   planning: {
+    intake: {
+      sessions: {
+        list: (projectId: string) => Promise<IntakeSessionRecord[]>;
+        create: (input: {
+          projectId: string;
+          bookId?: string | null;
+          title: string;
+          status?: IntakeStatus;
+        }) => Promise<IntakeSessionRecord>;
+        setStatus: (id: string, status: IntakeStatus) => Promise<IntakeSessionRecord | null>;
+      };
+      messages: {
+        list: (sessionId: string) => Promise<IntakeMessageRecord[]>;
+        add: (input: {
+          sessionId: string;
+          role: "user" | "assistant" | "system";
+          content: string;
+          linkedArtifactId?: string | null;
+        }) => Promise<IntakeMessageRecord>;
+      };
+      artifacts: {
+        list: (sessionId: string) => Promise<IntakeArtifactRecord[]>;
+        create: (input: {
+          sessionId: string;
+          artifactType: string;
+          title: string;
+          contentJson: string;
+          contentMarkdown?: string;
+          status?: IntakeStatus;
+          sourceMessageIdsJson?: string;
+        }) => Promise<IntakeArtifactRecord>;
+        setStatus: (id: string, status: IntakeStatus) => Promise<IntakeArtifactRecord | null>;
+      };
+    };
     outlineSources: {
       list: (bookId: string) => Promise<OutlineSourceRecord[]>;
       create: (input: {
@@ -275,10 +314,18 @@ export interface WenForgeApi {
       }) => Promise<OutlineVersionRecord>;
       setActive: (bookId: string, id: string) => Promise<OutlineVersionRecord | null>;
     };
+    materialDigests: {
+      list: (bookId: string) => Promise<MaterialDigestRecord[]>;
+      latest: (bookId: string) => Promise<MaterialDigestRecord | null>;
+      createFromMaterials: (bookId: string) => Promise<MaterialDigestRecord>;
+    };
     chapterPlans: {
       list: (bookId: string) => Promise<ChapterPlanRecord[]>;
       getAccepted: (chapterId: string) => Promise<ChapterPlanRecord | null>;
-      upsert: (input: Partial<ChapterPlanRecord> & Pick<ChapterPlanRecord, "bookId" | "chapterIndex" | "title">) => Promise<ChapterPlanRecord>;
+      upsert: (
+        input: Partial<ChapterPlanRecord> &
+          Pick<ChapterPlanRecord, "bookId" | "chapterIndex" | "title">
+      ) => Promise<ChapterPlanRecord>;
     };
     proposals: {
       list: (bookId: string) => Promise<PlanEditProposalRecord[]>;
@@ -544,7 +591,9 @@ export interface WenForgeApi {
     getCandidate: (candidateId: string) => Promise<DraftCandidateRecord>;
     deleteGroup: (groupId: string, confirmed: boolean) => Promise<DraftCandidateGroupRecord | null>;
     retryCandidate: (input: RetryCandidateInput) => Promise<DraftCandidateRecord>;
-    saveCandidateAsVersion: (input: SaveCandidateAsVersionInput) => Promise<ManuscriptVersionRecord>;
+    saveCandidateAsVersion: (
+      input: SaveCandidateAsVersionInput
+    ) => Promise<ManuscriptVersionRecord>;
     setCandidateCanonical: (input: SetCandidateCanonicalInput) => Promise<ManuscriptVersionRecord>;
     createFusion: (input: CreateFusionInput) => Promise<DraftFusionRecord>;
     generateFusion: (input: GenerateFusionInput) => Promise<DraftFusionRecord>;

@@ -31,13 +31,15 @@ export class CredentialService {
   }
 
   saveCredential(input: SaveCredentialInput): ProviderCredentialDto {
-    const encryptedSecretBase64 = this.options.encryption.encryptToBase64(input.apiKey);
+    const apiKey = input.apiKey.trim();
+    const baseUrl = input.baseUrl?.trim() ?? "";
+    const encryptedSecretBase64 = this.options.encryption.encryptToBase64(apiKey);
     const saved = this.options.repository.save({
       provider: input.provider,
-      displayName: input.displayName,
-      baseUrl: input.baseUrl,
+      displayName: input.displayName.trim(),
+      baseUrl: baseUrl.length > 0 ? baseUrl : null,
       encryptedSecretBase64,
-      redactedKeyLabel: this.options.redaction.createKeyLabel(input.apiKey)
+      redactedKeyLabel: this.options.redaction.createKeyLabel(apiKey)
     });
     return this.toDto(saved);
   }
@@ -97,12 +99,16 @@ export class CredentialService {
   }
 
   getConfiguredProviderCredential(provider: ProviderId): ProviderCredentialDto | null {
-    const credential = this.options.repository.listConfiguredByProvider(provider)[0];
+    const credential = selectPreferredCredential(
+      this.options.repository.listConfiguredByProvider(provider)
+    );
     return credential ? this.toDto(credential) : null;
   }
 
   getDecryptedProviderCredential(provider: ProviderId): DecryptedProviderCredential | null {
-    const credential = this.options.repository.listConfiguredByProvider(provider)[0];
+    const credential = selectPreferredCredential(
+      this.options.repository.listConfiguredByProvider(provider)
+    );
     if (!credential?.encryptedSecretBase64) {
       return null;
     }
@@ -132,4 +138,17 @@ export class CredentialService {
       updatedAt: credential.updatedAt
     };
   }
+}
+
+function selectPreferredCredential<T extends ProviderCredentialDto>(
+  credentials: T[]
+): T | undefined {
+  return [...credentials].sort((left, right) => {
+    const leftFailed = left.lastStatus === "test_failed";
+    const rightFailed = right.lastStatus === "test_failed";
+    if (leftFailed !== rightFailed) {
+      return leftFailed ? 1 : -1;
+    }
+    return right.updatedAt.localeCompare(left.updatedAt);
+  })[0];
 }

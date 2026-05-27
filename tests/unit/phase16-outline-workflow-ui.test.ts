@@ -9,7 +9,7 @@ const workflowPanelSource = readFileSync(
 
 describe("phase 16 outline-driven generation UI", () => {
   it("makes detailed outline input the primary generation path", () => {
-    expect(workflowPanelSource).toContain("详细大纲");
+    expect(workflowPanelSource).toContain("细纲起草");
     expect(workflowPanelSource).toContain("生成终稿");
     expect(workflowPanelSource).toContain("sourceOutline");
     expect(workflowPanelSource).toContain("allowStoryChanges");
@@ -25,9 +25,9 @@ describe("phase 16 outline-driven generation UI", () => {
   it("supports dragged outline files and a visible live workflow", () => {
     expect(workflowPanelSource).toContain("importOutlineFile");
     expect(workflowPanelSource).toContain("onDrop={handleOutlineDrop}");
-    expect(workflowPanelSource).toContain("读取大纲");
-    expect(workflowPanelSource).toContain("拆场景");
-    expect(workflowPanelSource).toContain("起草正文");
+    expect(workflowPanelSource).toContain("整理素材");
+    expect(workflowPanelSource).toContain("读取细纲");
+    expect(workflowPanelSource).toContain("按细纲起草");
     expect(workflowPanelSource).toContain("节奏审稿");
     expect(workflowPanelSource).toContain("连贯性审稿");
     expect(workflowPanelSource).toContain("改写成终稿");

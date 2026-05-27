@@ -6,7 +6,9 @@ The product direction is a dark command-center writing studio with a popover lau
 
 ## Current Status
 
-Phases 1-18 are implemented through the local-first studio shell, SQLite data foundation, secure credential metadata, AI gateway, story bible memory, WenForge-native skill package, mock/provider workflow runtime, review and settlement flows, cost/eval dashboards, safe import/export/backup tooling, first-launch onboarding/palette/popover polish, security/diagnostics/packaging preparation, provider connectivity diagnostics, outline-driven Chinese writing UX, Planning Lab, and model-aware provider parameter normalization. Native signing and public release publishing remain planned follow-up work.
+Phases 1-22 are implemented through the local-first studio shell, SQLite data foundation, secure credential metadata, AI gateway, story bible memory, WenForge-native skill package, mock/provider workflow runtime, review and settlement flows, cost/eval dashboards, safe import/export/backup tooling, first-launch onboarding/palette/popover polish, security/diagnostics/packaging preparation, provider connectivity diagnostics, outline-driven Chinese writing UX, Planning Lab, human-gated chapter plans, Universal Intake, and model-aware provider parameter normalization. Native signing and public release publishing remain planned follow-up work.
+
+Universal Intake (`整理素材`) is the chatbot-first planning entry point. Users can paste one-line ideas, messy notes, character/world fragments, constraints, or manuscript excerpts. WenForge records the chat locally and turns model or guided outputs into structured proposals: Material Digest, missing information, Story Bible drafts, style/reader positioning, volume outlines, chapter detailed outlines, scene cards, and risk notes. Proposals must be accepted before they feed drafting; rejected proposals are excluded from canonical context.
 
 ## Planned Stack
 
@@ -63,6 +65,7 @@ Real provider connectivity checks are disabled by default. They require explicit
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Real Provider Setup](docs/REAL_PROVIDER_SETUP.md)
 - [Planning Lab](docs/PLANNING_LAB.md)
+- [Human-Gated Outline Workflow](docs/HUMAN_GATED_OUTLINE_WORKFLOW.md)
 - [Multi-Draft Studio](docs/MULTI_DRAFT_STUDIO.md)
 - [Model Parameter Policy](docs/MODEL_PARAMETER_POLICY.md)
 - [Release Guide](docs/RELEASE.md)

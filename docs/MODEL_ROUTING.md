@@ -225,7 +225,9 @@ Important defaults:
 - OpenAI GPT-5.x chat-completions profiles use `max_completion_tokens` instead of `max_tokens`.
 - OpenAI Responses API profiles use `max_output_tokens`.
 - Claude Opus 4.7 omits `temperature`, `top_p`, and `top_k` and uses `max_tokens`.
-- DeepSeek, Qwen, Kimi, xAI, OpenRouter, and generic OpenAI-compatible profiles use the editable max-output parameter configured on the model profile.
+- DeepSeek, Qwen, xAI, OpenRouter, and generic OpenAI-compatible profiles use the editable max-output parameter configured on the model profile.
+- Kimi/Moonshot uses the official OpenAI-compatible family and omits unsupported temperature
+  fields during workflows and provider smoke checks, preventing `invalid temperature` failures.
 
 Known provider parameter errors are classified as `provider_parameter_error`. If no stream output has started, WenForge can retry once with the rejected parameter removed and records both attempts in `llm_runs`.
 

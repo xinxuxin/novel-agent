@@ -12,6 +12,7 @@ import type {
   VolumeRecord
 } from "@contracts/data";
 import type { ModelProfileRecord } from "@contracts/model-routing";
+import type { ChapterPlanRecord } from "@contracts/planning";
 import { QUALITY_MODES } from "@shared/domain/model-routing";
 import type { QualityMode, TaskType } from "@shared/domain/model-routing";
 import { importOutlineFiles } from "./outline-file-import";
@@ -52,9 +53,9 @@ const QUALITY_LABELS: Record<QualityMode, string> = {
 };
 
 const LIVE_WORKFLOW_STAGES = [
-  { label: "读取大纲", nodes: ["prepare_context", "retrieve_memory"] },
-  { label: "拆场景", nodes: ["generate_chapter_outline", "generate_scene_cards"] },
-  { label: "起草正文", nodes: ["draft_chapter"] },
+  { label: "整理素材", nodes: ["prepare_context", "retrieve_memory"] },
+  { label: "读取细纲", nodes: ["generate_chapter_outline", "generate_scene_cards"] },
+  { label: "按细纲起草", nodes: ["draft_chapter"] },
   { label: "节奏审稿", nodes: ["webnovel_rhythm_audit"] },
   { label: "连贯性审稿", nodes: ["continuity_audit"] },
   { label: "改写成终稿", nodes: ["revise_draft"] },
@@ -82,10 +83,12 @@ export function WorkflowGeneratePanel({
   const [outlineImportStatus, setOutlineImportStatus] = useState("拖入多个 .docx / .txt / .md");
   const [dragActive, setDragActive] = useState(false);
   const [optimisticStageIndex, setOptimisticStageIndex] = useState(0);
-  const [allowStoryChanges, setAllowStoryChanges] = useState(true);
+  const [allowStoryChanges, setAllowStoryChanges] = useState(false);
+  const [allowDraftPlanOverride, setAllowDraftPlanOverride] = useState(false);
   const [desiredOutput, setDesiredOutput] = useState<
     "outline" | "scene_cards" | "draft" | "final_manuscript"
-  >("final_manuscript");
+  >("draft");
+  const [acceptedPlan, setAcceptedPlan] = useState<ChapterPlanRecord | null>(null);
   const latestRevision = useMemo(() => findLatestArtifact(detail, "revision"), [detail]);
   const latestDraft = useMemo(() => findLatestArtifact(detail, "draft"), [detail]);
   const displayArtifact = latestRevision ?? latestDraft;
@@ -104,11 +107,14 @@ export function WorkflowGeneratePanel({
       if (!activeChapter) {
         setDetail(null);
         setAcceptedVersion(null);
+        setAcceptedPlan(null);
         return;
       }
+      const plan = await window.wenforge.planning.chapterPlans.getAccepted(activeChapter.id);
       const runs = await window.wenforge.generation.listRunsByChapter(activeChapter.id);
       const latest = runs[0] ? await window.wenforge.generation.getRun(runs[0].id) : null;
       if (!mounted) return;
+      setAcceptedPlan(plan);
       setDetail(latest);
       if (latest) {
         onWorkflowCostChange(
@@ -126,6 +132,17 @@ export function WorkflowGeneratePanel({
   }, [activeChapter, onWorkflowCostChange]);
 
   useEffect(() => {
+    if (acceptedPlan) {
+      let cancelled = false;
+      queueMicrotask(() => {
+        if (cancelled) return;
+        setSourceOutline("");
+        setOutlineImportStatus("已连接已确认细纲");
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
     const saved = activeChapter?.outlineJson
       ? parseSavedSourceOutline(activeChapter.outlineJson)
       : null;
@@ -138,7 +155,7 @@ export function WorkflowGeneratePanel({
     return () => {
       cancelled = true;
     };
-  }, [activeChapter?.id, activeChapter?.outlineJson]);
+  }, [acceptedPlan, activeChapter?.id, activeChapter?.outlineJson]);
 
   useEffect(() => {
     let mounted = true;
@@ -179,9 +196,14 @@ export function WorkflowGeneratePanel({
 
   const startWorkflow = async (label: string): Promise<void> => {
     if (!activeProject || !activeBook || !activeChapter) return;
-    const outline = sourceOutline.trim() || activeChapter.summary?.trim() || "";
-    if (!outline) {
-      window.alert("请先拖入或粘贴详细大纲。");
+    const requiresAcceptedPlan = desiredOutput === "draft" || desiredOutput === "final_manuscript";
+    if (requiresAcceptedPlan && !acceptedPlan && !allowDraftPlanOverride) {
+      window.alert("请先在规划实验室接受章节细纲，或勾选草稿细纲覆盖后再生成。");
+      return;
+    }
+    const outline = sourceOutline.trim() || (!acceptedPlan ? activeChapter.summary?.trim() || "" : "");
+    if (!outline && !acceptedPlan) {
+      window.alert("请先整理素材并生成章节细纲。");
       return;
     }
     const confirmed =
@@ -207,7 +229,7 @@ export function WorkflowGeneratePanel({
         qualityMode,
         executionMode,
         routeOverrideModelProfileId: routeOverrideModelProfileId || null,
-        sourceOutline: outline,
+        sourceOutline: outline || null,
         allowStoryChanges,
         desiredOutput,
         userInstruction: buildOutlineInstruction(label, allowStoryChanges),
@@ -287,7 +309,7 @@ export function WorkflowGeneratePanel({
         ? "\n\n网文高级路线可能增加多模型检查成本。"
         : "";
     return window.confirm(
-      `运行真实模型？\n\n${routeLines}\n\n最高预估：$${maxCost.toFixed(6)}${premiumNote}\n不会覆盖正文。`
+      `运行真实模型？\n\n${routeLines}\n\n最高预估：$${maxCost.toFixed(6)}${premiumNote}\n不会覆盖正文，不会自动修改故事圣经。`
     );
   };
 
@@ -413,10 +435,23 @@ export function WorkflowGeneratePanel({
           <div className="rounded-lg border border-forge-blue/25 bg-forge-blue/8 p-4">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
               <div className="min-w-0">
-                <p className="text-xs font-medium tracking-[0.16em] text-forge-blue">大纲成稿</p>
+                <p className="text-xs font-medium tracking-[0.16em] text-forge-blue">
+                  细纲起草
+                </p>
                 <h3 className="mt-1 text-lg font-semibold text-white">
-                  拖入大纲，生成终稿候选。
+                  从已确认章节细纲生成非正式草稿。
                 </h3>
+                <div className="mt-3 rounded-lg border border-white/10 bg-black/18 p-3 text-xs leading-5 text-slate-400">
+                  {acceptedPlan ? (
+                    <>
+                      <span className="text-forge-mint">已连接细纲：</span>
+                      第{acceptedPlan.chapterIndex}章 · {acceptedPlan.title} ·{" "}
+                      {acceptedPlan.targetWords}字
+                    </>
+                  ) : (
+                    "未找到已确认细纲。默认不会从素材直接生成正文。"
+                  )}
+                </div>
                 <div
                   className={`mt-3 rounded-lg border p-3 transition ${
                     dragActive
@@ -432,13 +467,13 @@ export function WorkflowGeneratePanel({
                 >
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs font-medium tracking-[0.14em] text-slate-500">
-                      详细大纲
+                      补充备注
                     </span>
                     <span className="truncate text-xs text-slate-500">{outlineImportStatus}</span>
                   </div>
                   <textarea
                     className="mt-2 min-h-40 w-full resize-y rounded-lg border border-white/10 bg-black/35 p-4 text-sm leading-7 text-slate-100 outline-none placeholder:text-slate-600 focus:border-forge-blue/50"
-                    placeholder={`例：\n第一场：雨夜公交站，主角听见倒计时。\n第二场：倒计时指向即将出事的女孩。\n第三场：主角救人后能力失控。\n章末：女孩手腕出现同样符号。`}
+                    placeholder={`可选：补充本次起草要求。\n如果已有已确认细纲，这里留空也可以直接起草。`}
                     value={sourceOutline}
                     onChange={(event) => setSourceOutline(event.target.value)}
                   />
@@ -449,11 +484,17 @@ export function WorkflowGeneratePanel({
                 <WorkflowStageRail stages={stageStates} reduceMotion={Boolean(reduceMotion)} />
                 <button
                   className="mt-3 w-full rounded-lg border border-forge-blue/40 bg-forge-blue/18 px-4 py-2.5 text-sm font-semibold text-forge-blue transition hover:bg-forge-blue/25 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={busy || !activeChapter}
+                  disabled={
+                    busy ||
+                    !activeChapter ||
+                    ((desiredOutput === "draft" || desiredOutput === "final_manuscript") &&
+                      !acceptedPlan &&
+                      !allowDraftPlanOverride)
+                  }
                   onClick={() => void startWorkflow("生成终稿")}
                   type="button"
                 >
-                  生成终稿
+                  从已确认细纲起草
                 </button>
                 <div className="mt-4 space-y-3">
                   <label className="block">
@@ -518,6 +559,15 @@ export function WorkflowGeneratePanel({
                       type="checkbox"
                     />
                     允许改动情节/设定
+                  </label>
+                  <label className="flex items-start gap-2 rounded-lg border border-forge-amber/25 bg-forge-amber/10 px-3 py-2 text-xs text-forge-amber">
+                    <input
+                      checked={allowDraftPlanOverride}
+                      className="mt-0.5 accent-forge-amber"
+                      onChange={(event) => setAllowDraftPlanOverride(event.target.checked)}
+                      type="checkbox"
+                    />
+                    没有已确认细纲时仍使用草稿/备注起草
                   </label>
                   {executionMode === "provider" ? (
                     <select

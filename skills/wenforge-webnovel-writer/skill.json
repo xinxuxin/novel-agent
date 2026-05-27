@@ -185,6 +185,104 @@
       "outputSchema": "chapter-outline"
     },
     {
+      "id": "material-digest",
+      "file": "material-digest.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "summarize_chapter"
+    },
+    {
+      "id": "chapter-plan-grid-from-materials",
+      "file": "chapter-plan-grid-from-materials.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "chapter_outline"
+    },
+    {
+      "id": "chapter-plan-refine-selected",
+      "file": "chapter-plan-refine-selected.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "chapter_outline"
+    },
+    {
+      "id": "chapter-plan-risk-check",
+      "file": "chapter-plan-risk-check.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "continuity_audit"
+    },
+    {
+      "id": "generate-from-accepted-chapter-plan",
+      "file": "generate-from-accepted-chapter-plan.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "draft_chapter"
+    },
+    {
+      "id": "batch-generation-preflight",
+      "file": "batch-generation-preflight.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "brainstorm"
+    },
+    {
+      "id": "universal-intake-classify",
+      "file": "universal-intake-classify.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "brainstorm"
+    },
+    {
+      "id": "material-digest-from-anything",
+      "file": "material-digest-from-anything.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "summarize_chapter"
+    },
+    {
+      "id": "auto-complete-missing-settings",
+      "file": "auto-complete-missing-settings.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "brainstorm"
+    },
+    {
+      "id": "creative-directions",
+      "file": "creative-directions.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "brainstorm"
+    },
+    {
+      "id": "intake-chat-response",
+      "file": "intake-chat-response.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "brainstorm"
+    },
+    {
+      "id": "intake-to-story-bible-proposal",
+      "file": "intake-to-story-bible-proposal.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "story_bible"
+    },
+    {
+      "id": "intake-to-volume-outline",
+      "file": "intake-to-volume-outline.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "volume_outline"
+    },
+    {
+      "id": "intake-to-chapter-plans",
+      "file": "intake-to-chapter-plans.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "chapter_outline"
+    },
+    {
       "id": "scene-card-refine",
       "file": "scene-card-refine.zh.md",
       "version": "1.0.0",

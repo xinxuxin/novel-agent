@@ -135,22 +135,22 @@ export class AnthropicAdapter implements ProviderAdapter {
     const parsed = (await response.json()) as { data?: unknown };
     const models = Array.isArray(parsed.data) ? parsed.data : [];
     return models.flatMap((model): ProviderModelInfo[] => {
-        if (!model || typeof model !== "object") return [];
-        const value = model as { id?: unknown; display_name?: unknown; type?: unknown };
-        if (typeof value.id !== "string") return [];
-        return [{
+      if (!model || typeof model !== "object") return [];
+      const value = model as { id?: unknown; display_name?: unknown; type?: unknown };
+      if (typeof value.id !== "string") return [];
+      return [
+        {
           id: value.id,
           displayName: typeof value.display_name === "string" ? value.display_name : value.id,
           supportsGeneration: value.type === "model" || typeof value.type !== "string"
-        }];
-      });
+        }
+      ];
+    });
   }
 
   normalizeUsage(raw: unknown): TokenUsage | null {
     const usage =
-      raw && typeof raw === "object" && "usage" in raw
-        ? (raw as { usage?: unknown }).usage
-        : raw;
+      raw && typeof raw === "object" && "usage" in raw ? (raw as { usage?: unknown }).usage : raw;
     if (!usage || typeof usage !== "object") return null;
     const value = usage as {
       input_tokens?: unknown;
@@ -193,8 +193,7 @@ function toAnthropicBody(
   const params = config.normalizedParams
     ? filterAnthropicParams(config.normalizedParams.bodyParams)
     : {
-        max_tokens: request.maxOutputTokens ?? 1024,
-        ...(typeof request.temperature === "number" ? { temperature: request.temperature } : {})
+        max_tokens: request.maxOutputTokens ?? 1024
       };
   return {
     model: request.model,

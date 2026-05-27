@@ -1,5 +1,5 @@
 import type { AIProviderId, LLMTaskType, StreamRequest } from "@contracts/ai";
-import type { ModelPriceRecord } from "@contracts/model-routing";
+import type { ModelPriceRecord, ModelProfileRecord } from "@contracts/model-routing";
 import { PROVIDERS } from "@shared/domain/model-routing";
 import type { ProviderId } from "@shared/domain/model-routing";
 import type { AiGateway } from "@main/ai/ai-gateway";
@@ -50,7 +50,6 @@ export interface ProviderSmokeServiceOptions {
 
 const SMOKE_TASK_TYPE: LLMTaskType = "brainstorm";
 const SMOKE_MAX_OUTPUT_TOKENS = 80;
-const SMOKE_TEMPERATURE = 0;
 
 export class ProviderSmokeService {
   private readonly adapters: Map<AIProviderId, ProviderAdapter>;
@@ -116,17 +115,19 @@ export class ProviderSmokeService {
     try {
       const decryptedCredential =
         this.options.credentialService?.getDecryptedProviderCredential(request.provider) ?? null;
-      const availableModels = adapter.listModels && decryptedCredential
-        ? await adapter.listModels({
-            apiKey: decryptedCredential.apiKey,
-            baseUrl: decryptedCredential.baseUrl
-          })
-        : [];
+      const availableModels =
+        adapter.listModels && decryptedCredential
+          ? await adapter.listModels({
+              apiKey: decryptedCredential.apiKey,
+              baseUrl: decryptedCredential.baseUrl
+            })
+          : [];
       const smokeModel = selectSmokeModel({
         provider: request.provider,
         configuredModel: modelProfile.model,
         availableModels
       });
+      this.ensureSmokeModelProfile(request.provider, smokeModel, modelProfile);
       baseResult = { ...baseResult, model: smokeModel };
 
       if (adapter.capabilities.streaming) {
@@ -204,20 +205,56 @@ export class ProviderSmokeService {
     confirmed: boolean;
     budgetCapUsd?: number | null;
   }): Promise<ProviderSmokeResult[]> {
-    const providers = this.options.repositories.providerCredentials
-      .list()
-      .filter((credential) => credential.isConfigured)
-      .map((credential) => credential.provider);
-    const uniqueProviders = [...new Set(providers)];
+    const configuredProviders = new Set(
+      this.options.repositories.providerCredentials
+        .list()
+        .filter((credential) => credential.isConfigured)
+        .map((credential) => credential.provider)
+    );
     const results: ProviderSmokeResult[] = [];
-    for (const provider of uniqueProviders) {
-      results.push(
-        await this.runProviderSmoke({
-          provider,
-          confirmed: input.confirmed,
-          ...(typeof input.budgetCapUsd === "number" ? { budgetCapUsd: input.budgetCapUsd } : {})
-        })
-      );
+    let remainingBudget = typeof input.budgetCapUsd === "number" ? input.budgetCapUsd : null;
+    let budgetExhausted = false;
+    for (const provider of PROVIDERS) {
+      if (!configuredProviders.has(provider)) {
+        const adapter = this.adapters.get(provider);
+        results.push(
+          this.createBaseResult(provider, {
+            configured: false,
+            streamingSupported: Boolean(adapter?.capabilities.streaming),
+            nonStreamingSupported: Boolean(adapter)
+          })
+        );
+        continue;
+      }
+      if (budgetExhausted) {
+        const adapter = this.adapters.get(provider);
+        const modelProfile = this.options.repositories.modelProfiles
+          .list()
+          .find((profile) => profile.provider === provider && profile.enabled);
+        results.push({
+          ...this.createBaseResult(provider, {
+            model: modelProfile?.model ?? null,
+            configured: true,
+            streamingSupported: Boolean(adapter?.capabilities.streaming),
+            nonStreamingSupported: Boolean(adapter)
+          }),
+          status: "blocked",
+          error: "Global provider check budget cap exceeded before provider call"
+        });
+        continue;
+      }
+      const result = await this.runProviderSmoke({
+        provider,
+        confirmed: input.confirmed,
+        ...(typeof remainingBudget === "number" ? { budgetCapUsd: remainingBudget } : {})
+      });
+      results.push(result);
+      if (typeof remainingBudget === "number") {
+        remainingBudget -= result.finalCost ?? result.estimatedCost ?? 0;
+        if (result.status === "blocked" || remainingBudget <= 0) {
+          budgetExhausted = true;
+        }
+      }
     }
     return results;
   }
@@ -247,7 +284,7 @@ export class ProviderSmokeService {
           content: `Return a tiny JSON object only: { "ok": true, "provider": "${provider}", "message": "pong" }`
         }
       ],
-      temperature: SMOKE_TEMPERATURE,
+      creativityIntent: "deterministic",
       maxOutputTokens: SMOKE_MAX_OUTPUT_TOKENS
     };
   }
@@ -267,6 +304,47 @@ export class ProviderSmokeService {
       estimated: true
     }).totalCost;
     return singleCall * 2;
+  }
+
+  private ensureSmokeModelProfile(
+    provider: ProviderId,
+    model: string,
+    baseProfile: ModelProfileRecord
+  ): void {
+    if (this.options.repositories.modelProfiles.find(provider, model)) {
+      return;
+    }
+    this.options.repositories.modelProfiles.upsert({
+      provider,
+      model,
+      alias: null,
+      displayName: model,
+      contextWindow: baseProfile.contextWindow,
+      maxOutputTokens: baseProfile.maxOutputTokens,
+      supportsStreaming: baseProfile.supportsStreaming,
+      supportsJson: baseProfile.supportsJson,
+      supportsTools: baseProfile.supportsTools,
+      supportsVision: baseProfile.supportsVision,
+      supportsPromptCaching: baseProfile.supportsPromptCaching,
+      supportsTemperature:
+        provider === "anthropic" || provider === "moonshot_kimi"
+          ? false
+          : baseProfile.supportsTemperature,
+      supportsTopP: provider === "anthropic" ? false : baseProfile.supportsTopP,
+      supportsTopK: provider === "anthropic" ? false : baseProfile.supportsTopK,
+      supportsFrequencyPenalty: baseProfile.supportsFrequencyPenalty,
+      supportsPresencePenalty: baseProfile.supportsPresencePenalty,
+      supportsStop: baseProfile.supportsStop,
+      supportsReasoningEffort: baseProfile.supportsReasoningEffort,
+      supportsAdaptiveThinking: baseProfile.supportsAdaptiveThinking,
+      supportsManualThinkingBudget: baseProfile.supportsManualThinkingBudget,
+      maxOutputParamName: baseProfile.maxOutputParamName,
+      endpointFamily: baseProfile.endpointFamily,
+      supportsResponsesApi: baseProfile.supportsResponsesApi,
+      supportsChatCompletions: baseProfile.supportsChatCompletions,
+      defaultTemperature: baseProfile.defaultTemperature,
+      enabled: true
+    });
   }
 
   private createBaseResult(

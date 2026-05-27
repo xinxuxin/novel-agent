@@ -62,7 +62,10 @@ export class ProviderModelCatalogService {
       return {
         ...base,
         status: "passed",
-        models: models.filter((model) => model.supportsGeneration !== false),
+        models: sortProviderModels(
+          provider,
+          models.filter((model) => model.supportsGeneration !== false)
+        ),
         error: null
       };
     } catch (error) {
@@ -90,7 +93,10 @@ export function selectSmokeModel(input: {
   configuredModel: string;
   availableModels: ProviderModelInfo[];
 }): string {
-  const available = input.availableModels
+  const available = sortProviderModels(
+    input.provider,
+    input.availableModels.filter((model) => model.supportsGeneration !== false)
+  )
     .map((model) => model.id)
     .filter((id) => Boolean(id.trim()));
   if (available.length === 0) return input.configuredModel;
@@ -106,21 +112,69 @@ export function selectSmokeModel(input: {
 function preferredModelPatterns(provider: ProviderId): string[] {
   switch (provider) {
     case "openai":
-      return ["gpt-5.3", "gpt-5.2", "gpt-5.1", "gpt-5", "gpt-4.1", "gpt-4o"];
+      return ["gpt-5.5", "gpt-5.4", "gpt-5.3", "gpt-5.2", "gpt-5.1", "gpt-5", "gpt-4.1", "gpt-4o"];
     case "anthropic":
       return ["claude-opus", "claude-sonnet", "claude"];
     case "gemini":
       return ["gemini-3.5", "gemini-3", "gemini-2.5", "gemini"];
     case "deepseek":
-      return ["deepseek-chat", "deepseek-reasoner", "deepseek-v4", "deepseek"];
+      return ["deepseek-v4-pro", "deepseek-chat", "deepseek-reasoner", "deepseek-v3", "deepseek"];
     case "dashscope_qwen":
-      return ["qwen3", "qwen-max", "qwen-plus", "qwen"];
+      return ["qwen3.7-max", "qwen3-max", "qwen-max-latest", "qwen-max", "qwen-plus", "qwen"];
     case "moonshot_kimi":
-      return ["kimi", "moonshot"];
+      return [
+        "kimi-k2.6",
+        "kimi-k2",
+        "kimi-latest",
+        "moonshot-v1-128k",
+        "moonshot-v1-32k",
+        "moonshot-v1-8k",
+        "kimi",
+        "moonshot"
+      ];
     case "xai":
       return ["grok"];
     case "openrouter":
     case "generic_openai_compatible":
       return ["gpt", "claude", "gemini", "deepseek", "qwen", "kimi"];
   }
+}
+
+export function sortProviderModels(
+  provider: ProviderId,
+  models: ProviderModelInfo[]
+): ProviderModelInfo[] {
+  const preferred = preferredModelPatterns(provider);
+  return [...models].sort((a, b) => {
+    const aRank = preferredRank(a.id, preferred);
+    const bRank = preferredRank(b.id, preferred);
+    if (aRank !== bRank) return aRank - bRank;
+    if (provider === "openai") {
+      return compareOpenAiModelFreshness(a.id, b.id);
+    }
+    return a.id.localeCompare(b.id);
+  });
+}
+
+function preferredRank(model: string, preferred: string[]): number {
+  const lower = model.toLowerCase();
+  const index = preferred.findIndex((pattern) => lower.includes(pattern));
+  return index === -1 ? preferred.length : index;
+}
+
+function compareOpenAiModelFreshness(a: string, b: string): number {
+  const aScore = openAiModelFreshnessScore(a);
+  const bScore = openAiModelFreshnessScore(b);
+  if (aScore !== bScore) return bScore - aScore;
+  return a.localeCompare(b);
+}
+
+function openAiModelFreshnessScore(model: string): number {
+  const lower = model.toLowerCase();
+  const match = lower.match(/^gpt-(\d+)(?:\.(\d+))?(?:-(mini|nano))?/);
+  if (!match) return 0;
+  const major = Number(match[1] ?? 0);
+  const minor = Number(match[2] ?? 0);
+  const sizePenalty = match[3] === "nano" ? 0.2 : match[3] === "mini" ? 0.1 : 0;
+  return major * 100 + minor - sizePenalty;
 }

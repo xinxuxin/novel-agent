@@ -30,7 +30,7 @@ export function createDefaultProviderAdapters(): ProviderAdapter[] {
     new GenericOpenAICompatibleAdapter({
       id: "moonshot_kimi",
       displayName: "Moonshot / Kimi",
-      defaultBaseUrl: "https://api.moonshot.cn/v1"
+      defaultBaseUrl: "https://api.moonshot.ai/v1"
     }),
     new GenericOpenAICompatibleAdapter({
       id: "xai",

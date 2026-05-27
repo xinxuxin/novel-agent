@@ -51,7 +51,9 @@ export class ProviderCredentialRepository {
   listConfiguredByProvider(provider: ProviderId): ProviderCredentialSecretRecord[] {
     return this.db.sqlite
       .prepare(
-        "select * from provider_credentials where provider = ? and is_configured = 1 order by updated_at desc"
+        `select * from provider_credentials
+        where provider = ? and is_configured = 1
+        order by case last_status when 'test_failed' then 1 else 0 end asc, updated_at desc`
       )
       .all(provider)
       .map((row) => mapCredential(row as Record<string, unknown>));

@@ -243,3 +243,23 @@ The full workflow is still available through the Generate action, but the visibl
 The Candidates tab uses simple cards instead of an analytics dashboard. Each card shows model/provider, role label, word count, cost, generation time, status, and a few direct actions: use as base, add to fusion, retry, save as version, or set canonical after confirmation.
 
 Settings now groups cost tools under Costs instead of showing separate Pricing and Budgets tabs by default.
+
+## Phase 22 Universal Intake UI
+
+Add `整理素材` as a first-class workspace in the top navigation and More menu. It uses a simple
+two-column layout:
+
+- Left: chat history and input box for any idea, note, outline, setting, manuscript fragment,
+  preference, dislike, or constraint.
+- Right: structured planning panel with proposal artifacts and badges for draft/proposed/accepted/rejected.
+
+Primary guided actions:
+
+- `整理素材`: classify and digest materials without inventing canon.
+- `自动补全缺失设定`: generate 2-3 proposal directions for missing settings.
+- `生成章节细纲`: create editable chapter plan proposals and scene cards.
+- `确认后开始写正文`: disabled until at least one chapter plan is accepted.
+
+The right panel hides raw JSON under More. Visible content should be editable prose/fields, with
+clear accept/reject controls. Accepting a chapter-outline artifact may create accepted chapter plan
+records; it must not overwrite canonical manuscript or mutate Story Bible automatically.

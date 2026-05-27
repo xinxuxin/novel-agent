@@ -1,7 +1,42 @@
 export type OutlineSourceType = "paste" | "file" | "manual" | "imported";
-export type PlanStatus = "draft" | "proposed" | "accepted" | "archived";
+export type PlanStatus = "draft" | "proposed" | "accepted" | "rejected" | "archived";
+export type WordCountPriority = "loose" | "normal" | "strict";
 export type PlanEditTargetType = "outline" | "volume" | "chapter" | "scene" | "beat" | "manuscript";
 export type PlanEditProposalStatus = "proposed" | "accepted" | "rejected" | "archived";
+export type IntakeStatus = "draft" | "proposed" | "accepted" | "rejected" | "archived";
+export type IntakeMessageRole = "user" | "assistant" | "system";
+
+export interface IntakeSessionRecord {
+  id: string;
+  projectId: string;
+  bookId: string | null;
+  title: string;
+  status: IntakeStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IntakeMessageRecord {
+  id: string;
+  sessionId: string;
+  role: IntakeMessageRole;
+  content: string;
+  linkedArtifactId: string | null;
+  createdAt: string;
+}
+
+export interface IntakeArtifactRecord {
+  id: string;
+  sessionId: string;
+  artifactType: string;
+  title: string;
+  contentJson: string;
+  contentMarkdown: string;
+  status: IntakeStatus;
+  sourceMessageIdsJson: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface OutlineSourceRecord {
   id: string;
@@ -27,6 +62,21 @@ export interface OutlineVersionRecord {
   createdAt: string;
 }
 
+export interface MaterialDigestRecord {
+  id: string;
+  bookId: string;
+  intakeSessionId: string | null;
+  outlineVersionId: string | null;
+  sourceSummaryJson: string;
+  digestJson: string;
+  missingInformationJson: string;
+  ambiguityWarningsJson: string;
+  warningsJson: string;
+  acceptedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ChapterPlanRecord {
   id: string;
   bookId: string;
@@ -38,15 +88,28 @@ export interface ChapterPlanRecord {
   targetWords: number;
   minWords: number | null;
   maxWords: number | null;
+  wordCountPriority: WordCountPriority;
+  chapterSummary: string | null;
   chapterPromise: string | null;
   openingHook: string | null;
   mainConflict: string | null;
+  conflictEscalation: string | null;
+  keyEventsJson: string;
+  sceneCardsJson: string;
   emotionalTurn: string | null;
   payoff: string | null;
   endingHook: string | null;
   continuityDependenciesJson: string;
+  charactersInvolvedJson: string;
+  storyBibleFactsUsedJson: string;
+  foreshadowingSeededJson: string;
+  foreshadowingResolvedJson: string;
+  unresolvedHooksCarriedForwardJson: string;
   userNotes: string | null;
+  riskNotes: string | null;
   status: PlanStatus;
+  acceptedAt: string | null;
+  acceptedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }

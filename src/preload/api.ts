@@ -84,6 +84,10 @@ import type {
 } from "@contracts/review-settlement";
 import type {
   ChapterPlanRecord,
+  IntakeArtifactRecord,
+  IntakeMessageRecord,
+  IntakeSessionRecord,
+  MaterialDigestRecord,
   OutlineSourceRecord,
   OutlineVersionRecord,
   PlanEditProposalRecord
@@ -425,6 +429,70 @@ export function createPreloadApi(
         )
     },
     planning: {
+      intake: {
+        sessions: {
+          list: (projectId) =>
+            invokeContract<IntakeSessionRecord[]>(
+              invoke,
+              IPC_CONTRACTS.planning.intake.sessions.list.channel,
+              IPC_CONTRACTS.planning.intake.sessions.list.response,
+              { projectId }
+            ),
+          create: (input) =>
+            invokeContract<IntakeSessionRecord>(
+              invoke,
+              IPC_CONTRACTS.planning.intake.sessions.create.channel,
+              IPC_CONTRACTS.planning.intake.sessions.create.response,
+              input
+            ),
+          setStatus: (id, status) =>
+            invokeContract<IntakeSessionRecord | null>(
+              invoke,
+              IPC_CONTRACTS.planning.intake.sessions.setStatus.channel,
+              IPC_CONTRACTS.planning.intake.sessions.setStatus.response,
+              { id, status }
+            )
+        },
+        messages: {
+          list: (sessionId) =>
+            invokeContract<IntakeMessageRecord[]>(
+              invoke,
+              IPC_CONTRACTS.planning.intake.messages.list.channel,
+              IPC_CONTRACTS.planning.intake.messages.list.response,
+              { sessionId }
+            ),
+          add: (input) =>
+            invokeContract<IntakeMessageRecord>(
+              invoke,
+              IPC_CONTRACTS.planning.intake.messages.add.channel,
+              IPC_CONTRACTS.planning.intake.messages.add.response,
+              input
+            )
+        },
+        artifacts: {
+          list: (sessionId) =>
+            invokeContract<IntakeArtifactRecord[]>(
+              invoke,
+              IPC_CONTRACTS.planning.intake.artifacts.list.channel,
+              IPC_CONTRACTS.planning.intake.artifacts.list.response,
+              { sessionId }
+            ),
+          create: (input) =>
+            invokeContract<IntakeArtifactRecord>(
+              invoke,
+              IPC_CONTRACTS.planning.intake.artifacts.create.channel,
+              IPC_CONTRACTS.planning.intake.artifacts.create.response,
+              input
+            ),
+          setStatus: (id, status) =>
+            invokeContract<IntakeArtifactRecord | null>(
+              invoke,
+              IPC_CONTRACTS.planning.intake.artifacts.setStatus.channel,
+              IPC_CONTRACTS.planning.intake.artifacts.setStatus.response,
+              { id, status }
+            )
+        }
+      },
       outlineSources: {
         list: (bookId) =>
           invokeContract<OutlineSourceRecord[]>(
@@ -462,6 +530,29 @@ export function createPreloadApi(
             IPC_CONTRACTS.planning.outlineVersions.setActive.channel,
             IPC_CONTRACTS.planning.outlineVersions.setActive.response,
             { bookId, id }
+          )
+      },
+      materialDigests: {
+        list: (bookId) =>
+          invokeContract<MaterialDigestRecord[]>(
+            invoke,
+            IPC_CONTRACTS.planning.materialDigests.list.channel,
+            IPC_CONTRACTS.planning.materialDigests.list.response,
+            { bookId }
+          ),
+        latest: (bookId) =>
+          invokeContract<MaterialDigestRecord | null>(
+            invoke,
+            IPC_CONTRACTS.planning.materialDigests.latest.channel,
+            IPC_CONTRACTS.planning.materialDigests.latest.response,
+            { bookId }
+          ),
+        createFromMaterials: (bookId) =>
+          invokeContract<MaterialDigestRecord>(
+            invoke,
+            IPC_CONTRACTS.planning.materialDigests.createFromMaterials.channel,
+            IPC_CONTRACTS.planning.materialDigests.createFromMaterials.response,
+            { bookId }
           )
       },
       chapterPlans: {

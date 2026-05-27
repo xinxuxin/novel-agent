@@ -55,6 +55,8 @@ class SequenceProviderAdapter implements ProviderAdapter {
     promptCaching: false
   };
   private index = 0;
+  readonly requests: StreamRequest[] = [];
+  readonly configs: ProviderAdapterConfig[] = [];
 
   constructor(
     readonly id: AIProviderId,
@@ -70,9 +72,10 @@ class SequenceProviderAdapter implements ProviderAdapter {
   async streamChat(
     request: StreamRequest,
     callbacks: ProviderStreamCallbacks,
-    abortSignal: AbortSignal
+    abortSignal: AbortSignal,
+    config: ProviderAdapterConfig = {}
   ): Promise<NormalizedProviderResponse> {
-    const response = await this.generateText(request, abortSignal);
+    const response = await this.generateText(request, abortSignal, config);
     callbacks.onDelta?.(response.text);
     if (response.usage) {
       callbacks.onUsage?.(response.usage);
@@ -82,9 +85,12 @@ class SequenceProviderAdapter implements ProviderAdapter {
 
   async generateText(
     request: StreamRequest,
-    abortSignal: AbortSignal
+    abortSignal: AbortSignal,
+    config: ProviderAdapterConfig = {}
   ): Promise<NormalizedProviderResponse> {
     void abortSignal;
+    this.requests.push(request);
+    this.configs.push(config);
     const next = this.responses[Math.min(this.index, this.responses.length - 1)] ?? "";
     this.index += 1;
     if (typeof next !== "string") {
@@ -159,6 +165,51 @@ describe("phase 15c privacy-safe provider connectivity diagnostics", () => {
     expect(repositories.cost.summarizeRuns({}).runCount).toBe(2);
   });
 
+  it("checks configured providers sequentially, skips unconfigured providers, and preserves partial failures", async () => {
+    const openai = new SequenceProviderAdapter("openai", ['{"ok":true,"message":"pong"}']);
+    const deepseek = new SequenceProviderAdapter("deepseek", [
+      { code: "provider_error", message: "DeepSeek temporary failure", retryable: true }
+    ]);
+    const { service, repositories, credentialService } = createProviderHarness([
+      openai,
+      deepseek
+    ]);
+    credentialService.saveCredential({
+      provider: "deepseek",
+      displayName: "DeepSeek test credential",
+      apiKey: "deepseek-unit-redacted-1234567890"
+    });
+    repositories.modelProfiles.create({
+      provider: "deepseek",
+      model: "deepseek-check",
+      displayName: "DeepSeek check",
+      supportsStreaming: true,
+      supportsJson: true,
+      enabled: true
+    });
+    repositories.modelPrices.upsert({
+      provider: "deepseek",
+      model: "deepseek-check",
+      inputPricePerMillion: 0.01,
+      outputPricePerMillion: 0.01,
+      currency: "USD",
+      effectiveDate: "2026-05-26",
+      sourceNote: "Unit test placeholder.",
+      enabled: true
+    });
+
+    const results = await service.runAllConfigured({ confirmed: true, budgetCapUsd: 0.5 });
+    const byProvider = new Map(results.map((result) => [result.provider, result]));
+
+    expect(byProvider.get("openai")?.status).toBe("passed");
+    expect(byProvider.get("deepseek")?.status).toBe("failed");
+    expect(byProvider.get("moonshot_kimi")?.status).toBe("skipped");
+    expect(byProvider.get("moonshot_kimi")?.tested).toBe(false);
+    expect(openai.requests.length).toBeGreaterThan(0);
+    expect(deepseek.requests.length).toBeGreaterThan(0);
+    expect(repositories.cost.summarizeRuns({}).runCount).toBeGreaterThan(0);
+  });
+
   it("blocks provider checks before calls when the cap is too small", async () => {
     const { service, repositories } = createProviderHarness(
       [new SequenceProviderAdapter("openai", ['{"ok":true,"message":"pong"}'])],
@@ -174,6 +225,52 @@ describe("phase 15c privacy-safe provider connectivity diagnostics", () => {
     expect(result.status).toBe("blocked");
     expect(result.error).toMatch(/budget/i);
     expect(repositories.cost.summarizeRuns({}).runCount).toBe(0);
+  });
+
+  it("uses provider-safe Kimi smoke parameters without exposing temperature", async () => {
+    const kimi = new SequenceProviderAdapter("moonshot_kimi", [
+      '{"ok":true,"provider":"moonshot_kimi","message":"pong"}'
+    ]);
+    const { service, repositories, credentialService } = createProviderHarness([kimi]);
+    credentialService.saveCredential({
+      provider: "moonshot_kimi",
+      displayName: "Kimi test credential",
+      apiKey: "kimi-unit-redacted-1234567890"
+    });
+    repositories.modelProfiles.create({
+      provider: "moonshot_kimi",
+      model: "kimi-k2.6",
+      displayName: "Kimi K2.6",
+      supportsStreaming: true,
+      supportsJson: true,
+      supportsTemperature: true,
+      endpointFamily: "moonshot_openai_compatible",
+      enabled: true
+    });
+    repositories.modelPrices.upsert({
+      provider: "moonshot_kimi",
+      model: "kimi-k2.6",
+      inputPricePerMillion: 0.01,
+      outputPricePerMillion: 0.01,
+      currency: "USD",
+      effectiveDate: "2026-05-26",
+      sourceNote: "Unit test placeholder.",
+      enabled: true
+    });
+
+    const result = await service.runProviderSmoke({
+      provider: "moonshot_kimi",
+      confirmed: true,
+      budgetCapUsd: 0.5
+    });
+
+    expect(result.status).toBe("passed");
+    expect(kimi.requests.every((request) => typeof request.temperature === "undefined")).toBe(
+      true
+    );
+    expect(
+      kimi.configs.every((config) => !("temperature" in (config.normalizedParams?.bodyParams ?? {})))
+    ).toBe(true);
   });
 
   it("redacts provider check reports and diagnostics bundles", () => {

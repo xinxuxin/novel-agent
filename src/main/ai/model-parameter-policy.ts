@@ -88,7 +88,8 @@ export class ModelParameterPolicy {
   normalize(input: ModelParameterPolicyInput): NormalizedProviderParams {
     const endpointFamily = input.endpointFamily ?? defaultEndpointFamily(input.provider);
     const maxOutputParamName =
-      input.maxOutputParamName ?? defaultMaxOutputParamName(input.provider, input.model, endpointFamily);
+      input.maxOutputParamName ??
+      defaultMaxOutputParamName(input.provider, input.model, endpointFamily);
     const creativityIntent =
       input.creativityIntent ?? defaultCreativityIntent(input.taskType ?? "draft_chapter");
     const contextBudgetMode = input.contextBudgetMode ?? "max_safe";
@@ -106,7 +107,15 @@ export class ModelParameterPolicy {
     const desiredTemperature = normalizeTemperature(
       input.requestedTemperature ?? temperatureForIntent(creativityIntent)
     );
-    if (supports(input.supportsTemperature, input.provider, input.model, endpointFamily, "temperature")) {
+    if (
+      supports(
+        input.supportsTemperature,
+        input.provider,
+        input.model,
+        endpointFamily,
+        "temperature"
+      )
+    ) {
       bodyParams.temperature = desiredTemperature;
     } else {
       omittedParams.push({
@@ -117,7 +126,10 @@ export class ModelParameterPolicy {
     }
 
     for (const unsafeName of ["top_p", "top_k", "frequency_penalty", "presence_penalty"]) {
-      if (input.userOverrides && Object.prototype.hasOwnProperty.call(input.userOverrides, unsafeName)) {
+      if (
+        input.userOverrides &&
+        Object.prototype.hasOwnProperty.call(input.userOverrides, unsafeName)
+      ) {
         omittedParams.push({
           name: unsafeName,
           reason: "advanced override is unsupported or unsafe for this model profile"
@@ -127,7 +139,10 @@ export class ModelParameterPolicy {
 
     if (endpointFamily === "openai_chat_completions") {
       if ("max_tokens" in bodyParams && maxOutputParamName !== "max_tokens") {
-        omittedParams.push({ name: "max_tokens", reason: "model profile uses a newer output limit parameter" });
+        omittedParams.push({
+          name: "max_tokens",
+          reason: "model profile uses a newer output limit parameter"
+        });
         delete bodyParams.max_tokens;
       }
       if ("max_completion_tokens" in bodyParams && maxOutputParamName !== "max_completion_tokens") {
@@ -146,7 +161,9 @@ export class ModelParameterPolicy {
     });
 
     if (contextBudgetMode === "max_safe" && effectiveContextTokenBudget === null) {
-      warnings.push("Context budget could not be calculated because model context window is unknown.");
+      warnings.push(
+        "Context budget could not be calculated because model context window is unknown."
+      );
     }
 
     return {
@@ -168,9 +185,15 @@ export class ModelParameterPolicy {
     if (normalized.includes("max_tokens") && normalized.includes("unsupported")) {
       removeParams.push("max_tokens");
     }
-    if (normalized.includes("temperature") && (normalized.includes("deprecated") || normalized.includes("unsupported"))) {
-      removeParams.push("temperature");
-    }
+  if (
+    normalized.includes("temperature") &&
+    (normalized.includes("deprecated") ||
+      normalized.includes("unsupported") ||
+      normalized.includes("only 1 is allowed") ||
+      normalized.includes("invalid temperature"))
+  ) {
+    removeParams.push("temperature");
+  }
     if (normalized.includes("top_p") && normalized.includes("unsupported")) {
       removeParams.push("top_p");
     }
@@ -184,7 +207,12 @@ export class ModelParameterPolicy {
           removeParams,
           message: "The provider rejected one or more request parameters."
         }
-      : { retryable: false, code: "unknown", removeParams: [], message: "Not a known parameter error." };
+      : {
+          retryable: false,
+          code: "unknown",
+          removeParams: [],
+          message: "Not a known parameter error."
+        };
   }
 }
 
@@ -271,10 +299,16 @@ function supports(
   endpointFamily: EndpointFamily,
   paramName: string
 ): boolean {
-  if (typeof value === "boolean") return value;
-  if (paramName === "temperature" && endpointFamily === "anthropic_messages" && /opus-4\.7/i.test(model)) {
+  if (paramName === "temperature" && endpointFamily === "anthropic_messages") {
     return false;
   }
+  if (
+    paramName === "temperature" &&
+    (provider === "moonshot_kimi" || endpointFamily === "moonshot_openai_compatible")
+  ) {
+    return false;
+  }
+  if (typeof value === "boolean") return value;
   if (provider === "fake") return true;
   return true;
 }
