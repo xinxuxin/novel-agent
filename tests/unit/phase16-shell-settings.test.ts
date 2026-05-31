@@ -14,7 +14,7 @@ describe("phase 16 shell and settings clarity", () => {
   });
 
   it("keeps API key setup explicit and encrypted in Settings", () => {
-    expect(settingsSource).toContain("API Key");
+    expect(settingsSource).toContain("API 密钥");
     expect(settingsSource).toContain("加密凭据库");
     expect(settingsSource).toContain("redacted");
     expect(settingsSource).toContain("可用模型");

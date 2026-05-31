@@ -20,18 +20,18 @@ export function createAppTray(mainWindow: BrowserWindow): Tray | null {
   }
 
   tray = new Tray(icon);
-  tray.setToolTip("WenForge Studio");
+  tray.setToolTip("文炉写作台");
   tray.setContextMenu(
     Menu.buildFromTemplate([
       {
-        label: "Show WenForge Studio",
+        label: "显示文炉写作台",
         click: () => {
           mainWindow.show();
           mainWindow.focus();
         }
       },
       {
-        label: "Hide",
+        label: "隐藏",
         click: () => mainWindow.hide()
       }
     ])

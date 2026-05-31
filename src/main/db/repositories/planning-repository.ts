@@ -10,6 +10,27 @@ export type PlanEditProposalStatus = "proposed" | "accepted" | "rejected" | "arc
 export type IntakeStatus = "draft" | "proposed" | "accepted" | "rejected" | "archived";
 export type IntakeMessageRole = "user" | "assistant" | "system";
 
+export interface BookSettingFileRecord {
+  id: string;
+  bookId: string;
+  title: string;
+  contentMarkdown: string;
+  contentPlaintext: string;
+  isActive: boolean;
+  sourceType: OutlineSourceType;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBookSettingFileInput {
+  bookId: string;
+  title: string;
+  contentMarkdown: string;
+  contentPlaintext?: string | undefined;
+  sourceType?: OutlineSourceType | undefined;
+  isActive?: boolean | undefined;
+}
+
 export interface IntakeSessionRecord {
   id: string;
   projectId: string;
@@ -165,6 +186,10 @@ export interface ChapterPlanRecord {
   foreshadowingSeededJson: string;
   foreshadowingResolvedJson: string;
   unresolvedHooksCarriedForwardJson: string;
+  outlineText: string | null;
+  mustIncludeJson: string;
+  mustAvoidJson: string;
+  importSourceId: string | null;
   userNotes: string | null;
   riskNotes: string | null;
   status: PlanStatus;
@@ -202,6 +227,10 @@ export interface UpsertChapterPlanInput {
   foreshadowingSeededJson?: string | undefined;
   foreshadowingResolvedJson?: string | undefined;
   unresolvedHooksCarriedForwardJson?: string | undefined;
+  outlineText?: string | null | undefined;
+  mustIncludeJson?: string | undefined;
+  mustAvoidJson?: string | undefined;
+  importSourceId?: string | null | undefined;
   userNotes?: string | null | undefined;
   riskNotes?: string | null | undefined;
   status?: PlanStatus | undefined;
@@ -242,6 +271,78 @@ export interface CreatePlanEditProposalInput {
 
 export class PlanningRepository {
   constructor(private readonly db: WenForgeDatabase) {}
+
+  createBookSettingFile(input: CreateBookSettingFileInput): BookSettingFileRecord {
+    const now = nowIso();
+    const row = {
+      id: createId("setting_file"),
+      bookId: input.bookId,
+      title: input.title,
+      contentMarkdown: input.contentMarkdown,
+      contentPlaintext: input.contentPlaintext ?? markdownToPlaintext(input.contentMarkdown),
+      isActive: input.isActive === true ? 1 : 0,
+      sourceType: input.sourceType ?? "manual",
+      createdAt: now,
+      updatedAt: now
+    };
+    const tx = this.db.sqlite.transaction(() => {
+      if (row.isActive) {
+        this.db.sqlite
+          .prepare("update book_setting_files set is_active = 0, updated_at = ? where book_id = ?")
+          .run(now, row.bookId);
+      }
+      this.db.sqlite
+        .prepare(
+          `insert into book_setting_files
+          (id, book_id, title, content_markdown, content_plaintext, is_active, source_type,
+            created_at, updated_at)
+          values (@id, @bookId, @title, @contentMarkdown, @contentPlaintext, @isActive,
+            @sourceType, @createdAt, @updatedAt)`
+        )
+        .run(row);
+    });
+    tx();
+    return this.getBookSettingFile(row.id) as BookSettingFileRecord;
+  }
+
+  listBookSettingFiles(bookId: string): BookSettingFileRecord[] {
+    return this.db.sqlite
+      .prepare(
+        "select * from book_setting_files where book_id = ? order by is_active desc, created_at desc"
+      )
+      .all(bookId)
+      .map((row) => mapBookSettingFile(row as Record<string, unknown>));
+  }
+
+  getBookSettingFile(id: string): BookSettingFileRecord | null {
+    const row = this.db.sqlite.prepare("select * from book_setting_files where id = ?").get(id);
+    return row ? mapBookSettingFile(row as Record<string, unknown>) : null;
+  }
+
+  getActiveBookSettingFile(bookId: string): BookSettingFileRecord | null {
+    const row = this.db.sqlite
+      .prepare(
+        "select * from book_setting_files where book_id = ? and is_active = 1 order by updated_at desc limit 1"
+      )
+      .get(bookId);
+    return row ? mapBookSettingFile(row as Record<string, unknown>) : null;
+  }
+
+  setActiveBookSettingFile(bookId: string, id: string): BookSettingFileRecord | null {
+    const now = nowIso();
+    const tx = this.db.sqlite.transaction(() => {
+      this.db.sqlite
+        .prepare("update book_setting_files set is_active = 0, updated_at = ? where book_id = ?")
+        .run(now, bookId);
+      this.db.sqlite
+        .prepare(
+          "update book_setting_files set is_active = 1, updated_at = ? where id = ? and book_id = ?"
+        )
+        .run(now, id, bookId);
+    });
+    tx();
+    return this.getBookSettingFile(id);
+  }
 
   createIntakeSession(input: CreateIntakeSessionInput): IntakeSessionRecord {
     const now = nowIso();
@@ -560,6 +661,14 @@ export class PlanningRepository {
         input.unresolvedHooksCarriedForwardJson ??
         existing?.unresolvedHooksCarriedForwardJson ??
         "[]",
+      outlineText:
+        input.outlineText === undefined ? (existing?.outlineText ?? null) : input.outlineText,
+      mustIncludeJson: input.mustIncludeJson ?? existing?.mustIncludeJson ?? "[]",
+      mustAvoidJson: input.mustAvoidJson ?? existing?.mustAvoidJson ?? "[]",
+      importSourceId:
+        input.importSourceId === undefined
+          ? (existing?.importSourceId ?? null)
+          : input.importSourceId,
       userNotes: input.userNotes === undefined ? (existing?.userNotes ?? null) : input.userNotes,
       riskNotes: input.riskNotes === undefined ? (existing?.riskNotes ?? null) : input.riskNotes,
       status,
@@ -577,15 +686,17 @@ export class PlanningRepository {
           main_conflict, conflict_escalation, key_events_json, scene_cards_json, emotional_turn,
           payoff, ending_hook, continuity_dependencies_json, characters_involved_json,
           story_bible_facts_used_json, foreshadowing_seeded_json, foreshadowing_resolved_json,
-          unresolved_hooks_carried_forward_json, user_notes, risk_notes, status, accepted_at,
-          accepted_by, created_at, updated_at)
+          unresolved_hooks_carried_forward_json, outline_text, must_include_json, must_avoid_json,
+          import_source_id, user_notes, risk_notes, status, accepted_at, accepted_by, created_at,
+          updated_at)
         values (@id, @bookId, @volumeId, @chapterId, @outlineVersionId, @chapterIndex, @title,
           @targetWords, @minWords, @maxWords, @wordCountPriority, @chapterSummary, @chapterPromise,
           @openingHook, @mainConflict, @conflictEscalation, @keyEventsJson, @sceneCardsJson,
           @emotionalTurn, @payoff, @endingHook, @continuityDependenciesJson,
           @charactersInvolvedJson, @storyBibleFactsUsedJson, @foreshadowingSeededJson,
-          @foreshadowingResolvedJson, @unresolvedHooksCarriedForwardJson, @userNotes, @riskNotes,
-          @status, @acceptedAt, @acceptedBy, @createdAt, @updatedAt)
+          @foreshadowingResolvedJson, @unresolvedHooksCarriedForwardJson, @outlineText,
+          @mustIncludeJson, @mustAvoidJson, @importSourceId, @userNotes, @riskNotes, @status,
+          @acceptedAt, @acceptedBy, @createdAt, @updatedAt)
         on conflict(id) do update set
           volume_id = excluded.volume_id,
           chapter_id = excluded.chapter_id,
@@ -612,6 +723,10 @@ export class PlanningRepository {
           foreshadowing_seeded_json = excluded.foreshadowing_seeded_json,
           foreshadowing_resolved_json = excluded.foreshadowing_resolved_json,
           unresolved_hooks_carried_forward_json = excluded.unresolved_hooks_carried_forward_json,
+          outline_text = excluded.outline_text,
+          must_include_json = excluded.must_include_json,
+          must_avoid_json = excluded.must_avoid_json,
+          import_source_id = excluded.import_source_id,
           user_notes = excluded.user_notes,
           risk_notes = excluded.risk_notes,
           status = excluded.status,
@@ -791,6 +906,20 @@ function mapMaterialDigest(row: Record<string, unknown>): MaterialDigestRecord {
   };
 }
 
+function mapBookSettingFile(row: Record<string, unknown>): BookSettingFileRecord {
+  return {
+    id: String(row.id),
+    bookId: String(row.book_id),
+    title: String(row.title),
+    contentMarkdown: String(row.content_markdown),
+    contentPlaintext: String(row.content_plaintext),
+    isActive: row.is_active === 1 || row.is_active === true,
+    sourceType: normalizeOutlineSourceType(row.source_type),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at)
+  };
+}
+
 function mapChapterPlan(row: Record<string, unknown>): ChapterPlanRecord {
   return {
     id: String(row.id),
@@ -820,6 +949,10 @@ function mapChapterPlan(row: Record<string, unknown>): ChapterPlanRecord {
     foreshadowingSeededJson: String(row.foreshadowing_seeded_json ?? "[]"),
     foreshadowingResolvedJson: String(row.foreshadowing_resolved_json ?? "[]"),
     unresolvedHooksCarriedForwardJson: String(row.unresolved_hooks_carried_forward_json ?? "[]"),
+    outlineText: nullable(row.outline_text),
+    mustIncludeJson: String(row.must_include_json ?? "[]"),
+    mustAvoidJson: String(row.must_avoid_json ?? "[]"),
+    importSourceId: nullable(row.import_source_id),
     userNotes: nullable(row.user_notes),
     riskNotes: nullable(row.risk_notes),
     status: String(row.status) as PlanStatus,
@@ -860,6 +993,21 @@ function nullableNumber(value: unknown): number | null {
 
 function normalizeWordCountPriority(value: unknown): WordCountPriority {
   return value === "loose" || value === "strict" ? value : "normal";
+}
+
+function normalizeOutlineSourceType(value: unknown): OutlineSourceType {
+  return value === "paste" || value === "file" || value === "imported" ? value : "manual";
+}
+
+function markdownToPlaintext(value: string): string {
+  return value
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/[*_>#-]/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function normalizeIntakeStatus(value: unknown): IntakeStatus {

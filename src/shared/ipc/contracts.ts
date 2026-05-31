@@ -259,6 +259,17 @@ const outlineVersionSchema = z.object({
   isActive: z.boolean(),
   createdAt: z.string()
 });
+const bookSettingFileSchema = z.object({
+  id: z.string(),
+  bookId: z.string(),
+  title: z.string(),
+  contentMarkdown: z.string(),
+  contentPlaintext: z.string(),
+  isActive: z.boolean(),
+  sourceType: z.enum(["paste", "file", "manual", "imported"]),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
 const materialDigestSchema = z.object({
   id: z.string(),
   bookId: z.string(),
@@ -334,6 +345,10 @@ const chapterPlanSchema = z.object({
   foreshadowingSeededJson: z.string(),
   foreshadowingResolvedJson: z.string(),
   unresolvedHooksCarriedForwardJson: z.string(),
+  outlineText: z.string().nullable(),
+  mustIncludeJson: z.string(),
+  mustAvoidJson: z.string(),
+  importSourceId: z.string().nullable(),
   userNotes: z.string().nullable(),
   riskNotes: z.string().nullable(),
   status: planStatusSchema,
@@ -1106,6 +1121,35 @@ export const IPC_CONTRACTS = {
         outlineVersionSchema.nullable()
       )
     },
+    bookSettingFiles: {
+      list: createContract(
+        "planning:book-setting-files:list",
+        z.object({ bookId: z.string().min(1) }),
+        z.array(bookSettingFileSchema)
+      ),
+      active: createContract(
+        "planning:book-setting-files:active",
+        z.object({ bookId: z.string().min(1) }),
+        bookSettingFileSchema.nullable()
+      ),
+      create: createContract(
+        "planning:book-setting-files:create",
+        z.object({
+          bookId: z.string().min(1),
+          title: z.string().trim().min(1),
+          contentMarkdown: z.string(),
+          contentPlaintext: z.string().optional(),
+          sourceType: z.enum(["paste", "file", "manual", "imported"]).optional(),
+          isActive: z.boolean().optional()
+        }),
+        bookSettingFileSchema
+      ),
+      setActive: createContract(
+        "planning:book-setting-files:set-active",
+        z.object({ bookId: z.string().min(1), id: z.string().min(1) }),
+        bookSettingFileSchema.nullable()
+      )
+    },
     materialDigests: {
       list: createContract(
         "planning:material-digests:list",
@@ -1164,6 +1208,10 @@ export const IPC_CONTRACTS = {
           foreshadowingSeededJson: z.string().optional(),
           foreshadowingResolvedJson: z.string().optional(),
           unresolvedHooksCarriedForwardJson: z.string().optional(),
+          outlineText: z.string().nullable().optional(),
+          mustIncludeJson: z.string().optional(),
+          mustAvoidJson: z.string().optional(),
+          importSourceId: z.string().nullable().optional(),
           userNotes: z.string().nullable().optional(),
           riskNotes: z.string().nullable().optional(),
           status: planStatusSchema.optional(),
@@ -2146,6 +2194,13 @@ export const IPC_CONTRACTS = {
         workflowRunRecordSchema
       )
     },
+    focused: {
+      start: createContract(
+        "generation:focused:start",
+        chapterGenerationStartRequestSchema,
+        workflowRunRecordSchema
+      )
+    },
     getRun: createContract(
       "generation:get-run",
       generationGetRunRequestSchema,
@@ -2244,6 +2299,10 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.planning.outlineVersions.list,
   IPC_CONTRACTS.planning.outlineVersions.create,
   IPC_CONTRACTS.planning.outlineVersions.setActive,
+  IPC_CONTRACTS.planning.bookSettingFiles.list,
+  IPC_CONTRACTS.planning.bookSettingFiles.active,
+  IPC_CONTRACTS.planning.bookSettingFiles.create,
+  IPC_CONTRACTS.planning.bookSettingFiles.setActive,
   IPC_CONTRACTS.planning.materialDigests.list,
   IPC_CONTRACTS.planning.materialDigests.latest,
   IPC_CONTRACTS.planning.materialDigests.createFromMaterials,
@@ -2415,6 +2474,7 @@ export const IPC_CONTRACT_LIST: Array<IpcContract<z.ZodType, z.ZodType>> = [
   IPC_CONTRACTS.ai.runs.listByChapter,
   IPC_CONTRACTS.ai.costs.summary,
   IPC_CONTRACTS.generation.chapter.start,
+  IPC_CONTRACTS.generation.focused.start,
   IPC_CONTRACTS.generation.getRun,
   IPC_CONTRACTS.generation.listRunsByChapter,
   IPC_CONTRACTS.generation.streamEvents,

@@ -124,6 +124,27 @@ export const outlineVersions = sqliteTable("outline_versions", {
   createdAt: text("created_at").notNull()
 });
 
+export const bookSettingFiles = sqliteTable(
+  "book_setting_files",
+  {
+    id: text("id").primaryKey(),
+    bookId: text("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    contentMarkdown: text("content_markdown").notNull(),
+    contentPlaintext: text("content_plaintext").notNull(),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(false),
+    sourceType: text("source_type").notNull().default("manual"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull()
+  },
+  (table) => [
+    index("book_setting_files_book_idx").on(table.bookId),
+    index("book_setting_files_active_idx").on(table.bookId, table.isActive)
+  ]
+);
+
 export const materialDigests = sqliteTable("material_digests", {
   id: text("id").primaryKey(),
   bookId: text("book_id").notNull(),
@@ -240,6 +261,10 @@ export const chapterPlans = sqliteTable("chapter_plans", {
   unresolvedHooksCarriedForwardJson: text("unresolved_hooks_carried_forward_json")
     .notNull()
     .default("[]"),
+  outlineText: text("outline_text"),
+  mustIncludeJson: text("must_include_json").notNull().default("[]"),
+  mustAvoidJson: text("must_avoid_json").notNull().default("[]"),
+  importSourceId: text("import_source_id"),
   userNotes: text("user_notes"),
   riskNotes: text("risk_notes"),
   status: text("status").notNull().default("draft"),

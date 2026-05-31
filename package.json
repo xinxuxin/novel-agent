@@ -14,7 +14,7 @@
     "test": "pnpm rebuild:native:node && vitest run",
     "test:watch": "vitest",
     "test:smoke": "pnpm rebuild:native:electron && playwright test",
-    "rebuild:native:node": "pnpm rebuild better-sqlite3",
+    "rebuild:native:node": "node scripts/rebuild-better-sqlite3-node.mjs",
     "rebuild:native:electron": "electron-rebuild -f -w better-sqlite3",
     "dev:import-env-credentials": "electron scripts/dev-import-env-credentials.mjs",
     "providers:smoke": "tsx scripts/providers-smoke.ts",
@@ -49,7 +49,7 @@
   },
   "build": {
     "appId": "studio.wenforge.app",
-    "productName": "WenForge Studio",
+    "productName": "文炉写作台",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
       "buildResources": "build",

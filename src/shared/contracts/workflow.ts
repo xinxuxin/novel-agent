@@ -5,6 +5,7 @@ import { manuscriptVersionSchemaForWorkflow } from "./workflow-data";
 import { QUALITY_MODES } from "@shared/domain/model-routing";
 
 export const CHAPTER_GENERATION_WORKFLOW_ID = "chapter_generation_v1";
+export const FOCUSED_CHAPTER_WRITER_WORKFLOW_ID = "focused_chapter_writer_v1";
 
 export const CHAPTER_GENERATION_WORKFLOW_NODES = [
   "prepare_context",
@@ -21,9 +22,27 @@ export const CHAPTER_GENERATION_WORKFLOW_NODES = [
   "finalize"
 ] as const;
 
-export type ChapterWorkflowNode = (typeof CHAPTER_GENERATION_WORKFLOW_NODES)[number];
+export const FOCUSED_CHAPTER_WRITER_WORKFLOW_NODES = [
+  "load_chapter_outline",
+  "build_context",
+  "build_writing_brief",
+  "draft_chapter",
+  "audit_draft",
+  "polish_de_ai",
+  "final_check",
+  "human_edit_gate",
+  "save_version",
+  "update_chapter_summary"
+] as const;
 
-export const chapterWorkflowNodeSchema = z.enum(CHAPTER_GENERATION_WORKFLOW_NODES);
+export type ChapterWorkflowNode =
+  | (typeof CHAPTER_GENERATION_WORKFLOW_NODES)[number]
+  | (typeof FOCUSED_CHAPTER_WRITER_WORKFLOW_NODES)[number];
+
+export const chapterWorkflowNodeSchema = z.enum([
+  ...CHAPTER_GENERATION_WORKFLOW_NODES,
+  ...FOCUSED_CHAPTER_WRITER_WORKFLOW_NODES
+]);
 
 export const chapterWorkflowStatusSchema = z.enum([
   "queued",
@@ -80,7 +99,7 @@ export type ChapterGenerationStartRequest = z.infer<typeof chapterGenerationStar
 
 export const workflowRunRecordSchema = z.object({
   id: z.string(),
-  workflowId: z.literal(CHAPTER_GENERATION_WORKFLOW_ID),
+  workflowId: z.enum([CHAPTER_GENERATION_WORKFLOW_ID, FOCUSED_CHAPTER_WRITER_WORKFLOW_ID]),
   projectId: z.string().nullable(),
   bookId: z.string().nullable(),
   chapterId: z.string().nullable(),

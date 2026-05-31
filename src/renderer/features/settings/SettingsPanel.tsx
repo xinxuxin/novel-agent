@@ -43,12 +43,12 @@ const PROVIDER_LABELS: Record<ProviderId, string> = {
   moonshot_kimi: "Moonshot / Kimi",
   xai: "xAI",
   openrouter: "OpenRouter",
-  generic_openai_compatible: "Generic OpenAI-compatible"
+  generic_openai_compatible: "通用 OpenAI 兼容"
 };
 
 const AI_PROVIDER_LABELS: Record<AIProviderId, string> = {
   ...PROVIDER_LABELS,
-  fake: "Fake local stream"
+  fake: "本地假流"
 };
 
 const TASK_LABELS: Record<TaskType, string> = {
@@ -153,7 +153,7 @@ export function SettingsPanel(): JSX.Element {
     provider: "generic_openai_compatible" as ProviderId,
     model: "custom-model",
     alias: "",
-    displayName: "Custom model",
+    displayName: "自定义模型",
     contextWindow: "",
     maxOutputTokens: "",
     defaultTemperature: "0.7"
@@ -165,7 +165,7 @@ export function SettingsPanel(): JSX.Element {
     outputPricePerMillion: "0",
     cachedInputPricePerMillion: "",
     effectiveDate: today,
-    sourceNote: "User verified pricing.",
+    sourceNote: "用户确认价格。",
     enabled: true
   });
 
@@ -268,7 +268,7 @@ export function SettingsPanel(): JSX.Element {
   };
 
   const confirmSmokeCost = (): boolean =>
-    window.confirm("This will make a real API call and may cost a small amount. Continue?");
+    window.confirm("这会发起真实模型调用，可能产生少量费用。继续吗？");
 
   const runProviderSmoke = async (provider: ProviderId): Promise<void> => {
     if (!confirmSmokeCost()) {
@@ -287,7 +287,7 @@ export function SettingsPanel(): JSX.Element {
         ...current,
         providerSmoke: upsertSmokeResult(current.providerSmoke, result)
       }));
-      setNotice("Provider connection check finished.");
+      setNotice("模型连接检查已完成。");
     } catch (nextError) {
       setError(readError(nextError));
     } finally {
@@ -332,7 +332,7 @@ export function SettingsPanel(): JSX.Element {
         supportsStreaming: true,
         enabled: true
       });
-    }, "Model profile saved.");
+    }, "模型配置已保存。");
   };
 
   const savePrice = async (): Promise<void> => {
@@ -347,7 +347,7 @@ export function SettingsPanel(): JSX.Element {
         sourceNote: priceDraft.sourceNote,
         enabled: priceDraft.enabled
       });
-    }, "Pricing row saved.");
+    }, "价格已保存。");
   };
 
   const updateProfile = async (
@@ -359,7 +359,7 @@ export function SettingsPanel(): JSX.Element {
         ...profile,
         ...patch
       });
-    }, "Model profile updated.");
+    }, "模型配置已更新。");
   };
 
   const updatePrice = async (
@@ -371,7 +371,7 @@ export function SettingsPanel(): JSX.Element {
         ...price,
         ...patch
       });
-    }, "Pricing row updated.");
+    }, "价格已更新。");
   };
 
   const updateRoute = async (
@@ -383,54 +383,54 @@ export function SettingsPanel(): JSX.Element {
         ...route,
         ...patch
       });
-    }, "Route updated.");
+    }, "路线已更新。");
   };
 
   const updatePrivacy = async (patch: Partial<PrivacySettings>): Promise<void> => {
     await runAction(async () => {
       await window.wenforge.privacy.update(patch);
-    }, "Privacy settings updated.");
+    }, "隐私设置已更新。");
   };
 
   const updateRoutingSettings = async (patch: Partial<RoutingSettings>): Promise<void> => {
     await runAction(async () => {
       await window.wenforge.routingSettings.update(patch);
-    }, "Routing settings updated.");
+    }, "路线设置已更新。");
   };
 
   const updateBudgetPolicy = async (patch: Partial<BudgetPolicyRecord>): Promise<void> => {
     await runAction(async () => {
       await window.wenforge.budgets.updatePolicies(patch);
-    }, "Budget policy updated.");
+    }, "预算策略已更新。");
   };
 
   const applyPremiumPreset = async (): Promise<void> => {
     if (
       !window.confirm(
-        "Apply the Premium Webnovel route preset? Existing preset routes will be updated."
+        "应用高级网文路线预设？已有预设路线会被更新。"
       )
     ) {
       return;
     }
     await runAction(async () => {
       await window.wenforge.modelRoutes.applyPremiumWebnovelPreset(true);
-    }, "Premium Webnovel preset applied.");
+    }, "高级网文预设已应用。");
   };
 
   const exportPremiumPreset = async (): Promise<void> => {
     await runAction(async () => {
       const preset = await window.wenforge.modelRoutes.exportPreset("premium_webnovel");
       await navigator.clipboard?.writeText(JSON.stringify(preset, null, 2));
-    }, "Export preset copied to clipboard.");
+    }, "预设已复制到剪贴板。");
   };
 
   const importPremiumPreset = async (): Promise<void> => {
-    const presetJson = window.prompt("Import preset JSON");
+    const presetJson = window.prompt("导入预设 JSON");
     if (!presetJson?.trim()) return;
-    if (!window.confirm("Import preset and update Premium Webnovel routes?")) return;
+    if (!window.confirm("导入预设并更新高级网文路线？")) return;
     await runAction(async () => {
       await window.wenforge.modelRoutes.importPreset(presetJson, true);
-    }, "Import preset completed.");
+    }, "预设导入完成。");
   };
 
   return (
@@ -440,7 +440,7 @@ export function SettingsPanel(): JSX.Element {
           <p className="text-xs font-medium tracking-[0.16em] text-slate-500">设置</p>
           <h2 className="mt-1 text-xl font-semibold text-white">模型密钥 / 路线 / 预算</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            API Key 在「模型密钥」添加。密钥进入加密凭据库，界面只显示脱敏状态和可用模型。
+            API 密钥在「模型密钥」添加。密钥进入加密凭据库，界面只显示脱敏状态和可用模型。
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -503,18 +503,18 @@ export function SettingsPanel(): JSX.Element {
             onCredentialDraftChange={setCredentialDraft}
             onDeleteCredential={(credential) =>
               runAction(async () => {
-                if (!window.confirm(`Delete ${credential.displayName}?`)) {
+                if (!window.confirm(`删除 ${credential.displayName}？`)) {
                   return;
                 }
                 await window.wenforge.credentials.delete(credential.id, true);
-              }, "Credential deleted.")
+              }, "密钥已删除。")
             }
             onSaveCredential={saveCredential}
             onTestCredential={(credential) =>
               runAction(async () => {
                 const result = await window.wenforge.credentials.testConnection(credential.id);
                 setNotice(result.message);
-              }, "Credential status refreshed.")
+              }, "密钥状态已刷新。")
             }
             onRunAllProviderSmoke={() => {
               void runAllProviderSmoke();
@@ -565,7 +565,7 @@ export function SettingsPanel(): JSX.Element {
             onResetProviderHealth={() =>
               runAction(async () => {
                 await window.wenforge.providerHealth.reset();
-              }, "Provider health reset.")
+              }, "模型健康状态已重置。")
             }
             onSavePrice={savePrice}
             onUpdateBudget={updateBudgetPolicy}
@@ -631,7 +631,7 @@ function ProvidersTab({
   return (
     <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
-        <SectionTitle title="添加 API Key" />
+        <SectionTitle title="添加 API 密钥" />
         <div className="mt-4 space-y-3">
           <FieldLabel label="提供商">
             <select
@@ -662,7 +662,7 @@ function ProvidersTab({
               }
             />
           </FieldLabel>
-          <FieldLabel label="Base URL">
+          <FieldLabel label="接口地址">
             <input
               className={fieldClassName}
               placeholder="https://api.example.com/v1"
@@ -672,7 +672,7 @@ function ProvidersTab({
               }
             />
           </FieldLabel>
-          <FieldLabel label="API Key">
+          <FieldLabel label="API 密钥">
             <input
               className={fieldClassName}
               type="password"
@@ -697,7 +697,7 @@ function ProvidersTab({
           <SectionTitle title="已保存密钥" />
           <div className="flex flex-wrap items-center gap-2">
             <input
-              aria-label="Provider check budget cap"
+              aria-label="模型检查预算上限"
               className={`${fieldClassName} w-28`}
               inputMode="decimal"
               value={providerCheckBudget}
@@ -824,7 +824,7 @@ function ProvidersTab({
                   <div className="mt-2 grid gap-1 text-xs text-slate-500 sm:grid-cols-2">
                     <span>上次检查：{smoke?.testedAt ?? credential.lastTestedAt ?? "未检查"}</span>
                     <span>流式：{smoke ? yesNo(smoke.streamingSupported) : "未知"}</span>
-                    <span>Usage：{smoke ? yesNo(smoke.usageParsed) : "未知"}</span>
+                    <span>用量解析：{smoke ? yesNo(smoke.usageParsed) : "未知"}</span>
                     <span>延迟：{formatLatency(smoke?.latencyMs ?? null)}</span>
                     <span>预估成本：{formatUsd(smoke?.estimatedCost ?? null)}</span>
                     <span>最终成本：{formatUsd(smoke?.finalCost ?? null)}</span>
@@ -898,12 +898,12 @@ function ModelsTab({
         <input
           className={fieldClassName}
           value={modelDraft.model}
-          placeholder="Provider model id"
+          placeholder="服务商模型 ID"
           onChange={(event) => onModelDraftChange({ ...modelDraft, model: event.target.value })}
         />
         <input
           className={fieldClassName}
-          placeholder="Alias"
+          placeholder="别名"
           value={modelDraft.alias}
           onChange={(event) => onModelDraftChange({ ...modelDraft, alias: event.target.value })}
         />
@@ -917,7 +917,7 @@ function ModelsTab({
         <input
           className={fieldClassName}
           inputMode="numeric"
-          placeholder="Context"
+          placeholder="上下文"
           value={modelDraft.contextWindow}
           onChange={(event) =>
             onModelDraftChange({ ...modelDraft, contextWindow: event.target.value })
@@ -926,7 +926,7 @@ function ModelsTab({
         <input
           className={fieldClassName}
           inputMode="numeric"
-          placeholder="Max output"
+          placeholder="最大输出"
           value={modelDraft.maxOutputTokens}
           onChange={(event) =>
             onModelDraftChange({ ...modelDraft, maxOutputTokens: event.target.value })
@@ -941,7 +941,7 @@ function ModelsTab({
           }
         />
         <button className={primaryButtonClassName} onClick={() => void onSaveModel()} type="button">
-          Save
+          保存
         </button>
       </section>
       <div className="overflow-hidden rounded-xl border border-white/10">
@@ -956,7 +956,7 @@ function ModelsTab({
               <span className="font-medium text-white">{profile.displayName}</span>
               <span className="ml-2 text-xs text-slate-500">{profile.model}</span>
             </span>
-            <span className="text-xs text-forge-violet">{profile.alias ?? "No alias"}</span>
+            <span className="text-xs text-forge-violet">{profile.alias ?? "无别名"}</span>
             <span className="text-xs text-slate-400">
               {profile.endpointFamily}
               <br />
@@ -964,20 +964,20 @@ function ModelsTab({
             </span>
             <span className="text-xs text-slate-500">
               {[
-                profile.supportsStreaming ? "stream" : null,
+                profile.supportsStreaming ? "流式" : null,
                 profile.supportsJson ? "json" : null,
-                profile.supportsTools ? "tools" : null,
-                profile.supportsVision ? "vision" : null,
-                profile.supportsTemperature ? "temp" : null,
-                profile.supportsReasoningEffort ? "reasoning" : null,
-                profile.supportsAdaptiveThinking ? "adaptive" : null
+                profile.supportsTools ? "工具" : null,
+                profile.supportsVision ? "视觉" : null,
+                profile.supportsTemperature ? "温度" : null,
+                profile.supportsReasoningEffort ? "推理强度" : null,
+                profile.supportsAdaptiveThinking ? "自适应思考" : null
               ]
                 .filter(Boolean)
-                .join(" · ") || "base"}
+                .join(" · ") || "基础"}
             </span>
             <ToggleButton
               active={profile.enabled}
-              label={profile.enabled ? "Enabled" : "Disabled"}
+              label={profile.enabled ? "启用" : "停用"}
               onClick={() => void onUpdateProfile(profile, { enabled: !profile.enabled })}
             />
           </div>
@@ -1071,7 +1071,7 @@ function PricingTab({
         <input
           className={fieldClassName}
           inputMode="decimal"
-          placeholder="Cached"
+          placeholder="缓存输入"
           value={priceDraft.cachedInputPricePerMillion}
           onChange={(event) =>
             onPriceDraftChange({ ...priceDraft, cachedInputPricePerMillion: event.target.value })
@@ -1093,12 +1093,12 @@ function PricingTab({
           }
         />
         <button className={primaryButtonClassName} onClick={() => void onSavePrice()} type="button">
-          Save
+          保存
         </button>
       </section>
       <div className="rounded-lg border border-forge-violet/25 bg-forge-violet/10 px-3 py-2 text-sm text-forge-violet">
-        Stale threshold: {routing?.priceStaleAfterDays ?? 90} days. Seeded prices are editable
-        placeholders until the user verifies current provider pricing.
+        价格过期阈值：{routing?.priceStaleAfterDays ?? 90} 天。内置价格只是可编辑占位，
+        以用户确认的服务商价格为准。
       </div>
       <div className="overflow-hidden rounded-xl border border-white/10">
         {prices.map((price) => (
@@ -1111,14 +1111,14 @@ function PricingTab({
               <span className="font-medium text-white">{price.model}</span>
               <span className="ml-2 text-xs text-slate-500">{price.currency}</span>
             </span>
-            <span className="text-slate-400">${price.inputPricePerMillion}/M in</span>
-            <span className="text-slate-400">${price.outputPricePerMillion}/M out</span>
+            <span className="text-slate-400">${price.inputPricePerMillion}/百万输入</span>
+            <span className="text-slate-400">${price.outputPricePerMillion}/百万输出</span>
             <span className={stalePriceIds.has(price.id) ? "text-amber-200" : "text-slate-400"}>
               {price.effectiveDate}
             </span>
             <ToggleButton
               active={price.enabled}
-              label={price.enabled ? "Enabled" : "Disabled"}
+              label={price.enabled ? "启用" : "停用"}
               onClick={() => void onUpdatePrice(price, { enabled: !price.enabled })}
             />
           </div>
@@ -1355,34 +1355,34 @@ function BudgetsTab({
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
-        <SectionTitle title="Budget Policy" />
+        <SectionTitle title="预算策略" />
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <NullableNumberSetting
-            label="Per-call cap"
+            label="单次调用上限"
             value={budget.perCallBudgetCap}
             onCommit={(value) => commitNullable("perCallBudgetCap", value)}
           />
           <NullableNumberSetting
-            label="Per-workflow cap"
+            label="单次工作流上限"
             value={budget.perWorkflowBudgetCap}
             onCommit={(value) => commitNullable("perWorkflowBudgetCap", value)}
           />
           <NullableNumberSetting
-            label="Daily cap"
+            label="每日上限"
             value={budget.dailyBudgetCap}
             onCommit={(value) => commitNullable("dailyBudgetCap", value)}
           />
           <NullableNumberSetting
-            label="Project cap"
+            label="项目上限"
             value={budget.projectBudgetCap}
             onCommit={(value) => commitNullable("projectBudgetCap", value)}
           />
           <NumberSetting
-            label="Warning threshold percent"
+            label="预警百分比"
             value={budget.warningThresholdPercent}
             onCommit={(value) => onUpdateBudget({ warningThresholdPercent: value })}
           />
-          <FieldLabel label="When budget is exceeded">
+          <FieldLabel label="超出预算时">
             <select
               className={fieldClassName}
               value={budget.onBudgetExceeded}
@@ -1392,12 +1392,12 @@ function BudgetsTab({
                 })
               }
             >
-              <option value="warn">Warn</option>
-              <option value="pause">Pause workflow</option>
-              <option value="abort">Abort workflow</option>
+              <option value="warn">提醒</option>
+              <option value="pause">暂停工作流</option>
+              <option value="abort">中止工作流</option>
             </select>
           </FieldLabel>
-          <FieldLabel label="Currency">
+          <FieldLabel label="币种">
             <input
               className={fieldClassName}
               defaultValue={budget.currency}
@@ -1410,18 +1410,18 @@ function BudgetsTab({
       </section>
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
         <div className="flex items-center justify-between gap-3">
-          <SectionTitle title="Provider Health" />
+          <SectionTitle title="模型健康状态" />
           <button
             className={secondaryButtonClassName}
             onClick={onResetProviderHealth}
             type="button"
           >
-            Reset
+            重置
           </button>
         </div>
         <div className="mt-4 space-y-2">
           {providerHealth.length === 0 ? (
-            <EmptyState text="No provider health records yet." />
+            <EmptyState text="还没有模型健康记录。" />
           ) : null}
           {providerHealth.map((item) => (
             <div
@@ -1430,7 +1430,7 @@ function BudgetsTab({
             >
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-white">
-                  {PROVIDER_LABELS[item.provider]} · {item.model ?? "all models"}
+                  {PROVIDER_LABELS[item.provider]} · {item.model ?? "全部模型"}
                 </span>
                 <StatusPill tone={item.status === "healthy" ? "success" : "warning"}>
                   {item.status}
@@ -1458,12 +1458,12 @@ function PrivacyTab({
     <div className="grid gap-3 md:grid-cols-2">
       {(
         [
-          ["storeFullPrompts", "Store full prompts"],
-          ["storeFullResponses", "Store full responses"],
-          ["storeManuscriptsInLogs", "Store manuscripts in logs"],
-          ["allowPromptPreview", "Allow prompt preview"],
-          ["allowSendingFullRecentChapters", "Allow full recent chapters"],
-          ["enableDebugLogging", "Enable debug logging"]
+          ["storeFullPrompts", "保存完整提示词"],
+          ["storeFullResponses", "保存完整回复"],
+          ["storeManuscriptsInLogs", "日志保存正文"],
+          ["allowPromptPreview", "允许预览提示词"],
+          ["allowSendingFullRecentChapters", "允许发送完整近期章节"],
+          ["enableDebugLogging", "启用调试日志"]
         ] as Array<[keyof PrivacySettings, string]>
       ).map(([key, label]) => (
         <label
@@ -1480,12 +1480,12 @@ function PrivacyTab({
         </label>
       ))}
       <NumberSetting
-        label="Recent chapter count"
+        label="近期章节数量"
         value={privacy.recentChapterCount}
         onCommit={(value) => onUpdatePrivacy({ recentChapterCount: value })}
       />
       <NumberSetting
-        label="Max context token budget"
+        label="最大上下文 token 预算"
         value={privacy.maxContextTokenBudget}
         onCommit={(value) => onUpdatePrivacy({ maxContextTokenBudget: value })}
       />
@@ -1504,11 +1504,11 @@ function AdvancedTab({
   routing: RoutingSettings;
   onUpdateRoutingSettings: (patch: Partial<RoutingSettings>) => Promise<void>;
 }): JSX.Element {
-  const [ping, setPing] = useState<string>("Not checked");
+  const [ping, setPing] = useState<string>("尚未检查");
   const [bundle, setBundle] = useState<DiagnosticBundle | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [latestReport, setLatestReport] = useState<string | null>(null);
-  const [chapterCheckStatus, setChapterCheckStatus] = useState("Idle");
+  const [chapterCheckStatus, setChapterCheckStatus] = useState("空闲");
   const [chapterCheckBudget, setChapterCheckBudget] = useState("0.25");
   const [chapterCheckConfirmation, setChapterCheckConfirmation] = useState("");
   const [chapterCheckReport, setChapterCheckReport] = useState<string | null>(null);
@@ -1520,23 +1520,23 @@ function AdvancedTab({
   const copyBundle = async (): Promise<void> => {
     const nextBundle = bundle ?? (await loadBundle());
     await navigator.clipboard?.writeText(JSON.stringify(nextBundle, null, 2));
-    setCopyStatus("Copied redacted diagnostic bundle.");
+    setCopyStatus("已复制脱敏诊断包。");
   };
   const loadLatestProviderReport = async (): Promise<void> => {
     const report = await window.wenforge.providerSmoke.latestReport();
     setLatestReport(
-      report ? `${report.path}\n\n${report.content}` : "No provider check report found."
+      report ? `${report.path}\n\n${report.content}` : "没有找到模型检查报告。"
     );
   };
   const runProviderChapterCheck = async (): Promise<void> => {
     if (chapterCheckConfirmation !== "RUN REAL SMOKE") {
-      setChapterCheckStatus("Type RUN REAL SMOKE to confirm.");
+      setChapterCheckStatus("请输入 RUN REAL SMOKE 确认。");
       return;
     }
-    if (!window.confirm("This will make real API calls and may cost a small amount. Continue?")) {
+    if (!window.confirm("这会发起真实模型调用，可能产生少量费用。继续吗？")) {
       return;
     }
-    setChapterCheckStatus("Running provider chapter check...");
+    setChapterCheckStatus("正在运行模型章节检查...");
     const result = await window.wenforge.providerChapterCheck.run({
       confirmed: true,
       budgetCapUsd: Number(chapterCheckBudget || "0.25"),
@@ -1549,14 +1549,14 @@ function AdvancedTab({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
-        <SectionTitle title="Routing Policy" />
+        <SectionTitle title="路线策略" />
         <div className="mt-4 space-y-3">
           <NumberSetting
-            label="Price stale after days"
+            label="价格过期天数"
             value={routing.priceStaleAfterDays}
             onCommit={(value) => onUpdateRoutingSettings({ priceStaleAfterDays: value })}
           />
-          <FieldLabel label="Missing price behavior">
+          <FieldLabel label="缺失价格时">
             <select
               className={fieldClassName}
               value={routing.missingPriceBehavior}
@@ -1567,14 +1567,14 @@ function AdvancedTab({
                 })
               }
             >
-              <option value="warn">Warn</option>
-              <option value="block">Block</option>
+              <option value="warn">提醒</option>
+              <option value="block">阻止</option>
             </select>
           </FieldLabel>
         </div>
       </section>
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
-        <SectionTitle title="Diagnostics" />
+        <SectionTitle title="诊断" />
         <div className="mt-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-slate-400">{ping}</span>
@@ -1585,14 +1585,14 @@ function AdvancedTab({
               }}
               type="button"
             >
-              Ping
+              检查
             </button>
           </div>
           <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300">
-            <p>Version: {bundle?.appVersion ?? "Not loaded"}</p>
-            <p>Platform: {bundle?.platform ?? "Not loaded"}</p>
-            <p>Migration: {bundle?.dbMigrationVersion ?? "Not loaded"}</p>
-            <p>safeStorage: {bundle ? String(bundle.safeStorageAvailable) : "Not loaded"}</p>
+            <p>版本：{bundle?.appVersion ?? "未加载"}</p>
+            <p>平台：{bundle?.platform ?? "未加载"}</p>
+            <p>迁移版本：{bundle?.dbMigrationVersion ?? "未加载"}</p>
+            <p>安全存储：{bundle ? String(bundle.safeStorageAvailable) : "未加载"}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -1600,21 +1600,21 @@ function AdvancedTab({
               onClick={() => void loadBundle()}
               type="button"
             >
-              Load diagnostics
+              加载诊断
             </button>
             <button
               className={secondaryButtonClassName}
               onClick={() => void copyBundle()}
               type="button"
             >
-              Copy redacted diagnostic info
+              复制脱敏诊断信息
             </button>
             <button
               className={secondaryButtonClassName}
               onClick={() => void loadLatestProviderReport()}
               type="button"
             >
-              Open latest provider check report
+              打开最近模型检查报告
             </button>
           </div>
           {copyStatus ? <p className="text-xs text-forge-mint">{copyStatus}</p> : null}
@@ -1626,14 +1626,13 @@ function AdvancedTab({
         </div>
       </section>
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
-        <SectionTitle title="Provider Chapter Check" />
+        <SectionTitle title="模型章节检查" />
         <div className="mt-4 space-y-3">
           <p className="text-sm text-slate-400">
-            Runs the short chapter workflow with configured provider routes, saves generated output
-            as non-canonical, and leaves story bible updates as proposals.
+            使用已配置路线运行短章节工作流，生成稿只保存为非正式版本，故事圣经更新仍保持为提案。
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <FieldLabel label="Max budget USD">
+            <FieldLabel label="最大预算（美元）">
               <input
                 className={fieldClassName}
                 inputMode="decimal"
@@ -1641,7 +1640,7 @@ function AdvancedTab({
                 onChange={(event) => setChapterCheckBudget(event.target.value)}
               />
             </FieldLabel>
-            <FieldLabel label="Typed confirmation">
+            <FieldLabel label="输入确认语">
               <input
                 className={fieldClassName}
                 placeholder="RUN REAL SMOKE"
@@ -1659,9 +1658,9 @@ function AdvancedTab({
             }
             type="button"
           >
-            Run provider chapter connectivity check
+            运行模型章节连通检查
           </button>
-          <StatusTile label="Status" value={chapterCheckStatus} />
+          <StatusTile label="状态" value={chapterCheckStatus} />
           {chapterCheckReport ? (
             <pre className="max-h-56 overflow-auto rounded-lg border border-white/10 bg-black/30 p-3 text-xs text-slate-400">
               {chapterCheckReport}
@@ -1670,10 +1669,10 @@ function AdvancedTab({
         </div>
       </section>
       <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4">
-        <SectionTitle title="Provider Health" />
+        <SectionTitle title="模型健康状态" />
         <div className="mt-4 space-y-2">
           {providerHealth.length === 0 ? (
-            <EmptyState text="No provider health records yet." />
+            <EmptyState text="还没有模型健康记录。" />
           ) : null}
           {providerHealth.map((item) => (
             <div
@@ -1682,7 +1681,7 @@ function AdvancedTab({
             >
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-white">
-                  {PROVIDER_LABELS[item.provider]} · {item.model ?? "all models"}
+                  {PROVIDER_LABELS[item.provider]} · {item.model ?? "全部模型"}
                 </span>
                 <StatusPill tone={item.status === "healthy" ? "success" : "warning"}>
                   {item.status}
@@ -1707,9 +1706,9 @@ function DeveloperGenerationPanel({ profiles }: { profiles: ModelProfileRecord[]
   const [prompt, setPrompt] = useState("写一段都市异能小说的雨夜开场。");
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [streamText, setStreamText] = useState("");
-  const [status, setStatus] = useState("Idle");
+  const [status, setStatus] = useState("空闲");
   const [liveCost, setLiveCost] = useState(0);
-  const [usageText, setUsageText] = useState("0 input / 0 output");
+  const [usageText, setUsageText] = useState("0 输入 / 0 输出");
 
   const selectableProfiles = profiles.filter((profile) => profile.provider === provider);
 
@@ -1724,13 +1723,13 @@ function DeveloperGenerationPanel({ profiles }: { profiles: ModelProfileRecord[]
       if (event.type === "cost") {
         setLiveCost(event.estimatedCostLive);
         setUsageText(
-          `${event.inputTokensEstimated} input / ${event.outputTokensEstimatedLive} output`
+          `${event.inputTokensEstimated} 输入 / ${event.outputTokensEstimatedLive} 输出`
         );
       }
       if (event.type === "complete") {
-        setStatus(`Complete · ${event.usageSource}`);
+        setStatus(`完成 · ${event.usageSource}`);
         setLiveCost(event.cost.totalCost);
-        setUsageText(`${event.usage.inputTokens} input / ${event.usage.outputTokens} output`);
+        setUsageText(`${event.usage.inputTokens} 输入 / ${event.usage.outputTokens} 输出`);
       }
       if (event.type === "error") {
         setStatus(`${event.code}: ${event.message}`);
@@ -1740,7 +1739,7 @@ function DeveloperGenerationPanel({ profiles }: { profiles: ModelProfileRecord[]
 
   const start = async (): Promise<void> => {
     setStreamText("");
-    setStatus("Starting");
+    setStatus("正在启动");
     setLiveCost(0);
     const result = await window.wenforge.ai.stream.start({
       provider,
@@ -1750,7 +1749,7 @@ function DeveloperGenerationPanel({ profiles }: { profiles: ModelProfileRecord[]
       qualityMode: "balanced"
     });
     setActiveRunId(result.runId);
-    setStatus(`Running · ${result.runId}`);
+    setStatus(`运行中 · ${result.runId}`);
   };
 
   const abort = async (): Promise<void> => {
@@ -1762,7 +1761,7 @@ function DeveloperGenerationPanel({ profiles }: { profiles: ModelProfileRecord[]
 
   return (
     <section className="rounded-xl border border-white/10 bg-graphite-900/55 p-4 lg:col-span-2">
-      <SectionTitle title="Developer Test Generation" />
+      <SectionTitle title="开发测试生成" />
       <div className="mt-4 grid gap-3 lg:grid-cols-[180px_1fr_180px_auto_auto]">
         <select
           className={fieldClassName}
@@ -1811,10 +1810,10 @@ function DeveloperGenerationPanel({ profiles }: { profiles: ModelProfileRecord[]
           ))}
         </select>
         <button className={primaryButtonClassName} onClick={() => void start()} type="button">
-          Start
+          开始
         </button>
         <button className={secondaryButtonClassName} onClick={() => void abort()} type="button">
-          Abort
+          停止
         </button>
       </div>
       <textarea
@@ -1823,12 +1822,12 @@ function DeveloperGenerationPanel({ profiles }: { profiles: ModelProfileRecord[]
         onChange={(event) => setPrompt(event.target.value)}
       />
       <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <StatusTile label="Status" value={status} />
-        <StatusTile label="Usage" value={usageText} />
-        <StatusTile label="Live cost" value={`$${liveCost.toFixed(6)}`} />
+        <StatusTile label="状态" value={status} />
+        <StatusTile label="用量" value={usageText} />
+        <StatusTile label="实时成本" value={`$${liveCost.toFixed(6)}`} />
       </div>
       <div className="mt-3 min-h-28 whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-3 text-sm leading-7 text-slate-300">
-        {streamText || "Stream output will appear here."}
+        {streamText || "流式输出会显示在这里。"}
       </div>
     </section>
   );
@@ -1885,7 +1884,7 @@ function NullableNumberSetting({
         defaultValue={value === null ? "" : String(value)}
         inputMode="decimal"
         onBlur={(event) => onCommit(event.target.value)}
-        placeholder="No cap"
+        placeholder="不设上限"
       />
     </FieldLabel>
   );
@@ -1955,7 +1954,7 @@ function TableHeader({ columns }: { columns: string }): JSX.Element {
     <div
       className={`grid ${columns} gap-3 bg-white/[0.035] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-500`}
     >
-      <span>Provider</span>
+      <span>服务商</span>
       <span>模型</span>
       <span>上下文</span>
       <span>输出</span>
@@ -2114,7 +2113,7 @@ function credentialStatusHint(
   ) {
     return "认证失败。密钥标签显示为 Sk- 开头，请确认控制台复制的是小写 sk-，没有被输入法或自动更正改写。";
   }
-  return "认证失败。请重新保存该服务控制台里的有效 API Key，并确认账号权限、余额和 Base URL。";
+  return "认证失败。请重新保存该服务控制台里的有效 API 密钥，并确认账号权限、余额和接口地址。";
 }
 
 function isStaleDate(effectiveDate: string, staleAfterDays: number): boolean {
@@ -2142,7 +2141,7 @@ function normalizeNullableText(value: string): string | null {
 }
 
 function readError(error: unknown): string {
-  return error instanceof Error ? error.message : "Settings action failed.";
+  return error instanceof Error ? error.message : "设置操作失败。";
 }
 
 const fieldClassName =

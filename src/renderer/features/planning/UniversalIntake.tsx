@@ -18,17 +18,17 @@ interface UniversalIntakeProps {
 }
 
 const ARTIFACT_LABELS: Record<string, string> = {
-  material_digest: "Material Digest",
-  missing_information: "Missing Information",
-  auto_completion_suggestions: "Auto-Completion Suggestions",
-  story_bible_draft: "Story Bible Draft",
-  reader_positioning: "Reader Positioning",
-  style_guide_draft: "Style Guide Draft",
-  volume_outline: "Volume Outline",
-  chapter_detailed_outline: "Chapter Detailed Outline",
-  scene_cards: "Scene Cards",
-  risks_and_ambiguities: "Risks and Ambiguities",
-  creative_direction: "Auto-Completion Suggestions"
+  material_digest: "素材摘要",
+  missing_information: "缺失信息",
+  auto_completion_suggestions: "自动补全建议",
+  story_bible_draft: "故事圣经草案",
+  reader_positioning: "读者定位",
+  style_guide_draft: "风格指南草案",
+  volume_outline: "分卷大纲",
+  chapter_detailed_outline: "章节细纲",
+  scene_cards: "场景卡",
+  risks_and_ambiguities: "风险与歧义",
+  creative_direction: "自动补全建议"
 };
 
 const STATUS_LABELS = {
@@ -187,7 +187,7 @@ export function UniversalIntake({
     try {
       const messages = await addChatTurn(
         inputText.trim() || "自动补全缺失设定，给我 2-3 个方向。",
-        "我会提供可选方向，不会把任何设定写进正式 Story Bible。"
+        "我会提供可选方向，不会把任何设定写进正式故事圣经。"
       );
       const directions = [
         {
@@ -209,8 +209,8 @@ export function UniversalIntake({
         }
       ];
       await createArtifact("creative_direction", "可选创作方向", directions, messages);
-      await createArtifact("story_bible_draft", "Story Bible 草案", directions[0], messages);
-      setNotice("已补全 3 个方向。请选择、编辑或拒绝；拒绝项不会作为 canon 使用。");
+      await createArtifact("story_bible_draft", "故事圣经草案", directions[0], messages);
+      setNotice("已补全 3 个方向。请选择、编辑或拒绝；拒绝项不会作为正式设定使用。");
     } finally {
       setBusy(false);
     }
@@ -303,7 +303,7 @@ export function UniversalIntake({
       <header className="border-b border-white/10 px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.16em] text-forge-blue">Universal Intake</p>
+            <p className="text-xs tracking-[0.16em] text-forge-blue">素材入口</p>
             <h2 className="mt-1 text-xl font-semibold tracking-normal text-white">整理素材</h2>
             <p className="mt-1 text-sm text-slate-400">
               像聊天一样输入任何材料，右侧会沉淀为可编辑、可确认、可拒绝的结构化提案。
@@ -398,8 +398,7 @@ export function UniversalIntake({
           <div className="space-y-3">
             {structuredArtifacts.length === 0 ? (
               <div className="rounded-lg border border-white/10 bg-white/[0.035] p-4 text-sm text-slate-400">
-                Material Digest、Missing Information、Story Bible Draft、Chapter Detailed Outline
-                等结果会显示在这里。
+                素材摘要、缺失信息、故事圣经草案、章节细纲等结果会显示在这里。
               </div>
             ) : (
               structuredArtifacts.map((artifact) => (
@@ -434,7 +433,7 @@ export function UniversalIntake({
                     value={artifact.contentMarkdown}
                   />
                   <details className="mt-2 text-xs text-slate-500">
-                    <summary className="cursor-pointer">More</summary>
+                    <summary className="cursor-pointer">更多</summary>
                     <pre className="mt-2 max-h-40 overflow-auto rounded bg-black/30 p-2">
                       {artifact.contentJson}
                     </pre>

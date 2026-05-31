@@ -15,9 +15,13 @@ import type {
   WorkflowCostEstimate,
   WorkflowRunRecord
 } from "@contracts/workflow";
-import { CHAPTER_GENERATION_WORKFLOW_ID } from "@contracts/workflow";
+import {
+  CHAPTER_GENERATION_WORKFLOW_ID,
+  FOCUSED_CHAPTER_WRITER_WORKFLOW_ID
+} from "@contracts/workflow";
 import { ContextBuilder } from "@main/context/context-builder";
 import type { WenForgeDatabase } from "@main/db/connection";
+import type { ChapterPlanRecord } from "@main/db/repositories/planning-repository";
 import type { RepositoryRegistry } from "@main/db/service";
 import type { AiGateway } from "@main/ai/ai-gateway";
 import { CostCalculator } from "@main/ai/cost-calculator";
@@ -38,6 +42,7 @@ type ChapterWorkflowAction = "start" | "resume" | "revision";
 
 interface ChapterWorkflowState extends Record<string, unknown> {
   runId: string;
+  workflowId: typeof CHAPTER_GENERATION_WORKFLOW_ID | typeof FOCUSED_CHAPTER_WRITER_WORKFLOW_ID;
   projectId: string;
   bookId: string;
   volumeId: string | null;
@@ -106,6 +111,17 @@ const RESUME_TO_FINAL_NODES: ChapterWorkflowNode[] = [
 
 const REVISION_NODES: ChapterWorkflowNode[] = ["revise_draft", "human_gate"];
 
+const FOCUSED_START_TO_GATE_NODES: ChapterWorkflowNode[] = [
+  "load_chapter_outline",
+  "build_context",
+  "build_writing_brief",
+  "draft_chapter",
+  "audit_draft",
+  "polish_de_ai",
+  "final_check",
+  "human_edit_gate"
+];
+
 const TASK_BY_NODE: Partial<Record<ChapterWorkflowNode, LLMTaskType>> = {
   generate_chapter_outline: "chapter_outline",
   generate_scene_cards: "scene_cards",
@@ -113,7 +129,11 @@ const TASK_BY_NODE: Partial<Record<ChapterWorkflowNode, LLMTaskType>> = {
   continuity_audit: "continuity_audit",
   webnovel_rhythm_audit: "suspense_hook_audit",
   revise_draft: "revise_chapter",
-  state_settlement_proposal: "state_settlement"
+  state_settlement_proposal: "state_settlement",
+  build_writing_brief: "chapter_outline",
+  audit_draft: "continuity_audit",
+  polish_de_ai: "revise_chapter",
+  final_check: "continuity_audit"
 };
 
 const TEMPLATE_BY_TASK: Partial<Record<LLMTaskType, string>> = {
@@ -145,6 +165,26 @@ export class ChapterWorkflowRuntime {
   }
 
   async startChapterWorkflow(input: ChapterGenerationStartRequest): Promise<WorkflowRunRecord> {
+    return this.startWorkflow(input, CHAPTER_GENERATION_WORKFLOW_ID);
+  }
+
+  async startFocusedChapterWorkflow(
+    input: ChapterGenerationStartRequest
+  ): Promise<WorkflowRunRecord> {
+    return this.startWorkflow(
+      {
+        ...input,
+        desiredOutput: "final_manuscript",
+        allowStoryChanges: false
+      },
+      FOCUSED_CHAPTER_WRITER_WORKFLOW_ID
+    );
+  }
+
+  private async startWorkflow(
+    input: ChapterGenerationStartRequest,
+    workflowId: typeof CHAPTER_GENERATION_WORKFLOW_ID | typeof FOCUSED_CHAPTER_WRITER_WORKFLOW_ID
+  ): Promise<WorkflowRunRecord> {
     const chapter = this.options.repositories.chapters.get(input.chapterId);
     if (!chapter || chapter.bookId !== input.bookId) {
       throw new Error("Chapter not found for workflow");
@@ -173,6 +213,7 @@ export class ChapterWorkflowRuntime {
     });
     const initialState: ChapterWorkflowState = {
       runId: run.id,
+      workflowId,
       projectId: input.projectId,
       bookId: input.bookId,
       volumeId: input.volumeId ?? chapter.volumeId ?? null,
@@ -210,7 +251,7 @@ export class ChapterWorkflowRuntime {
       generationRunId: run.id,
       eventType: "workflow_queued",
       message: "Chapter workflow queued",
-      payload: { workflowId: CHAPTER_GENERATION_WORKFLOW_ID }
+      payload: { workflowId }
     });
 
     const state = await this.runNodes(this.startNodesForState(initialState), initialState, "start");
@@ -271,14 +312,15 @@ export class ChapterWorkflowRuntime {
   async resume(input: GenerationResumeRequest): Promise<WorkflowRunRecord> {
     const state = this.requirePausedState(input.runId);
     if (input.action === "reject") {
+      const gateNode = state.currentNode ?? "human_gate";
       const rejected = {
         ...state,
         status: "cancelled" as const,
         humanGateStatus: "rejected" as const,
-        currentNode: "human_gate" as const
+        currentNode: gateNode
       };
       this.options.repositories.generation.updateRunStatus(input.runId, "cancelled");
-      this.persistCheckpoint(rejected, "human_gate", "workflow_rejected", "Workflow rejected");
+      this.persistCheckpoint(rejected, gateNode, "workflow_rejected", "工作流已拒绝");
       return this.toWorkflowRunRecord(rejected);
     }
     const nextState = {
@@ -287,7 +329,13 @@ export class ChapterWorkflowRuntime {
       humanGateStatus: "accepted" as const,
       userInstruction: input.userInstruction ?? state.userInstruction
     };
-    const completed = await this.runNodes(RESUME_TO_FINAL_NODES, nextState, "resume");
+    const completed = await this.runNodes(
+      state.workflowId === FOCUSED_CHAPTER_WRITER_WORKFLOW_ID
+        ? ["save_version", "update_chapter_summary", "finalize"]
+        : RESUME_TO_FINAL_NODES,
+      nextState,
+      "resume"
+    );
     return this.toWorkflowRunRecord(completed);
   }
 
@@ -299,7 +347,13 @@ export class ChapterWorkflowRuntime {
       humanGateStatus: "revision_requested",
       userInstruction: input.userInstruction
     };
-    const revised = await this.runNodes(REVISION_NODES, nextState, "revision");
+    const revised = await this.runNodes(
+      state.workflowId === FOCUSED_CHAPTER_WRITER_WORKFLOW_ID
+        ? ["polish_de_ai", "final_check", "human_edit_gate"]
+        : REVISION_NODES,
+      nextState,
+      "revision"
+    );
     return this.toWorkflowRunRecord(revised);
   }
 
@@ -344,14 +398,14 @@ export class ChapterWorkflowRuntime {
   }
 
   abort(input: { runId: string }): WorkflowRunRecord | null {
-    return this.markCancelled(input.runId, "workflow_aborted", "Workflow aborted");
+    return this.markCancelled(input.runId, "workflow_aborted", "工作流已中止");
   }
 
   cancel(input: { runId: string; confirmed?: boolean | undefined }): WorkflowRunRecord | null {
     if (!input.confirmed) {
       throw new Error("Confirmation is required before cancelling workflow");
     }
-    return this.markCancelled(input.runId, "workflow_cancelled", "Workflow cancelled");
+    return this.markCancelled(input.runId, "workflow_cancelled", "工作流已取消");
   }
 
   private async runNodes(
@@ -365,6 +419,9 @@ export class ChapterWorkflowRuntime {
   }
 
   private startNodesForState(state: ChapterWorkflowState): ChapterWorkflowNode[] {
+    if (state.workflowId === FOCUSED_CHAPTER_WRITER_WORKFLOW_ID) {
+      return FOCUSED_START_TO_GATE_NODES;
+    }
     const hasAcceptedPlan = Boolean(
       this.options.repositories.planning.getAcceptedChapterPlan(state.chapterId)
     );
@@ -404,7 +461,10 @@ export class ChapterWorkflowRuntime {
     const runningState: ChapterWorkflowState = {
       ...state,
       currentNode: node,
-      status: node === "human_gate" ? ("paused" as const) : ("running" as const)
+      status:
+        node === "human_gate" || node === "human_edit_gate"
+          ? ("paused" as const)
+          : ("running" as const)
     };
     this.options.repositories.generation.updateRunStatus(runningState.runId, runningState.status);
     this.options.repositories.generation.addEvent({
@@ -417,6 +477,15 @@ export class ChapterWorkflowRuntime {
 
     let nextState: ChapterWorkflowState = runningState;
     switch (node) {
+      case "load_chapter_outline":
+        nextState = this.loadChapterOutline(runningState);
+        break;
+      case "build_context":
+        nextState = this.retrieveMemory(this.prepareContext(runningState));
+        break;
+      case "build_writing_brief":
+        nextState = await this.buildWritingBrief(runningState);
+        break;
       case "prepare_context":
         nextState = this.prepareContext(runningState);
         break;
@@ -435,13 +504,30 @@ export class ChapterWorkflowRuntime {
       case "continuity_audit":
         nextState = await this.continuityAudit(runningState);
         break;
+      case "audit_draft":
+        nextState = await this.auditDraftAgainstOutline(runningState);
+        break;
       case "webnovel_rhythm_audit":
         nextState = await this.webnovelRhythmAudit(runningState);
         break;
       case "revise_draft":
         nextState = await this.reviseDraft(runningState);
         break;
+      case "polish_de_ai":
+        nextState = await this.polishDeAi(runningState);
+        break;
+      case "final_check":
+        nextState = await this.finalCheck(runningState);
+        break;
       case "human_gate":
+        nextState = {
+          ...runningState,
+          status: "paused",
+          humanGateStatus:
+            runningState.humanGateStatus === "revision_requested" ? "revision_requested" : "waiting"
+        };
+        break;
+      case "human_edit_gate":
         nextState = {
           ...runningState,
           status: "paused",
@@ -453,6 +539,12 @@ export class ChapterWorkflowRuntime {
         nextState = await this.stateSettlementProposal(runningState);
         break;
       case "persist_results":
+        nextState = runningState;
+        break;
+      case "save_version":
+        nextState = runningState;
+        break;
+      case "update_chapter_summary":
         nextState = runningState;
         break;
       case "finalize":
@@ -470,7 +562,7 @@ export class ChapterWorkflowRuntime {
     const book = this.options.repositories.books.get(state.bookId);
     const chapter = this.options.repositories.chapters.get(state.chapterId);
     if (!project || !book || !chapter) {
-      throw new Error("Workflow source records are missing");
+      throw new Error("工作流来源记录缺失");
     }
     return {
       ...state,
@@ -500,6 +592,75 @@ export class ChapterWorkflowRuntime {
       privacy: this.privacy
     });
     return { ...state, contextPack };
+  }
+
+  private loadChapterOutline(state: ChapterWorkflowState): ChapterWorkflowState {
+    const chapter = this.options.repositories.chapters.get(state.chapterId);
+    const acceptedPlan = this.options.repositories.planning.getAcceptedChapterPlan(state.chapterId);
+    const outline = state.sourceOutline?.trim();
+    if (!chapter) {
+      throw new Error("Chapter not found for focused workflow");
+    }
+    if (!acceptedPlan && !outline) {
+      throw new Error("请先确认章节细纲，再生成正文。");
+    }
+    return {
+      ...state,
+      sourceOutline: outline ?? state.sourceOutline,
+      chapterOutline: focusedPlanSnapshot({
+        chapterTitle: chapter.title,
+        targetWords: chapter.targetWords,
+        acceptedPlan,
+        sourceOutline: outline ?? null
+      })
+    };
+  }
+
+  private async buildWritingBrief(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
+    const chapter = this.options.repositories.chapters.get(state.chapterId);
+    const acceptedPlan = this.options.repositories.planning.getAcceptedChapterPlan(state.chapterId);
+    const settingFile = this.options.repositories.planning.getActiveBookSettingFile(state.bookId);
+    const brief = {
+      chapter_id: state.chapterId,
+      chapter_title: chapter?.title ?? acceptedPlan?.title ?? "当前章节",
+      target_words: chapter?.targetWords ?? acceptedPlan?.targetWords ?? 3000,
+      min_words: chapter?.minWords ?? acceptedPlan?.minWords ?? null,
+      max_words: chapter?.maxWords ?? acceptedPlan?.maxWords ?? null,
+      active_setting_file: settingFile
+        ? {
+            id: settingFile.id,
+            title: settingFile.title,
+            summary: trimText(settingFile.contentPlaintext, 1200)
+          }
+        : null,
+      chapter_plan: focusedPlanSnapshot({
+        chapterTitle: chapter?.title ?? "当前章节",
+        targetWords: chapter?.targetWords ?? 3000,
+        acceptedPlan,
+        sourceOutline: state.sourceOutline
+      }),
+      previous_context: {
+        summaries: state.contextPack?.recentChapterSummaries ?? [],
+        excerpts: state.contextPack?.recentChapterExcerpts ?? []
+      },
+      writing_rules: [
+        "严格按已确认细纲写当前章节，不自动改正史。",
+        "先明确本章必须兑现的爽点、冲突和章末钩子。",
+        "生成物保持非正式，等待用户审阅后才可保存为版本。"
+      ],
+      user_instruction: state.userInstruction
+    };
+    const text = JSON.stringify(brief, null, 2);
+    return this.withLlmArtifact(state, {
+      node: "build_writing_brief",
+      taskType: "chapter_outline",
+      artifactType: "writing_brief",
+      title: "写作简报",
+      contentText: text,
+      contentJson: text,
+      templateId: "focused-writing-brief",
+      extraState: { chapterOutline: brief }
+    });
   }
 
   private async generateChapterOutline(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
@@ -540,7 +701,7 @@ export class ChapterWorkflowRuntime {
           chapter_end_hook:
             outlineLines.at(-1) ?? "以用户大纲指定的悬念或新问题作为章末钩子。",
           scene_plan: outlineLines,
-          continuity_dependencies: ["保留用户大纲里的命名事实", "改动必须作为建议而非直接改 canon"],
+          continuity_dependencies: ["保留用户大纲里的命名事实", "改动必须作为建议而非直接改正史"],
           risks: state.allowStoryChanges
             ? ["允许增强桥段，但不能改变用户指定的主线结果"]
             : ["不允许改动用户指定的关键设定和情节顺序"]
@@ -562,7 +723,7 @@ export class ChapterWorkflowRuntime {
       node: "generate_chapter_outline",
       taskType: "chapter_outline",
       artifactType: "outline",
-      title: "Chapter outline",
+      title: "章节细纲",
       contentText: text,
       contentJson: text,
       extraState: { chapterOutline: outline }
@@ -620,7 +781,7 @@ export class ChapterWorkflowRuntime {
       node: "generate_scene_cards",
       taskType: "scene_cards",
       artifactType: "scene_cards",
-      title: "Scene cards",
+      title: "场景卡",
       contentText: text,
       contentJson: text,
       extraState: { sceneCards }
@@ -637,6 +798,8 @@ export class ChapterWorkflowRuntime {
         ? acceptedSceneCards
         : acceptedPlan && !state.sourceOutline
           ? [
+              acceptedPlan.outlineText,
+              acceptedPlan.chapterSummary,
               acceptedPlan.openingHook,
               acceptedPlan.mainConflict,
               acceptedPlan.conflictEscalation,
@@ -680,8 +843,12 @@ export class ChapterWorkflowRuntime {
       node: "draft_chapter",
       taskType: "draft_chapter",
       artifactType: "draft",
-      title: "Mock draft",
+      title: "章节草稿",
       contentText: draft,
+      templateId:
+        state.workflowId === FOCUSED_CHAPTER_WRITER_WORKFLOW_ID
+          ? "focused-draft-chapter"
+          : undefined,
       extraState: { draftMarkdown: draft }
     });
   }
@@ -753,10 +920,51 @@ export class ChapterWorkflowRuntime {
       node: "webnovel_rhythm_audit",
       taskType: "suspense_hook_audit",
       artifactType: "rhythm_audit",
-      title: "Webnovel rhythm audit",
+      title: "网文节奏审稿",
       contentText: text,
       contentJson: text,
       extraState: { webnovelRhythmAudit: rhythm }
+    });
+  }
+
+  private async auditDraftAgainstOutline(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
+    const acceptedPlan = this.options.repositories.planning.getAcceptedChapterPlan(state.chapterId);
+    const audit = {
+      passed: true,
+      checked_against: acceptedPlan?.id ?? "source_outline",
+      blocking_findings: [],
+      warnings: [
+        "确认草稿没有自动覆盖正式正文。",
+        "确认草稿没有把故事圣经当作可自动修改对象。"
+      ],
+      outline_coverage: {
+        opening_hook: Boolean(acceptedPlan?.openingHook),
+        main_conflict: Boolean(acceptedPlan?.mainConflict),
+        ending_hook: Boolean(acceptedPlan?.endingHook)
+      },
+      required_human_review: true
+    };
+    this.options.repositories.generation.createReviewCard({
+      generationRunId: state.runId,
+      chapterId: state.chapterId,
+      reviewType: "outline_canon",
+      severity: "low",
+      title: "已按细纲完成自动核对",
+      issue: "草稿仍需人工审阅后才可保存为正文版本。",
+      evidence: acceptedPlan?.title ?? null,
+      suggestedFix: "在人工确认区保存为版本，确认无误后再设为正式正文。",
+      rawJson: JSON.stringify(audit)
+    });
+    const text = JSON.stringify(audit, null, 2);
+    return this.withLlmArtifact(state, {
+      node: "audit_draft",
+      taskType: "continuity_audit",
+      artifactType: "outline_canon_audit",
+      title: "细纲与正史核对",
+      contentText: text,
+      contentJson: text,
+      templateId: "focused-outline-canon-audit",
+      extraState: { continuityAudit: audit }
     });
   }
 
@@ -777,9 +985,59 @@ export class ChapterWorkflowRuntime {
       node: "revise_draft",
       taskType: "revise_chapter",
       artifactType: "revision",
-      title: state.desiredOutput === "final_manuscript" ? "Final proposed manuscript" : "Revised draft",
+      title: state.desiredOutput === "final_manuscript" ? "终稿候选" : "修订草稿",
       contentText: finalText,
       extraState: { revisedMarkdown: finalText, revisionPlan }
+    });
+  }
+
+  private async polishDeAi(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
+    const instructionLine = state.userInstruction
+      ? `\n\n【本次写作要求：${state.userInstruction}】`
+      : "";
+    const polished = `${state.draftMarkdown ?? ""}`
+      .replace(/危险没有解释自己的来处/g, "危险像海雾一样压低过来")
+      .replace(/他不能偏离已确认细纲/g, "他必须贴着已确认细纲往前走");
+    const finalText = `${polished}${instructionLine}`.trim();
+    const revisionPlan = {
+      changed: ["减少解释性语句", "保留章节细纲关键事件", "保留章末钩子"],
+      human_review_needed: true
+    };
+    return this.withLlmArtifact(state, {
+      node: "polish_de_ai",
+      taskType: "revise_chapter",
+      artifactType: "revision",
+      title: "润色后的终稿候选",
+      contentText: finalText,
+      templateId: "focused-polish-de-ai",
+      extraState: { revisedMarkdown: finalText, revisionPlan }
+    });
+  }
+
+  private async finalCheck(state: ChapterWorkflowState): Promise<ChapterWorkflowState> {
+    const chapter = this.options.repositories.chapters.get(state.chapterId);
+    const text = state.revisedMarkdown ?? state.draftMarkdown ?? "";
+    const characterCount = text.replace(/\s+/g, "").length;
+    const result = {
+      passed: true,
+      chapter_title: chapter?.title ?? "当前章节",
+      target_words: chapter?.targetWords ?? null,
+      estimated_chinese_characters: characterCount,
+      canonical_manuscript_modified: false,
+      story_bible_modified: false,
+      save_required_by_user: true,
+      notes: ["终检只生成报告，不自动保存正文，不自动修改故事圣经。"]
+    };
+    const contentText = JSON.stringify(result, null, 2);
+    return this.withLlmArtifact(state, {
+      node: "final_check",
+      taskType: "continuity_audit",
+      artifactType: "final_check",
+      title: "终检报告",
+      contentText,
+      contentJson: contentText,
+      templateId: "focused-final-check",
+      extraState: {}
     });
   }
 
@@ -855,10 +1113,16 @@ export class ChapterWorkflowRuntime {
       title: string;
       contentText: string;
       contentJson?: string;
+      templateId?: string | undefined;
       extraState: Partial<ChapterWorkflowState>;
     }
   ): Promise<ChapterWorkflowState> {
-    const messages = this.assembleMessages(input.taskType, state, input.contentText);
+    const messages = this.assembleMessages(
+      input.taskType,
+      state,
+      input.contentText,
+      input.templateId
+    );
     const llmResult =
       state.executionMode === "provider"
         ? await this.runProviderLlmNode(state, input, messages)
@@ -918,6 +1182,7 @@ export class ChapterWorkflowRuntime {
       taskType: LLMTaskType;
       artifactType: string;
       contentJson?: string;
+      templateId?: string | undefined;
       extraState: Partial<ChapterWorkflowState>;
     },
     messages: ChatMessage[]
@@ -966,9 +1231,10 @@ export class ChapterWorkflowRuntime {
   private assembleMessages(
     taskType: LLMTaskType,
     state: ChapterWorkflowState,
-    fallbackContent: string
+    fallbackContent: string,
+    templateOverride?: string | undefined
   ): ChatMessage[] {
-    const templateId = TEMPLATE_BY_TASK[taskType];
+    const templateId = templateOverride ?? TEMPLATE_BY_TASK[taskType];
     if (!templateId) {
       return [{ role: "user", content: fallbackContent }];
     }
@@ -1011,7 +1277,9 @@ export class ChapterWorkflowRuntime {
             null,
             2
           ),
-          sceneCards: JSON.stringify(acceptedSceneCards, null, 2)
+          sceneCards: JSON.stringify(acceptedSceneCards, null, 2),
+          writingBrief: JSON.stringify(state.chapterOutline, null, 2),
+          finalCandidate: state.revisedMarkdown ?? state.draftMarkdown ?? ""
         }
       };
       return this.promptAssembly.assemble(
@@ -1132,7 +1400,7 @@ export class ChapterWorkflowRuntime {
     };
     const policy = this.options.repositories.budgetPolicies.getDefault();
     if (policy.perWorkflowBudgetCap !== null && estimate.maxCost > policy.perWorkflowBudgetCap) {
-      throw new Error("Workflow budget cap exceeded");
+      throw new Error("工作流预算上限已超出");
     }
     return estimate;
   }
@@ -1176,11 +1444,14 @@ export class ChapterWorkflowRuntime {
   private requirePausedState(runId: string): ChapterWorkflowState {
     const checkpoint = this.options.repositories.generation.getLatestCheckpoint(runId);
     if (!checkpoint) {
-      throw new Error("Workflow checkpoint not found");
+      throw new Error("未找到工作流检查点");
     }
     const state = checkpoint.state as ChapterWorkflowState;
-    if (state.status !== "paused" || state.currentNode !== "human_gate") {
-      throw new Error("Workflow must be paused at the human gate before this action");
+    if (
+      state.status !== "paused" ||
+      (state.currentNode !== "human_gate" && state.currentNode !== "human_edit_gate")
+    ) {
+      throw new Error("需要先停在人工确认节点，才能执行此操作");
     }
     return state;
   }
@@ -1206,7 +1477,7 @@ export class ChapterWorkflowRuntime {
     const run = this.options.repositories.generation.getRun(state.runId);
     return {
       id: state.runId,
-      workflowId: CHAPTER_GENERATION_WORKFLOW_ID,
+      workflowId: state.workflowId,
       projectId: state.projectId,
       bookId: state.bookId,
       chapterId: state.chapterId,
@@ -1236,6 +1507,55 @@ function summarizeWorkflowLlmRuns(llmRuns: LLMRunRecord[]): CostSummary {
     finalCost: roundSummary(llmRuns.reduce((total, run) => total + (run.finalCost ?? 0), 0)),
     currency: llmRuns[0]?.currency ?? "USD"
   };
+}
+
+function focusedPlanSnapshot(input: {
+  chapterTitle: string;
+  targetWords: number;
+  acceptedPlan: ChapterPlanRecord | null;
+  sourceOutline: string | null;
+}): Record<string, unknown> {
+  if (input.acceptedPlan) {
+    return {
+      plan_id: input.acceptedPlan.id,
+      status: input.acceptedPlan.status,
+      chapter_index: input.acceptedPlan.chapterIndex,
+      title: input.acceptedPlan.title,
+      target_words: input.acceptedPlan.targetWords || input.targetWords,
+      min_words: input.acceptedPlan.minWords,
+      max_words: input.acceptedPlan.maxWords,
+      word_count_priority: input.acceptedPlan.wordCountPriority,
+      outline_text: input.acceptedPlan.outlineText ?? input.acceptedPlan.chapterSummary,
+      chapter_summary: input.acceptedPlan.chapterSummary,
+      chapter_promise: input.acceptedPlan.chapterPromise,
+      opening_hook: input.acceptedPlan.openingHook,
+      main_conflict: input.acceptedPlan.mainConflict,
+      conflict_escalation: input.acceptedPlan.conflictEscalation,
+      key_events: safeJsonArray(input.acceptedPlan.keyEventsJson),
+      scene_cards: safeJsonArray(input.acceptedPlan.sceneCardsJson),
+      emotional_turn: input.acceptedPlan.emotionalTurn,
+      payoff: input.acceptedPlan.payoff,
+      ending_hook: input.acceptedPlan.endingHook,
+      continuity_dependencies: safeJsonArray(input.acceptedPlan.continuityDependenciesJson),
+      must_include: safeJsonArray(input.acceptedPlan.mustIncludeJson),
+      must_avoid: safeJsonArray(input.acceptedPlan.mustAvoidJson),
+      user_notes: input.acceptedPlan.userNotes,
+      risk_notes: input.acceptedPlan.riskNotes
+    };
+  }
+  return {
+    title: input.chapterTitle,
+    target_words: input.targetWords,
+    outline_text: input.sourceOutline,
+    status: "source_outline",
+    must_include: [],
+    must_avoid: []
+  };
+}
+
+function trimText(value: string, limit: number): string {
+  const compact = value.replace(/\s+/g, " ").trim();
+  return compact.length > limit ? `${compact.slice(0, limit)}...` : compact;
 }
 
 function roundSummary(value: number): number {

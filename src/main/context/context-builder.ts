@@ -37,6 +37,10 @@ export class ContextBuilder {
       bookId: input.bookId
     });
     const acceptedMaterialDigest = this.getAcceptedMaterialDigestText(input.bookId);
+    const activeSettingFile = this.repositories.planning.getActiveBookSettingFile(input.bookId);
+    const acceptedChapterPlan = chapter
+      ? this.repositories.planning.getAcceptedChapterPlan(chapter.id)
+      : null;
     const memoryQuery = [chapter?.title, chapter?.summary, input.userInstruction]
       .filter(Boolean)
       .join(" ");
@@ -69,7 +73,17 @@ export class ContextBuilder {
           .join("\n")
       ),
       bookPremise: this.redact(
-        [book?.title, book?.logline, book?.genre, acceptedMaterialDigest].filter(Boolean).join("\n")
+        [
+          book?.title,
+          book?.logline,
+          book?.genre,
+          activeSettingFile
+            ? `活动设定文件：${activeSettingFile.title}\n${activeSettingFile.contentPlaintext}`
+            : null,
+          acceptedMaterialDigest
+        ]
+          .filter(Boolean)
+          .join("\n")
       ),
       volumeGoal: this.redact(volume?.summary ?? volume?.title ?? ""),
       currentChapterMetadata: this.redact(
@@ -83,7 +97,29 @@ export class ContextBuilder {
           .filter(Boolean)
           .join("\n")
       ),
-      currentChapterOutline: chapter?.outlineJson ? this.safeJson(chapter.outlineJson) : null,
+      currentChapterOutline: acceptedChapterPlan
+        ? {
+            plan_id: acceptedChapterPlan.id,
+            title: acceptedChapterPlan.title,
+            target_words: acceptedChapterPlan.targetWords,
+            min_words: acceptedChapterPlan.minWords,
+            max_words: acceptedChapterPlan.maxWords,
+            word_count_priority: acceptedChapterPlan.wordCountPriority,
+            outline_text: acceptedChapterPlan.outlineText ?? acceptedChapterPlan.chapterSummary,
+            opening_hook: acceptedChapterPlan.openingHook,
+            key_events: this.safeJson(acceptedChapterPlan.keyEventsJson),
+            main_conflict: acceptedChapterPlan.mainConflict,
+            emotional_turn: acceptedChapterPlan.emotionalTurn,
+            payoff: acceptedChapterPlan.payoff,
+            ending_hook: acceptedChapterPlan.endingHook,
+            must_include: this.safeJson(acceptedChapterPlan.mustIncludeJson),
+            must_avoid: this.safeJson(acceptedChapterPlan.mustAvoidJson),
+            continuity_notes: this.safeJson(acceptedChapterPlan.continuityDependenciesJson),
+            user_notes: acceptedChapterPlan.userNotes
+          }
+        : chapter?.outlineJson
+          ? this.safeJson(chapter.outlineJson)
+          : null,
       sceneCards: this.getSceneCards(input.chapterId),
       readerPositioning: this.redact(readerPositioning.map((item) => item.content).join("\n\n")),
       styleGuide: this.redact(styleGuides.map((item) => item.content).join("\n\n")),

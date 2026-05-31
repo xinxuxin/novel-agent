@@ -178,6 +178,18 @@ Preset routing:
 
 - `story_bible` and `volume_outline`: GPT-5.5 plus Claude Opus 4.7 as parallel director models, DeepSeek V4 Pro as aggregator/fallback.
 - `chapter_outline`: DeepSeek V4 Pro, then GPT-5.5, then Qwen3.7-Max.
+
+## Focused Chapter Writer Routing
+
+The Phase 23 `章节成文` flow uses one fixed chain rather than default multi-draft comparison:
+
+- writing brief: `chapter_outline`
+- chapter draft: `draft_chapter`
+- outline/canon audit: `continuity_audit`
+- polish/de-AI: `revise_chapter`
+- final check: `continuity_audit`
+
+The UI shows a real-provider preflight before calls. Routes still resolve in the main process, credentials remain encrypted, and missing credentials/prices block or warn according to the routing and budget settings. The focused chain writes `llm_runs` for attempted provider calls and keeps generated manuscripts non-canonical until user acceptance.
 - `scene_cards`: DeepSeek V4 Pro, then Kimi K2.6.
 - `draft_chapter`: Qwen3.7-Max, then Kimi K2.6, then Claude Opus 4.7.
 - `webnovel_style_rewrite`: Qwen3.7-Max, then Kimi K2.6.

@@ -184,10 +184,11 @@ describe("phase 19 simple multi-draft studio", () => {
     );
     const settingsSource = readFileSync("src/renderer/features/settings/SettingsPanel.tsx", "utf8");
 
-    expect(appSource).toContain("Candidates");
-    expect(candidatePanelSource).toContain("Generate 2–3 drafts from the same chapter plan");
-    expect(candidatePanelSource).toContain("Use Kimi’s prose style as the base");
-    expect(settingsSource).toContain("Costs");
+    expect(appSource).toContain("CandidateStudioPanel");
+    expect(appSource).not.toContain("Candidates");
+    expect(candidatePanelSource).toContain("从同一章节细纲生成 2-3 个候选稿");
+    expect(candidatePanelSource).toContain("保留 Kimi 的文风");
+    expect(settingsSource).toContain("成本");
     expect(`${candidatePanelSource}\n${settingsSource}`).not.toContain("encryptedSecretBase64");
     expect(`${candidatePanelSource}\n${settingsSource}`).not.toContain("decrypted");
   });

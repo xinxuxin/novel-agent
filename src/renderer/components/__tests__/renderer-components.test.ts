@@ -53,7 +53,7 @@ describe("renderer component smoke tests", () => {
       })
     );
 
-    expect(onboarding).toContain("配置 WenForge Studio");
+    expect(onboarding).toContain("配置文炉写作台");
     expect(statePanel).toContain("缺少价格");
     expect(statePanel).not.toContain("sk-secret");
   });

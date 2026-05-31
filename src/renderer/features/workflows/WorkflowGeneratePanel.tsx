@@ -12,7 +12,7 @@ import type {
   VolumeRecord
 } from "@contracts/data";
 import type { ModelProfileRecord } from "@contracts/model-routing";
-import type { ChapterPlanRecord } from "@contracts/planning";
+import type { BookSettingFileRecord, ChapterPlanRecord } from "@contracts/planning";
 import { QUALITY_MODES } from "@shared/domain/model-routing";
 import type { QualityMode, TaskType } from "@shared/domain/model-routing";
 import { importOutlineFiles } from "./outline-file-import";
@@ -29,12 +29,10 @@ interface WorkflowGeneratePanelProps {
 
 const WORKFLOW_PREVIEW_TASKS: TaskType[] = [
   "chapter_outline",
-  "scene_cards",
   "draft_chapter",
   "continuity_audit",
-  "suspense_hook_audit",
   "revise_chapter",
-  "state_settlement"
+  "continuity_audit"
 ];
 
 const CROSS_CHECK_ACTIONS: Array<{ label: string; type: CrossCheckType }> = [
@@ -53,14 +51,61 @@ const QUALITY_LABELS: Record<QualityMode, string> = {
 };
 
 const LIVE_WORKFLOW_STAGES = [
-  { label: "整理素材", nodes: ["prepare_context", "retrieve_memory"] },
-  { label: "读取细纲", nodes: ["generate_chapter_outline", "generate_scene_cards"] },
-  { label: "按细纲起草", nodes: ["draft_chapter"] },
-  { label: "节奏审稿", nodes: ["webnovel_rhythm_audit"] },
-  { label: "连贯性审稿", nodes: ["continuity_audit"] },
-  { label: "改写成终稿", nodes: ["revise_draft"] },
-  { label: "人工确认", nodes: ["human_gate"] }
+  { label: "读取细纲", nodes: ["load_chapter_outline"] },
+  { label: "整理上下文", nodes: ["build_context"] },
+  { label: "写作简报", nodes: ["build_writing_brief"] },
+  { label: "起草正文", nodes: ["draft_chapter"] },
+  { label: "核对正史", nodes: ["audit_draft"] },
+  { label: "润色去味", nodes: ["polish_de_ai"] },
+  { label: "终检", nodes: ["final_check"] },
+  { label: "人工确认", nodes: ["human_edit_gate"] }
 ] as const;
+
+const NODE_LABELS: Record<string, string> = {
+  load_chapter_outline: "读取细纲",
+  build_context: "整理上下文",
+  build_writing_brief: "写作简报",
+  draft_chapter: "起草正文",
+  audit_draft: "细纲核对",
+  polish_de_ai: "润色去味",
+  final_check: "终检",
+  human_edit_gate: "人工确认",
+  prepare_context: "准备上下文",
+  retrieve_memory: "检索记忆",
+  generate_chapter_outline: "生成细纲",
+  generate_scene_cards: "拆分场景",
+  continuity_audit: "连贯性审稿",
+  webnovel_rhythm_audit: "节奏审稿",
+  revise_draft: "修订正文",
+  human_gate: "人工确认",
+  state_settlement_proposal: "设定结算提案",
+  persist_results: "保存结果",
+  finalize: "完成"
+};
+
+const ARTIFACT_LABELS: Record<string, string> = {
+  writing_brief: "写作简报",
+  draft: "正文草稿",
+  outline_canon_audit: "细纲核对",
+  revision: "终稿候选",
+  final_check: "终检报告",
+  outline: "章节细纲",
+  scene_cards: "场景卡",
+  continuity_audit: "连贯性审稿",
+  rhythm_audit: "节奏审稿",
+  settlement_proposal: "设定结算提案"
+};
+
+const TASK_LABELS: Record<string, string> = {
+  chapter_outline: "写作简报",
+  draft_chapter: "起草正文",
+  continuity_audit: "审稿核对",
+  revise_chapter: "润色改写",
+  summarize_chapter: "章节摘要",
+  suspense_hook_audit: "钩子节奏审稿",
+  scene_cards: "场景卡",
+  state_settlement: "设定结算"
+};
 
 export function WorkflowGeneratePanel({
   activeBook,
@@ -75,10 +120,13 @@ export function WorkflowGeneratePanel({
   const [detail, setDetail] = useState<ChapterWorkflowDetail | null>(null);
   const [busy, setBusy] = useState(false);
   const [acceptedVersion, setAcceptedVersion] = useState<ManuscriptVersionRecord | null>(null);
-  const [executionMode, setExecutionMode] = useState<"mock" | "provider">("mock");
-  const [qualityMode, setQualityMode] = useState<QualityMode>("balanced");
+  const [executionMode, setExecutionMode] = useState<"mock" | "provider">("provider");
+  const [qualityMode, setQualityMode] = useState<QualityMode>("premium");
   const [modelProfiles, setModelProfiles] = useState<ModelProfileRecord[]>([]);
   const [routeOverrideModelProfileId, setRouteOverrideModelProfileId] = useState("");
+  const [activeSettingFile, setActiveSettingFile] = useState<BookSettingFileRecord | null>(null);
+  const [settingText, setSettingText] = useState("");
+  const [settingStatus, setSettingStatus] = useState("可粘贴或导入 .docx / .txt / .md");
   const [sourceOutline, setSourceOutline] = useState("");
   const [outlineImportStatus, setOutlineImportStatus] = useState("拖入多个 .docx / .txt / .md");
   const [dragActive, setDragActive] = useState(false);
@@ -87,8 +135,9 @@ export function WorkflowGeneratePanel({
   const [allowDraftPlanOverride, setAllowDraftPlanOverride] = useState(false);
   const [desiredOutput, setDesiredOutput] = useState<
     "outline" | "scene_cards" | "draft" | "final_manuscript"
-  >("draft");
+  >("final_manuscript");
   const [acceptedPlan, setAcceptedPlan] = useState<ChapterPlanRecord | null>(null);
+  const [pendingPlan, setPendingPlan] = useState<ChapterPlanRecord | null>(null);
   const latestRevision = useMemo(() => findLatestArtifact(detail, "revision"), [detail]);
   const latestDraft = useMemo(() => findLatestArtifact(detail, "draft"), [detail]);
   const displayArtifact = latestRevision ?? latestDraft;
@@ -108,20 +157,51 @@ export function WorkflowGeneratePanel({
         setDetail(null);
         setAcceptedVersion(null);
         setAcceptedPlan(null);
+        setPendingPlan(null);
         return;
       }
-      const plan = await window.wenforge.planning.chapterPlans.getAccepted(activeChapter.id);
-      const runs = await window.wenforge.generation.listRunsByChapter(activeChapter.id);
-      const latest = runs[0] ? await window.wenforge.generation.getRun(runs[0].id) : null;
+      const [plan, allPlans] = await Promise.all([
+        window.wenforge.planning.chapterPlans.getAccepted(activeChapter.id),
+        activeBook ? window.wenforge.planning.chapterPlans.list(activeBook.id) : Promise.resolve([])
+      ]);
       if (!mounted) return;
-      setAcceptedPlan(plan);
-      setDetail(latest);
-      if (latest) {
-        onWorkflowCostChange(
-          latest.run.status === "paused" ? "Workflow paused" : `Workflow ${latest.run.status}`,
-          latest.costSummary.finalCost || latest.costSummary.estimatedCostLive,
-          latest.run.humanGateStatus
-        );
+      const acceptedFromList =
+        plan ??
+        allPlans.find(
+          (item) =>
+            item.status === "accepted" &&
+            (item.chapterId === activeChapter.id ||
+              (item.chapterIndex === activeChapter.chapterIndex &&
+                item.title === activeChapter.title))
+        ) ??
+        null;
+      setAcceptedPlan(acceptedFromList);
+      setPendingPlan(
+        acceptedFromList
+          ? null
+          : (allPlans.find(
+              (item) =>
+                (item.chapterId === activeChapter.id ||
+                  (item.chapterIndex === activeChapter.chapterIndex &&
+                    item.title === activeChapter.title)) &&
+                (item.status === "draft" || item.status === "proposed")
+            ) ?? null)
+      );
+
+      try {
+        const runs = await window.wenforge.generation.listRunsByChapter(activeChapter.id);
+        const latest = runs[0] ? await window.wenforge.generation.getRun(runs[0].id) : null;
+        if (!mounted) return;
+        setDetail(latest);
+        if (latest) {
+          onWorkflowCostChange(
+            latest.run.status === "paused" ? "工作流暂停" : `工作流${workflowStatusLabel(latest.run.status)}`,
+            latest.costSummary.finalCost || latest.costSummary.estimatedCostLive,
+            latest.run.humanGateStatus
+          );
+        }
+      } catch {
+        if (mounted) setDetail(null);
       }
     }
 
@@ -129,7 +209,29 @@ export function WorkflowGeneratePanel({
     return () => {
       mounted = false;
     };
-  }, [activeChapter, onWorkflowCostChange]);
+  }, [activeBook, activeChapter, onWorkflowCostChange]);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadActiveSetting(): Promise<void> {
+      if (!activeBook) {
+        setActiveSettingFile(null);
+        setSettingText("");
+        setSettingStatus("可粘贴或导入 .docx / .txt / .md");
+        return;
+      }
+      const setting = await window.wenforge.planning.bookSettingFiles.active(activeBook.id);
+      if (!mounted) return;
+      setActiveSettingFile(setting);
+      setSettingText(setting?.contentMarkdown ?? "");
+      setSettingStatus(setting ? `当前活动设定：${setting.title}` : "尚未保存活动设定");
+    }
+
+    void loadActiveSetting();
+    return () => {
+      mounted = false;
+    };
+  }, [activeBook]);
 
   useEffect(() => {
     if (acceptedPlan) {
@@ -186,7 +288,7 @@ export function WorkflowGeneratePanel({
     setDetail(next);
     if (next) {
       onWorkflowCostChange(
-        next.run.status === "paused" ? "Workflow paused" : `Workflow ${next.run.status}`,
+        next.run.status === "paused" ? "工作流暂停" : `工作流${workflowStatusLabel(next.run.status)}`,
         next.costSummary.finalCost || next.costSummary.estimatedCostLive,
         next.run.humanGateStatus
       );
@@ -198,12 +300,15 @@ export function WorkflowGeneratePanel({
     if (!activeProject || !activeBook || !activeChapter) return;
     const requiresAcceptedPlan = desiredOutput === "draft" || desiredOutput === "final_manuscript";
     if (requiresAcceptedPlan && !acceptedPlan && !allowDraftPlanOverride) {
-      window.alert("请先在规划实验室接受章节细纲，或勾选草稿细纲覆盖后再生成。");
+      window.alert("请先点“确认当前细纲”，再生成正文。");
       return;
     }
-    const outline = sourceOutline.trim() || (!acceptedPlan ? activeChapter.summary?.trim() || "" : "");
+    const supplementalInstruction = sourceOutline.trim();
+    const outline = acceptedPlan
+      ? ""
+      : supplementalInstruction || activeChapter.summary?.trim() || "";
     if (!outline && !acceptedPlan) {
-      window.alert("请先整理素材并生成章节细纲。");
+      window.alert("请先导入或粘贴本章细纲。");
       return;
     }
     const confirmed =
@@ -216,12 +321,12 @@ export function WorkflowGeneratePanel({
     try {
       await window.wenforge.chapters.update(activeChapter.id, {
         outlineJson: JSON.stringify({
-          source_outline_text: outline,
-          source_outline_files: sourceOutline.trim() ? ["手动输入"] : ["章节摘要"],
+        source_outline_text: acceptedPlan ? (acceptedPlan.outlineText ?? "") : outline,
+        source_outline_files: supplementalInstruction ? ["手动输入"] : ["章节摘要"],
           imported_at: new Date().toISOString()
         })
       });
-      const run = await window.wenforge.generation.chapter.start({
+      const run = await window.wenforge.generation.focused.start({
         projectId: activeProject.id,
         bookId: activeBook.id,
         volumeId: activeVolume?.id ?? activeChapter.volumeId,
@@ -229,10 +334,10 @@ export function WorkflowGeneratePanel({
         qualityMode,
         executionMode,
         routeOverrideModelProfileId: routeOverrideModelProfileId || null,
-        sourceOutline: outline || null,
+        sourceOutline: acceptedPlan ? null : outline || null,
         allowStoryChanges,
-        desiredOutput,
-        userInstruction: buildOutlineInstruction(label, allowStoryChanges),
+        desiredOutput: "final_manuscript",
+        userInstruction: buildOutlineInstruction(label, allowStoryChanges, supplementalInstruction),
         targetTokenBudget: 4000,
         confirmed: true
       });
@@ -240,6 +345,100 @@ export function WorkflowGeneratePanel({
       setAcceptedVersion(null);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const acceptCurrentPlan = async (): Promise<void> => {
+    if (!activeBook || !activeChapter) return;
+    setBusy(true);
+    try {
+      const outline = sourceOutline.trim() || activeChapter.summary?.trim() || activeChapter.title;
+      const plan = await window.wenforge.planning.chapterPlans.upsert({
+        ...(pendingPlan?.id ? { id: pendingPlan.id } : {}),
+        bookId: activeBook.id,
+        volumeId: pendingPlan?.volumeId ?? activeChapter.volumeId,
+        chapterId: activeChapter.id,
+        outlineVersionId: pendingPlan?.outlineVersionId ?? null,
+        chapterIndex: pendingPlan?.chapterIndex ?? activeChapter.chapterIndex,
+        title: pendingPlan?.title ?? activeChapter.title,
+        targetWords: pendingPlan?.targetWords ?? activeChapter.targetWords,
+        minWords: pendingPlan?.minWords ?? activeChapter.minWords,
+        maxWords: pendingPlan?.maxWords ?? activeChapter.maxWords,
+        wordCountPriority: pendingPlan?.wordCountPriority ?? activeChapter.wordCountPriority,
+        chapterSummary: pendingPlan?.chapterSummary ?? outline,
+        chapterPromise:
+          pendingPlan?.chapterPromise ?? `${activeChapter.title} 按已导入细纲推进主线。`,
+        openingHook: pendingPlan?.openingHook ?? "按已导入细纲设计开场钩子。",
+        mainConflict: pendingPlan?.mainConflict ?? "围绕本章目标制造明确阻力。",
+        conflictEscalation: pendingPlan?.conflictEscalation ?? "让阻力在中段升级。",
+        keyEventsJson:
+          pendingPlan?.keyEventsJson ?? JSON.stringify([outline.slice(0, 140) || activeChapter.title]),
+        sceneCardsJson:
+          pendingPlan?.sceneCardsJson ?? JSON.stringify(["开场钩子", "冲突升级", "章末悬念"]),
+        emotionalTurn: pendingPlan?.emotionalTurn ?? "主角态度或处境发生明确变化。",
+        payoff: pendingPlan?.payoff ?? "兑现本章读者期待。",
+        endingHook: pendingPlan?.endingHook ?? "留下下一章继续阅读的具体钩子。",
+        continuityDependenciesJson:
+          pendingPlan?.continuityDependenciesJson ?? JSON.stringify(["以当前导入细纲为准"]),
+        charactersInvolvedJson: pendingPlan?.charactersInvolvedJson ?? JSON.stringify([]),
+        storyBibleFactsUsedJson: pendingPlan?.storyBibleFactsUsedJson ?? JSON.stringify([]),
+        foreshadowingSeededJson: pendingPlan?.foreshadowingSeededJson ?? JSON.stringify([]),
+        foreshadowingResolvedJson: pendingPlan?.foreshadowingResolvedJson ?? JSON.stringify([]),
+        unresolvedHooksCarriedForwardJson:
+          pendingPlan?.unresolvedHooksCarriedForwardJson ?? JSON.stringify([]),
+        outlineText: pendingPlan?.outlineText ?? outline,
+        mustIncludeJson: pendingPlan?.mustIncludeJson ?? JSON.stringify([]),
+        mustAvoidJson: pendingPlan?.mustAvoidJson ?? JSON.stringify([]),
+        importSourceId: pendingPlan?.importSourceId ?? null,
+        userNotes: pendingPlan?.userNotes ?? null,
+        riskNotes: pendingPlan?.riskNotes ?? "由写正文页人工确认。",
+        status: "accepted"
+      });
+      setAcceptedPlan(plan);
+      setPendingPlan(null);
+      setAllowDraftPlanOverride(false);
+      setOutlineImportStatus("已确认细纲");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveSettingFile = async (): Promise<void> => {
+    if (!activeBook || !settingText.trim()) return;
+    setBusy(true);
+    try {
+      const setting = await window.wenforge.planning.bookSettingFiles.create({
+        bookId: activeBook.id,
+        title: `${activeBook.title} 设定文件 ${new Date().toLocaleString("zh-CN")}`,
+        contentMarkdown: settingText.trim(),
+        sourceType: "manual",
+        isActive: true
+      });
+      setActiveSettingFile(setting);
+      setSettingStatus(`已保存活动设定：${setting.title}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const importSettingFiles = async (files: File[]): Promise<void> => {
+    try {
+      setSettingStatus("读取中");
+      const imported = await importOutlineFiles(files);
+      setSettingText(imported.text);
+      if (activeBook) {
+        const setting = await window.wenforge.planning.bookSettingFiles.create({
+          bookId: activeBook.id,
+          title: imported.fileName,
+          contentMarkdown: imported.text,
+          sourceType: "file",
+          isActive: true
+        });
+        setActiveSettingFile(setting);
+        setSettingStatus(`已导入活动设定：${imported.fileName}`);
+      }
+    } catch (error) {
+      setSettingStatus(error instanceof Error ? error.message : "导入失败");
     }
   };
 
@@ -289,7 +488,7 @@ export function WorkflowGeneratePanel({
     if (unavailable.length > 0) {
       window.alert(
         `模型路线未就绪：\n${unavailable
-          .map((preview) => `${preview.taskType}: ${preview.errors.join(", ")}`)
+          .map((preview) => `${taskLabel(preview.taskType)}: ${preview.errors.join(", ")}`)
           .join("\n")}`
       );
       return false;
@@ -301,7 +500,7 @@ export function WorkflowGeneratePanel({
     const routeLines = previews
       .map(
         (preview) =>
-          `${preview.taskType}: ${preview.modelProfile?.displayName ?? "unavailable"} · $${preview.estimatedCostRange.maxCost.toFixed(6)}`
+          `${taskLabel(preview.taskType)}: ${preview.modelProfile?.displayName ?? "未配置"} · $${preview.estimatedCostRange.maxCost.toFixed(6)}`
       )
       .join("\n");
     const premiumNote =
@@ -436,11 +635,54 @@ export function WorkflowGeneratePanel({
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
               <div className="min-w-0">
                 <p className="text-xs font-medium tracking-[0.16em] text-forge-blue">
-                  细纲起草
+                  章节成文
                 </p>
                 <h3 className="mt-1 text-lg font-semibold text-white">
-                  从已确认章节细纲生成非正式草稿。
+                  导入设定与本章细纲，确认后生成本章候选正文。
                 </h3>
+                <div className="mt-3 rounded-lg border border-white/10 bg-black/18 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-medium tracking-[0.14em] text-slate-500">
+                      活动设定文件
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {activeSettingFile ? "已连接" : "可选，但建议先导入"}
+                    </span>
+                  </div>
+                  <textarea
+                    className="mt-2 min-h-28 w-full resize-y rounded-lg border border-white/10 bg-black/35 p-3 text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-600 focus:border-forge-blue/50"
+                    placeholder="粘贴设定集、世界观、人物设定、禁忌和风格偏好。也可以直接导入 docx。"
+                    value={settingText}
+                    onChange={(event) => setSettingText(event.target.value)}
+                  />
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-slate-500">{settingStatus}</span>
+                    <div className="flex gap-2">
+                      <label className="cursor-pointer rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:border-forge-blue/40 hover:text-white">
+                        导入设定文件
+                        <input
+                          accept=".docx,.txt,.md"
+                          className="hidden"
+                          multiple
+                          onChange={(event) => {
+                            const files = Array.from(event.currentTarget.files ?? []);
+                            if (files.length > 0) void importSettingFiles(files);
+                            event.currentTarget.value = "";
+                          }}
+                          type="file"
+                        />
+                      </label>
+                      <button
+                        className="rounded-md border border-forge-mint/30 bg-forge-mint/10 px-3 py-1.5 text-xs text-forge-mint disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={busy || !activeBook || !settingText.trim()}
+                        onClick={() => void saveSettingFile()}
+                        type="button"
+                      >
+                        保存为活动设定
+                      </button>
+                    </div>
+                  </div>
+                </div>
                 <div className="mt-3 rounded-lg border border-white/10 bg-black/18 p-3 text-xs leading-5 text-slate-400">
                   {acceptedPlan ? (
                     <>
@@ -448,8 +690,13 @@ export function WorkflowGeneratePanel({
                       第{acceptedPlan.chapterIndex}章 · {acceptedPlan.title} ·{" "}
                       {acceptedPlan.targetWords}字
                     </>
+                  ) : pendingPlan ? (
+                    <>
+                      <span className="text-forge-amber">找到待确认细纲：</span>
+                      第{pendingPlan.chapterIndex}章 · {pendingPlan.title}。先确认，再生成正文。
+                    </>
                   ) : (
-                    "未找到已确认细纲。默认不会从素材直接生成正文。"
+                    "未找到已确认细纲。可以先确认已导入细纲，或勾选下方覆盖后用备注起草。"
                   )}
                 </div>
                 <div
@@ -467,16 +714,34 @@ export function WorkflowGeneratePanel({
                 >
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs font-medium tracking-[0.14em] text-slate-500">
-                      补充备注
+                      本章细纲
                     </span>
-                    <span className="truncate text-xs text-slate-500">{outlineImportStatus}</span>
+                    <span className="truncate text-xs text-slate-500">
+                      {outlineImportStatus}
+                    </span>
                   </div>
                   <textarea
                     className="mt-2 min-h-40 w-full resize-y rounded-lg border border-white/10 bg-black/35 p-4 text-sm leading-7 text-slate-100 outline-none placeholder:text-slate-600 focus:border-forge-blue/50"
-                    placeholder={`可选：补充本次起草要求。\n如果已有已确认细纲，这里留空也可以直接起草。`}
+                    placeholder={`粘贴或拖入本章细纲。\n如果已经显示“已连接细纲”，这里可以只写补充要求。`}
                     value={sourceOutline}
                     onChange={(event) => setSourceOutline(event.target.value)}
                   />
+                  <div className="mt-2 flex justify-end">
+                    <label className="cursor-pointer rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:border-forge-blue/40 hover:text-white">
+                      导入章节细纲
+                      <input
+                        accept=".docx,.txt,.md"
+                        className="hidden"
+                        multiple
+                        onChange={(event) => {
+                          const files = Array.from(event.currentTarget.files ?? []);
+                          if (files.length > 0) void importDroppedOutline(files);
+                          event.currentTarget.value = "";
+                        }}
+                        type="file"
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
               <div className="rounded-lg border border-white/10 bg-black/24 p-3 text-xs text-slate-400">
@@ -491,11 +756,25 @@ export function WorkflowGeneratePanel({
                       !acceptedPlan &&
                       !allowDraftPlanOverride)
                   }
-                  onClick={() => void startWorkflow("生成终稿")}
+                  onClick={() => void startWorkflow("生成非正式正文草稿")}
                   type="button"
                 >
-                  从已确认细纲起草
+                  生成本章正文
                 </button>
+                {!acceptedPlan ? (
+                  <button
+                    className="mt-2 w-full rounded-lg border border-forge-mint/35 bg-forge-mint/10 px-4 py-2.5 text-sm font-semibold text-forge-mint transition hover:bg-forge-mint/18 disabled:cursor-not-allowed disabled:opacity-45"
+                    disabled={
+                      busy ||
+                      !activeChapter ||
+                      (!pendingPlan && !sourceOutline.trim() && !activeChapter?.summary?.trim())
+                    }
+                    onClick={() => void acceptCurrentPlan()}
+                    type="button"
+                  >
+                    {pendingPlan ? "确认这个细纲" : "确认当前细纲"}
+                  </button>
+                ) : null}
                 <div className="mt-4 space-y-3">
                   <label className="block">
                     <span className="text-[11px] font-medium tracking-[0.14em] text-slate-500">
@@ -528,7 +807,7 @@ export function WorkflowGeneratePanel({
                       ))}
                     </select>
                   </label>
-                  <label className="block">
+                  <label className="hidden">
                     <span className="text-[11px] font-medium tracking-[0.14em] text-slate-500">
                       输出
                     </span>
@@ -558,9 +837,9 @@ export function WorkflowGeneratePanel({
                       onChange={(event) => setAllowStoryChanges(event.target.checked)}
                       type="checkbox"
                     />
-                    允许改动情节/设定
+                    允许模型提出情节增强
                   </label>
-                  <label className="flex items-start gap-2 rounded-lg border border-forge-amber/25 bg-forge-amber/10 px-3 py-2 text-xs text-forge-amber">
+                  <label className="hidden items-start gap-2 rounded-lg border border-forge-amber/25 bg-forge-amber/10 px-3 py-2 text-xs text-forge-amber">
                     <input
                       checked={allowDraftPlanOverride}
                       className="mt-0.5 accent-forge-amber"
@@ -638,7 +917,7 @@ export function WorkflowGeneratePanel({
         </section>
 
         <section className="space-y-3">
-          <div className="rounded-lg border border-forge-violet/25 bg-forge-violet/10 p-3">
+          <div className="hidden rounded-lg border border-forge-violet/25 bg-forge-violet/10 p-3">
             <p className="text-xs font-medium tracking-[0.14em] text-forge-violet">多模型检查</p>
             <div className="mt-3 space-y-2">
               {CROSS_CHECK_ACTIONS.map((action) => (
@@ -690,7 +969,7 @@ function TimelineList({ detail }: { detail: ChapterWorkflowDetail | null }): JSX
               className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-xs"
               key={checkpoint.id}
             >
-              <span className="text-slate-200">{checkpoint.nodeName}</span>
+              <span className="text-slate-200">{nodeLabel(checkpoint.nodeName)}</span>
               <span className="text-slate-500">
                 {String(checkpoint.state.status ?? "recorded")}
               </span>
@@ -717,8 +996,12 @@ function ArtifactList({ detail }: { detail: ChapterWorkflowDetail | null }): JSX
               key={artifact.id}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-slate-200">{artifact.artifactType}</span>
-                <span className="text-[11px] text-slate-500">{artifact.sourceNode}</span>
+                <span className="text-xs font-medium text-slate-200">
+                  {artifactLabel(artifact.artifactType)}
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  {nodeLabel(artifact.sourceNode ?? "")}
+                </span>
               </div>
               <p className="mt-1 line-clamp-2 text-xs text-slate-500">{artifact.title}</p>
             </div>
@@ -780,6 +1063,39 @@ function workflowStatusLabel(status: string): string {
   return labels[status] ?? status;
 }
 
+function nodeLabel(node: string): string {
+  return NODE_LABELS[node] ?? node;
+}
+
+function artifactLabel(artifactType: string): string {
+  return ARTIFACT_LABELS[artifactType] ?? artifactType;
+}
+
+function taskLabel(taskType: string): string {
+  return TASK_LABELS[taskType] ?? taskType;
+}
+
+function runStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    pending: "等待中",
+    running: "运行中",
+    succeeded: "成功",
+    failed: "失败",
+    cancelled: "已取消"
+  };
+  return labels[status] ?? status;
+}
+
+function usageSourceLabel(source: string): string {
+  const labels: Record<string, string> = {
+    estimated: "估算",
+    reported: "供应商返回",
+    manual: "手动",
+    unknown: "未知"
+  };
+  return labels[source] ?? source;
+}
+
 function HumanGateControls({
   acceptedVersion,
   busy,
@@ -807,12 +1123,12 @@ function HumanGateControls({
       <h4 className="text-sm font-semibold text-white">人工确认</h4>
       <div className="mt-4 space-y-2">
         <button
-          className="w-full rounded-md border border-forge-mint/30 bg-forge-mint/10 px-3 py-2 text-left text-xs text-forge-mint disabled:cursor-not-allowed disabled:opacity-50"
+          className="hidden w-full rounded-md border border-forge-mint/30 bg-forge-mint/10 px-3 py-2 text-left text-xs text-forge-mint disabled:cursor-not-allowed disabled:opacity-50"
           disabled={!paused || busy}
           onClick={() => void onApproveWorkflow()}
           type="button"
         >
-          进入设定结算
+          标记已审阅
         </button>
         <button
           className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-left text-xs text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
@@ -870,12 +1186,13 @@ function RunAttemptDetails({ detail }: { detail: ChapterWorkflowDetail | null })
                   {run.provider}/{run.model}
                 </span>
                 <span className={run.status === "succeeded" ? "text-forge-mint" : "text-amber-200"}>
-                  {run.status}
+                  {runStatusLabel(run.status)}
                 </span>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
-                {run.taskType} · {run.latencyMs ?? 0}ms · $
-                {(run.finalCost ?? run.estimatedCostLive).toFixed(6)} · {run.usageSource}
+                {taskLabel(run.taskType)} · {run.latencyMs ?? 0}毫秒 · $
+                {(run.finalCost ?? run.estimatedCostLive).toFixed(6)} ·{" "}
+                {usageSourceLabel(run.usageSource)}
               </p>
               {run.errorCode ? (
                 <p className="mt-1 text-[11px] text-red-200">{run.errorCode}</p>
@@ -896,11 +1213,16 @@ function findLatestArtifact(
   return artifacts?.at(-1) ?? null;
 }
 
-function buildOutlineInstruction(label: string, allowStoryChanges: boolean): string {
+function buildOutlineInstruction(
+  label: string,
+  allowStoryChanges: boolean,
+  supplementalInstruction: string
+): string {
   const changePolicy = allowStoryChanges
     ? "可以提出并吸收情节或设定强化，但必须保留用户大纲的主线承诺。"
     : "不得改动用户大纲的关键设定、情节顺序和章末钩子。";
-  return `${label}\n${changePolicy}\n最终输出必须是可保存的中文正文草稿，不要直接覆盖 canon。`;
+  const supplement = supplementalInstruction ? `\n补充要求：${supplementalInstruction}` : "";
+  return `${label}\n${changePolicy}${supplement}\n最终输出必须是可保存的中文正文草稿，不要直接覆盖正式正文。`;
 }
 
 function parseSavedSourceOutline(outlineJson: string): string | null {

@@ -6,7 +6,17 @@ The product direction is a dark command-center writing studio with a popover lau
 
 ## Current Status
 
-Phases 1-22 are implemented through the local-first studio shell, SQLite data foundation, secure credential metadata, AI gateway, story bible memory, WenForge-native skill package, mock/provider workflow runtime, review and settlement flows, cost/eval dashboards, safe import/export/backup tooling, first-launch onboarding/palette/popover polish, security/diagnostics/packaging preparation, provider connectivity diagnostics, outline-driven Chinese writing UX, Planning Lab, human-gated chapter plans, Universal Intake, and model-aware provider parameter normalization. Native signing and public release publishing remain planned follow-up work.
+Phases 1-23 are implemented through the local-first studio shell, SQLite data foundation, secure credential metadata, AI gateway, story bible memory, WenForge-native skill package, mock/provider workflow runtime, review and settlement flows, cost/eval dashboards, safe import/export/backup tooling, first-launch onboarding/palette/popover polish, security/diagnostics/packaging preparation, provider connectivity diagnostics, outline-driven Chinese writing UX, Planning Lab, human-gated chapter plans, Universal Intake, model-aware provider parameter normalization, and the simplified Focused Chapter Writer. Native signing and public release publishing remain planned follow-up work.
+
+The default app entry is now `章节成文`. The intended daily workflow is simple:
+
+1. Save or import the active setting file.
+2. Paste or import the current chapter outline.
+3. Click `确认当前细纲`.
+4. Click `生成本章正文`.
+5. Review the candidate draft, then save it as a version or explicitly set it as the formal manuscript.
+
+Generated drafts never become canonical automatically, and generated content never mutates the Story Bible automatically.
 
 Universal Intake (`整理素材`) is the chatbot-first planning entry point. Users can paste one-line ideas, messy notes, character/world fragments, constraints, or manuscript excerpts. WenForge records the chat locally and turns model or guided outputs into structured proposals: Material Digest, missing information, Story Bible drafts, style/reader positioning, volume outlines, chapter detailed outlines, scene cards, and risk notes. Proposals must be accepted before they feed drafting; rejected proposals are excluded from canonical context.
 
@@ -66,6 +76,7 @@ Real provider connectivity checks are disabled by default. They require explicit
 - [Real Provider Setup](docs/REAL_PROVIDER_SETUP.md)
 - [Planning Lab](docs/PLANNING_LAB.md)
 - [Human-Gated Outline Workflow](docs/HUMAN_GATED_OUTLINE_WORKFLOW.md)
+- [Focused Chapter Writer](docs/FOCUSED_CHAPTER_WRITER.md)
 - [Multi-Draft Studio](docs/MULTI_DRAFT_STUDIO.md)
 - [Model Parameter Policy](docs/MODEL_PARAMETER_POLICY.md)
 - [Release Guide](docs/RELEASE.md)

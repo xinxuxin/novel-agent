@@ -427,7 +427,7 @@ describe("phase 9 provider routing, fallback, and budgets", () => {
         executionMode: "provider",
         confirmed: true
       })
-    ).rejects.toThrow(/budget/i);
+    ).rejects.toThrow(/预算|budget/i);
   });
 
   it("returns the configured live budget action when actual cost exceeds the preflight threshold", async () => {

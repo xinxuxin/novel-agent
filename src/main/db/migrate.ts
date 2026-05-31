@@ -114,6 +114,20 @@ create table if not exists outline_versions (
 );
 create index if not exists outline_versions_book_idx on outline_versions(book_id);
 
+create table if not exists book_setting_files (
+  id text primary key,
+  book_id text not null references books(id) on delete cascade,
+  title text not null,
+  content_markdown text not null,
+  content_plaintext text not null,
+  is_active integer not null default 0,
+  source_type text not null default 'manual',
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists book_setting_files_book_idx on book_setting_files(book_id);
+create index if not exists book_setting_files_active_idx on book_setting_files(book_id, is_active);
+
 create table if not exists material_digests (
   id text primary key,
   book_id text not null references books(id) on delete cascade,
@@ -211,6 +225,10 @@ create table if not exists chapter_plans (
   foreshadowing_seeded_json text not null default '[]',
   foreshadowing_resolved_json text not null default '[]',
   unresolved_hooks_carried_forward_json text not null default '[]',
+  outline_text text,
+  must_include_json text not null default '[]',
+  must_avoid_json text not null default '[]',
+  import_source_id text,
   user_notes text,
   risk_notes text,
   status text not null default 'draft',
@@ -1064,6 +1082,22 @@ function ensureColumns(sqlite: SqliteDatabase): void {
   ensureColumn(sqlite, "material_digests", "accepted_at", "text");
   ensureColumn(sqlite, "material_digests", "updated_at", "text");
 
+  sqlite.exec(`
+    create table if not exists book_setting_files (
+      id text primary key,
+      book_id text not null references books(id) on delete cascade,
+      title text not null,
+      content_markdown text not null,
+      content_plaintext text not null,
+      is_active integer not null default 0,
+      source_type text not null default 'manual',
+      created_at text not null,
+      updated_at text not null
+    );
+    create index if not exists book_setting_files_book_idx on book_setting_files(book_id);
+    create index if not exists book_setting_files_active_idx on book_setting_files(book_id, is_active);
+  `);
+
   ensureColumn(sqlite, "chapter_plans", "word_count_priority", "text not null default 'normal'");
   ensureColumn(sqlite, "chapter_plans", "chapter_summary", "text");
   ensureColumn(sqlite, "chapter_plans", "conflict_escalation", "text");
@@ -1092,6 +1126,10 @@ function ensureColumns(sqlite: SqliteDatabase): void {
   ensureColumn(sqlite, "chapter_plans", "risk_notes", "text");
   ensureColumn(sqlite, "chapter_plans", "accepted_at", "text");
   ensureColumn(sqlite, "chapter_plans", "accepted_by", "text");
+  ensureColumn(sqlite, "chapter_plans", "outline_text", "text");
+  ensureColumn(sqlite, "chapter_plans", "must_include_json", "text not null default '[]'");
+  ensureColumn(sqlite, "chapter_plans", "must_avoid_json", "text not null default '[]'");
+  ensureColumn(sqlite, "chapter_plans", "import_source_id", "text");
 
   ensureColumn(sqlite, "scenes", "target_words", "integer");
   ensureColumn(sqlite, "scenes", "beat_list_json", "text not null default '[]'");

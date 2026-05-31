@@ -121,3 +121,18 @@ Phase 22 adds original WenForge-native intake templates:
 These prompts distinguish user-provided facts from AI suggestions, avoid inventing canon, preserve
 user constraints, and produce structured proposal JSON for the UI. Generated intake output remains
 draft/proposed until the user accepts it.
+
+## Focused Chapter Writer Prompts
+
+Phase 23 adds focused single-chapter templates:
+
+- `focused-writing-brief.zh.md`
+- `focused-draft-chapter.zh.md`
+- `focused-outline-canon-audit.zh.md`
+- `focused-polish-de-ai.zh.md`
+- `focused-final-check.zh.md`
+- `focused-chapter-summary.zh.md`
+- `focused-expand-to-target.zh.md`
+- `focused-compress-to-target.zh.md`
+
+These prompts assume a confirmed chapter plan and active setting file. Drafting prompts output manuscript text only. Audit/check prompts return structured JSON. None of these templates may instruct the model to overwrite canonical manuscript text or mutate the Story Bible automatically.

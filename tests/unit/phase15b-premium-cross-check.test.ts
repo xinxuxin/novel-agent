@@ -260,9 +260,9 @@ describe("phase 15b premium webnovel routing and cross-checks", () => {
       "utf8"
     );
 
-    expect(settingsPanel).toContain("Premium Webnovel");
-    expect(settingsPanel).toContain("Export preset");
-    expect(settingsPanel).toContain("Import preset");
+    expect(settingsPanel).toContain("网文高级路线");
+    expect(settingsPanel).toContain("导出");
+    expect(settingsPanel).toContain("导入");
     expect(workflowPanel).toContain("世界观交叉检查");
     expect(workflowPanel).toContain("关键章预检");
     expect(`${settingsPanel}\n${workflowPanel}`).not.toContain("encryptedSecretBase64");

@@ -1,6 +1,7 @@
 import { BrowserWindow, app, safeStorage } from "electron";
 import { join } from "node:path";
 
+import { installChineseApplicationMenu } from "@main/app/menu";
 import { SettingsStore } from "@main/app/settings-store";
 import { StudioModeController } from "@main/app/studio-mode";
 import { createAppTray } from "@main/app/tray";
@@ -35,6 +36,11 @@ if (!hasSingleInstanceLock) {
   });
 
   app.whenReady().then(async () => {
+    const stableUserDataPath = app.getPath("userData");
+    app.setName("文炉写作台");
+    app.setPath("userData", stableUserDataPath);
+    installChineseApplicationMenu();
+
     const settingsStore = new SettingsStore(join(app.getPath("userData"), "settings.json"));
     const logger = new StructuredLogger({
       logDir: join(app.getPath("userData"), "logs"),

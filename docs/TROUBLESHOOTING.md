@@ -106,6 +106,20 @@ Moonshot / Kimi can return `HTTP 400: invalid temperature: only 1 is allowed for
   fields for Kimi/Moonshot profiles and retries known parameter-compatibility errors once.
 - Real provider checks still require explicit user confirmation and a small budget cap.
 
+### Imported Outline But Generate Does Nothing
+
+The focused writer requires an accepted chapter plan before drafting.
+
+In `章节成文`:
+
+1. Select the chapter in the left sidebar.
+2. Paste or import the chapter outline in `本章细纲`.
+3. Click `确认当前细纲`.
+4. Click `生成本章正文`.
+5. After the candidate appears, click `保存为版本`; only then choose `设为正式正文` if you approve it.
+
+If the page says `未找到已确认细纲`, the outline is present but has not been confirmed for that chapter yet. Confirming the outline does not call a provider and does not change canonical manuscript text.
+
 ### Budget Exceeded
 
 The configured budget policy paused or blocked a run.

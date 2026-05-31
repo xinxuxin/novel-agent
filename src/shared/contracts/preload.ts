@@ -159,6 +159,7 @@ import type {
   SettlementPreview
 } from "./review-settlement";
 import type {
+  BookSettingFileRecord,
   ChapterPlanRecord,
   IntakeArtifactRecord,
   IntakeMessageRecord,
@@ -166,6 +167,7 @@ import type {
   IntakeStatus,
   MaterialDigestRecord,
   OutlineSourceRecord,
+  OutlineSourceType,
   OutlineVersionRecord,
   PlanEditProposalRecord
 } from "./planning";
@@ -313,6 +315,19 @@ export interface WenForgeApi {
         isActive?: boolean;
       }) => Promise<OutlineVersionRecord>;
       setActive: (bookId: string, id: string) => Promise<OutlineVersionRecord | null>;
+    };
+    bookSettingFiles: {
+      list: (bookId: string) => Promise<BookSettingFileRecord[]>;
+      active: (bookId: string) => Promise<BookSettingFileRecord | null>;
+      create: (input: {
+        bookId: string;
+        title: string;
+        contentMarkdown: string;
+        contentPlaintext?: string;
+        sourceType?: OutlineSourceType;
+        isActive?: boolean;
+      }) => Promise<BookSettingFileRecord>;
+      setActive: (bookId: string, id: string) => Promise<BookSettingFileRecord | null>;
     };
     materialDigests: {
       list: (bookId: string) => Promise<MaterialDigestRecord[]>;
@@ -670,6 +685,9 @@ export interface WenForgeApi {
   };
   generation: {
     chapter: {
+      start: (request: ChapterGenerationStartRequest) => Promise<WorkflowRunRecord>;
+    };
+    focused: {
       start: (request: ChapterGenerationStartRequest) => Promise<WorkflowRunRecord>;
     };
     getRun: (runId: string) => Promise<ChapterWorkflowDetail | null>;

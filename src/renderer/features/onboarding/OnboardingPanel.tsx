@@ -63,7 +63,7 @@ export function OnboardingPanel({
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-forge-cyan">
               首次启动
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">配置 WenForge Studio</h2>
+            <h2 className="mt-2 text-2xl font-semibold text-white">配置文炉写作台</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
               选择隐私默认值、项目入口，以及先用本地模拟还是添加模型密钥。
             </p>

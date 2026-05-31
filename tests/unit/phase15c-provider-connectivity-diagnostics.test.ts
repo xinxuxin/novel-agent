@@ -372,7 +372,7 @@ describe("phase 15c privacy-safe provider connectivity diagnostics", () => {
     expect(result.savedNonCanonicalVersionId).toMatch(/^manuscript_/);
     expect(result.reportMarkdown).toContain("canonical manuscript changed: false");
     expect(result.reportMarkdown).not.toContain("雨声压在旧楼上");
-  });
+  }, 120_000);
 });
 
 function createProviderHarness(

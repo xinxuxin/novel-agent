@@ -345,6 +345,18 @@ function registerDataIpc(
   registerIpcContract(IPC_CONTRACTS.planning.outlineVersions.setActive, (request) =>
     repositories.planning.setActiveOutlineVersion(request.bookId, request.id)
   );
+  registerIpcContract(IPC_CONTRACTS.planning.bookSettingFiles.list, (request) =>
+    repositories.planning.listBookSettingFiles(request.bookId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.bookSettingFiles.active, (request) =>
+    repositories.planning.getActiveBookSettingFile(request.bookId)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.bookSettingFiles.create, (request) =>
+    repositories.planning.createBookSettingFile(request)
+  );
+  registerIpcContract(IPC_CONTRACTS.planning.bookSettingFiles.setActive, (request) =>
+    repositories.planning.setActiveBookSettingFile(request.bookId, request.id)
+  );
   registerIpcContract(IPC_CONTRACTS.planning.materialDigests.list, (request) =>
     repositories.planning.listMaterialDigests(request.bookId)
   );
@@ -1324,6 +1336,12 @@ function registerDataIpc(
       throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
     }
     return workflowRuntime.startChapterWorkflow(request);
+  });
+  registerIpcContract(IPC_CONTRACTS.generation.focused.start, (request) => {
+    if (!workflowRuntime) {
+      throw new SafeIpcError("DATABASE_UNAVAILABLE", "Database is not available");
+    }
+    return workflowRuntime.startFocusedChapterWorkflow(request);
   });
   registerIpcContract(IPC_CONTRACTS.generation.getRun, (request) => {
     if (!workflowRuntime) {

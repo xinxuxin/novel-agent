@@ -6,6 +6,18 @@ export type PlanEditProposalStatus = "proposed" | "accepted" | "rejected" | "arc
 export type IntakeStatus = "draft" | "proposed" | "accepted" | "rejected" | "archived";
 export type IntakeMessageRole = "user" | "assistant" | "system";
 
+export interface BookSettingFileRecord {
+  id: string;
+  bookId: string;
+  title: string;
+  contentMarkdown: string;
+  contentPlaintext: string;
+  isActive: boolean;
+  sourceType: OutlineSourceType;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface IntakeSessionRecord {
   id: string;
   projectId: string;
@@ -105,6 +117,10 @@ export interface ChapterPlanRecord {
   foreshadowingSeededJson: string;
   foreshadowingResolvedJson: string;
   unresolvedHooksCarriedForwardJson: string;
+  outlineText: string | null;
+  mustIncludeJson: string;
+  mustAvoidJson: string;
+  importSourceId: string | null;
   userNotes: string | null;
   riskNotes: string | null;
   status: PlanStatus;

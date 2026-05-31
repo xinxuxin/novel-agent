@@ -30,7 +30,7 @@ export function CostMeter({
         <div>
           <h3 className="text-sm font-semibold text-white">成本</h3>
           <p className="mt-1 text-xs text-slate-500">
-            {activeRunLabel === "No active run" ? "无运行" : activeRunLabel}
+            {activeRunLabel === "无运行" ? "无运行" : activeRunLabel}
           </p>
         </div>
         <span className="rounded-full border border-forge-blue/30 bg-forge-blue/10 px-3 py-1 text-xs text-forge-blue">

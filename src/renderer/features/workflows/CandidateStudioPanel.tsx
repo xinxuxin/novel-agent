@@ -102,7 +102,7 @@ export function CandidateStudioPanel({
   }, [activeChapter?.id, refresh]);
 
   useEffect(() => {
-    onWorkflowCostChange("Candidates", totalCandidateCost, "candidate drafts");
+    onWorkflowCostChange("候选稿", totalCandidateCost, "候选稿");
   }, [onWorkflowCostChange, totalCandidateCost]);
 
   const runCompare = async (): Promise<void> => {
@@ -113,12 +113,12 @@ export function CandidateStudioPanel({
       candidateSelections.length > 3;
     if (
       needsConfirmation &&
-      !window.confirm("This will generate multiple draft candidates and may cost money. Continue?")
+      !window.confirm("这会生成多个候选稿，可能产生费用。继续吗？")
     ) {
       return;
     }
     setBusy(true);
-    setNotice("Generating candidate drafts...");
+    setNotice("正在生成候选稿...");
     try {
       const group = await window.wenforge.candidates.createGroup({
         chapterId: activeChapter.id,
@@ -135,16 +135,16 @@ export function CandidateStudioPanel({
       });
       setSelectedGroupId(detail.group.id);
       await refresh();
-      setNotice("Candidate drafts are ready for comparison.");
+      setNotice("候选稿已生成，可以对比。");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Candidate generation failed.");
+      setNotice(error instanceof Error ? error.message : "候选稿生成失败。");
     } finally {
       setBusy(false);
     }
   };
 
   const saveCandidate = async (candidateId: string, canonical: boolean): Promise<void> => {
-    if (canonical && !window.confirm("Set this candidate as canonical manuscript?")) return;
+    if (canonical && !window.confirm("将这个候选稿设为正式正文？")) return;
     const version = canonical
       ? await window.wenforge.candidates.setCandidateCanonical({ candidateId, confirmed: true })
       : await window.wenforge.candidates.saveCandidateAsVersion({ candidateId });
@@ -165,13 +165,13 @@ export function CandidateStudioPanel({
 
   const runFusion = async (): Promise<void> => {
     if (!selectedGroup || !baseCandidateId) {
-      setNotice("Fusion empty state: Choose a base draft and optional reference drafts first.");
+      setNotice("请先选择一个基础稿，可选参考稿。");
       return;
     }
     const fusionModel = selectionForAlias(fusionAlias, modelByAlias, executionMode);
     if (
       executionMode === "provider" &&
-      !window.confirm("This will call a real fusion model and may cost money. Continue?")
+      !window.confirm("这会调用真实模型融合稿件，可能产生费用。继续吗？")
     ) {
       return;
     }
@@ -192,16 +192,16 @@ export function CandidateStudioPanel({
         confirmed: true
       });
       await refresh();
-      setNotice("Fused draft saved as a proposal artifact.");
+      setNotice("融合稿已保存为提案。");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Fusion failed.");
+      setNotice(error instanceof Error ? error.message : "融合失败。");
     } finally {
       setBusy(false);
     }
   };
 
   const saveFusion = async (fusionId: string, canonical: boolean): Promise<void> => {
-    if (canonical && !window.confirm("Set this fused draft as canonical manuscript?")) return;
+    if (canonical && !window.confirm("将这个融合稿设为正式正文？")) return;
     const version = canonical
       ? await window.wenforge.candidates.setFusionCanonical({ fusionId, confirmed: true })
       : await window.wenforge.candidates.saveFusionAsVersion({ fusionId });
@@ -226,9 +226,9 @@ export function CandidateStudioPanel({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                  Compare Drafts
+                  候选稿对比
                 </p>
-                <h3 className="mt-1 text-lg font-semibold text-white">Same plan, multiple writers</h3>
+                <h3 className="mt-1 text-lg font-semibold text-white">同一细纲，多版候选稿</h3>
               </div>
               <button
                 className="rounded-lg border border-forge-blue/35 bg-forge-blue/12 px-4 py-2 text-sm font-medium text-forge-blue disabled:cursor-not-allowed disabled:opacity-50"
@@ -236,12 +236,12 @@ export function CandidateStudioPanel({
                 onClick={() => void runCompare()}
                 type="button"
               >
-                Compare Drafts
+                生成候选稿
               </button>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-4">
               <label className="space-y-1 text-xs text-slate-500">
-                Writing models
+                写作模型
                 <select
                   className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none focus:border-forge-blue/45"
                   value={selectedPreset}
@@ -255,18 +255,18 @@ export function CandidateStudioPanel({
                 </select>
               </label>
               <label className="space-y-1 text-xs text-slate-500">
-                Mode
+                模式
                 <select
                   className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none focus:border-forge-blue/45"
                   value={executionMode}
                   onChange={(event) => setExecutionMode(event.target.value as "mock" | "provider")}
                 >
-                  <option value="mock">Mock</option>
-                  <option value="provider">Configured providers</option>
+                  <option value="mock">模拟</option>
+                  <option value="provider">已配置模型</option>
                 </select>
               </label>
               <label className="space-y-1 text-xs text-slate-500">
-                Target words
+                目标字数
                 <input
                   className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none focus:border-forge-blue/45"
                   min={400}
@@ -276,7 +276,7 @@ export function CandidateStudioPanel({
                 />
               </label>
               <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-                <p className="text-xs text-slate-500">Estimated cost</p>
+                <p className="text-xs text-slate-500">预估成本</p>
                 <p className="mt-1 font-mono text-sm text-forge-mint">
                   ${totalCandidateCost.toFixed(6)}
                 </p>
@@ -285,7 +285,7 @@ export function CandidateStudioPanel({
             <textarea
               className="mt-3 min-h-20 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-forge-blue/45"
               onChange={(event) => setUserInstruction(event.target.value)}
-              placeholder="Optional instruction for all candidates"
+              placeholder="给全部候选稿的可选指令"
               value={userInstruction}
             />
             <div className="mt-3 flex flex-wrap gap-2">
@@ -322,16 +322,16 @@ export function CandidateStudioPanel({
                     <span className={statusClass(candidate.status)}>{candidate.status}</span>
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-500">
-                    <Metric label="Words" value={String(candidate.wordCount)} />
-                    <Metric label="Cost" value={`$${(candidate.cost ?? 0).toFixed(6)}`} />
-                    <Metric label="Time" value={candidate.latencyMs ? `${candidate.latencyMs}ms` : "-"} />
+                    <Metric label="字数" value={String(candidate.wordCount)} />
+                    <Metric label="成本" value={`$${(candidate.cost ?? 0).toFixed(6)}`} />
+                    <Metric label="耗时" value={candidate.latencyMs ? `${candidate.latencyMs}ms` : "-"} />
                   </div>
                   <div className="mt-3 max-h-52 overflow-auto rounded-lg border border-white/10 bg-black/25 p-3 text-sm leading-7 text-slate-300">
-                    {candidate.contentMarkdown || candidate.errorMessage || "Waiting for output."}
+                    {candidate.contentMarkdown || candidate.errorMessage || "等待输出。"}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button className="rounded-md border border-white/10 px-2 py-1.5 text-xs text-slate-300 hover:border-forge-blue/35 hover:text-white" onClick={() => setBaseCandidateId(candidate.id)} type="button">
-                      Use as Base
+                      设为基础稿
                     </button>
                     <button
                       className="rounded-md border border-white/10 px-2 py-1.5 text-xs text-slate-300 hover:border-forge-blue/35 hover:text-white"
@@ -345,20 +345,20 @@ export function CandidateStudioPanel({
                       }
                       type="button"
                     >
-                      {referenceIds.has(candidate.id) ? "Remove Ref" : "Add to Fusion"}
+                      {referenceIds.has(candidate.id) ? "移除参考" : "加入融合"}
                     </button>
                     {candidate.status === "failed" ? (
                       <button className="rounded-md border border-white/10 px-2 py-1.5 text-xs text-slate-300 hover:border-forge-blue/35 hover:text-white" onClick={() => void retryCandidate(candidate.id)} type="button">
-                        Retry
+                        重试
                       </button>
                     ) : null}
                     {candidate.status === "succeeded" || candidate.status === "saved" ? (
                       <>
                         <button className="rounded-md border border-white/10 px-2 py-1.5 text-xs text-slate-300 hover:border-forge-blue/35 hover:text-white" onClick={() => void saveCandidate(candidate.id, false)} type="button">
-                          Save as Version
+                          保存版本
                         </button>
                         <button className="rounded-md border border-forge-mint/30 bg-forge-mint/10 px-2 py-1.5 text-xs text-forge-mint hover:border-forge-mint/60" onClick={() => void saveCandidate(candidate.id, true)} type="button">
-                          Set Canonical
+                          设为正文
                         </button>
                       </>
                     ) : null}
@@ -372,17 +372,17 @@ export function CandidateStudioPanel({
         <aside className="space-y-4">
           <section className="rounded-xl border border-white/10 bg-black/24 p-4">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-              Fuse Drafts
+              融合稿
             </p>
-            <h3 className="mt-1 text-base font-semibold text-white">Fuse selected drafts</h3>
+            <h3 className="mt-1 text-base font-semibold text-white">融合选中的候选稿</h3>
             <label className="mt-4 block space-y-1 text-xs text-slate-500">
-              Base draft
+              基础稿
               <select
                 className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200"
                 value={baseCandidateId}
                 onChange={(event) => setBaseCandidateId(event.target.value)}
               >
-                <option value="">Choose base</option>
+                <option value="">选择基础稿</option>
                 {selectedGroup?.candidates.map((candidate) => (
                   <option key={candidate.id} value={candidate.id}>
                     {candidate.model}
@@ -391,7 +391,7 @@ export function CandidateStudioPanel({
               </select>
             </label>
             <div className="mt-3 space-y-2">
-              <p className="text-xs text-slate-500">Reference drafts</p>
+              <p className="text-xs text-slate-500">参考稿</p>
               {selectedGroup?.candidates.map((candidate) => (
                 <label className="flex items-center gap-2 text-sm text-slate-300" key={candidate.id}>
                   <input
@@ -411,7 +411,7 @@ export function CandidateStudioPanel({
               ))}
             </div>
             <label className="mt-3 block space-y-1 text-xs text-slate-500">
-              Fusion model
+              融合模型
               <select
                 className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200"
                 value={fusionAlias}
@@ -427,7 +427,7 @@ export function CandidateStudioPanel({
             <textarea
               className="mt-3 min-h-28 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-forge-blue/45"
               onChange={(event) => setFusionInstruction(event.target.value)}
-              placeholder="Example: Use Kimi’s prose style as the base, keep DeepSeek’s plot structure, strengthen the ending hook like Qwen, and preserve all canon facts."
+              placeholder="例如：保留 Kimi 的文风，吸收 DeepSeek 的剧情结构，强化 Qwen 式结尾钩子，并保留所有正式设定。"
               value={fusionInstruction}
             />
             <button
@@ -436,15 +436,15 @@ export function CandidateStudioPanel({
               onClick={() => void runFusion()}
               type="button"
             >
-              Generate fused draft
+              生成融合稿
             </button>
           </section>
           <section className="rounded-xl border border-white/10 bg-black/24 p-4">
-            <h3 className="text-sm font-semibold text-white">Fusion results</h3>
+            <h3 className="text-sm font-semibold text-white">融合结果</h3>
             <div className="mt-3 space-y-2">
               {selectedGroup?.fusions.length ? null : (
                 <p className="rounded-lg border border-white/10 p-3 text-sm text-slate-500">
-                  Choose a base draft and optional reference drafts first.
+                  请先选择基础稿，可选参考稿。
                 </p>
               )}
               {selectedGroup?.fusions.map((fusion) => (
@@ -454,16 +454,16 @@ export function CandidateStudioPanel({
                     <span className={statusClass(fusion.status)}>{fusion.status}</span>
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
-                    cost ${(fusion.cost ?? 0).toFixed(6)}
+                    成本 ${(fusion.cost ?? 0).toFixed(6)}
                   </p>
                   <div className="mt-2 flex gap-2">
                     {fusion.status === "succeeded" || fusion.status === "saved" ? (
                       <>
                         <button className="rounded-md border border-white/10 px-2 py-1.5 text-xs text-slate-300 hover:border-forge-blue/35 hover:text-white" onClick={() => void saveFusion(fusion.id, false)} type="button">
-                          Save
+                          保存
                         </button>
                         <button className="rounded-md border border-forge-mint/30 bg-forge-mint/10 px-2 py-1.5 text-xs text-forge-mint hover:border-forge-mint/60" onClick={() => void saveFusion(fusion.id, true)} type="button">
-                          Canonical
+                          正式正文
                         </button>
                       </>
                     ) : null}
@@ -481,16 +481,16 @@ export function CandidateStudioPanel({
 function EmptyCandidates({ onGenerate }: { onGenerate: () => void }): JSX.Element {
   return (
     <section className="rounded-xl border border-dashed border-white/15 bg-black/18 p-8 text-center">
-      <h3 className="text-lg font-semibold text-white">No candidate drafts yet</h3>
+      <h3 className="text-lg font-semibold text-white">还没有候选稿</h3>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
-        Generate 2–3 drafts from the same chapter plan, compare them, then choose or fuse the best one.
+        从同一章节细纲生成 2-3 个候选稿，对比后选择或融合最合适的一版。
       </p>
       <button
         className="mt-5 rounded-lg border border-forge-blue/35 bg-forge-blue/12 px-4 py-2 text-sm font-medium text-forge-blue"
         onClick={onGenerate}
         type="button"
       >
-        Compare Drafts
+        生成候选稿
       </button>
     </section>
   );
@@ -507,7 +507,7 @@ function selectionForAlias(
     model: executionMode === "mock" ? alias : (profile?.model ?? alias),
     modelProfileId: profile?.id ?? null,
     displayName: profile?.displayName ?? alias,
-    roleLabel: ROLE_LABELS[alias] ?? "Writer"
+    roleLabel: ROLE_LABELS[alias] ?? "写手"
   };
 }
 

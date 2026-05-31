@@ -47,7 +47,6 @@ import type {
   WorkflowReviewCard
 } from "@contracts/workflow";
 import { useUiStore } from "@renderer/stores/ui-store";
-import type { ProviderId } from "@shared/domain/model-routing";
 
 type WorkspaceView =
   | "chapter"
@@ -59,14 +58,6 @@ type WorkspaceView =
   | "data"
   | "settings";
 type WorkspaceTab = "manuscript" | "generate" | "candidates" | "review" | "timeline" | "versions";
-type ProviderConnectionStatus = {
-  provider: ProviderId;
-  configured: boolean;
-  status: string;
-  label: string;
-  models: string[];
-};
-
 const CHAPTER_STATUSES = [
   "planned",
   "outlining",
@@ -77,26 +68,7 @@ const CHAPTER_STATUSES = [
   "published"
 ] as const;
 const ONBOARDING_STORAGE_KEY = "wenforge:onboarding:v1";
-const HEADER_PROVIDER_ORDER: ProviderId[] = [
-  "openai",
-  "anthropic",
-  "gemini",
-  "deepseek",
-  "dashscope_qwen",
-  "moonshot_kimi"
-];
-const HEADER_PROVIDER_LABELS: Record<ProviderId, string> = {
-  openai: "GPT",
-  anthropic: "Claude",
-  gemini: "Gemini",
-  deepseek: "DeepSeek",
-  dashscope_qwen: "Qwen",
-  moonshot_kimi: "Kimi",
-  xai: "xAI",
-  openrouter: "OpenRouter",
-  generic_openai_compatible: "Custom"
-};
-
+const NO_ACTIVE_RUN_LABEL = "无运行";
 function draftStorageKey(chapterId: string): string {
   return `wenforge:draft:${chapterId}`;
 }
@@ -134,12 +106,11 @@ export function App(): JSX.Element {
   const [routeResolution, setRouteResolution] = useState<ModelRouteResolution | null>(null);
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>("chapter");
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("generate");
-  const [activeRunLabel, setActiveRunLabel] = useState("No active run");
+  const [activeRunLabel, setActiveRunLabel] = useState(NO_ACTIVE_RUN_LABEL);
   const [activeRunCost, setActiveRunCost] = useState(0);
   const [sessionCost, setSessionCost] = useState(0);
   const [costWarning, setCostWarning] = useState("prices local");
   const [providerConfigured, setProviderConfigured] = useState(false);
-  const [providerConnections, setProviderConnections] = useState<ProviderConnectionStatus[]>([]);
   const [onboardingOpen, setOnboardingOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "complete";
@@ -213,39 +184,14 @@ export function App(): JSX.Element {
 
   useEffect(() => {
     let mounted = true;
-    async function loadProviderConnections(): Promise<void> {
-      const [credentials, health, profiles] = await Promise.all([
-        window.wenforge.credentials.list(),
-        window.wenforge.providerHealth.list().catch(() => []),
-        window.wenforge.modelProfiles.list().catch(() => [])
-      ]);
+    async function loadProviderConfiguration(): Promise<void> {
+      const credentials = await window.wenforge.credentials.list();
       if (!mounted) return;
       setProviderConfigured(credentials.some((credential) => credential.isConfigured));
-      setProviderConnections(
-        HEADER_PROVIDER_ORDER.map((provider) => {
-          const credential = credentials
-            .filter((item) => item.provider === provider && item.isConfigured)
-            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-          const providerHealth = health.find((item) => item.provider === provider);
-          const providerProfiles = profiles
-            .filter((profile) => profile.provider === provider && profile.enabled)
-            .sort((a, b) => compareHeaderModelNames(a.alias ?? a.model, b.alias ?? b.model))
-            .slice(0, 3)
-            .map((profile) => profile.alias ?? profile.displayName);
-          return {
-            provider,
-            configured: Boolean(credential),
-            status: providerHealth?.status ?? credential?.lastStatus ?? "unknown",
-            label: HEADER_PROVIDER_LABELS[provider],
-            models: providerProfiles
-          };
-        })
-      );
     }
-    void loadProviderConnections().catch(() => {
+    void loadProviderConfiguration().catch(() => {
       if (!mounted) return;
       setProviderConfigured(false);
-      setProviderConnections([]);
     });
     return () => {
       mounted = false;
@@ -390,25 +336,13 @@ export function App(): JSX.Element {
     }
   }, [draft, selectedChapterId]);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        openCommandPalette();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openCommandPalette]);
-
   useEffect(
     () =>
       window.wenforge.ai.stream.onEvent((event: AIStreamEvent) => {
         if (event.type === "cost") {
           setActiveRunLabel(`${event.provider} / ${event.model}`);
           setActiveRunCost(event.estimatedCostLive);
-          setCostWarning(event.warnings?.join(", ") || "live estimate");
+          setCostWarning(event.warnings?.join(", ") || "实时估算");
         }
         if (event.type === "complete") {
           setActiveRunLabel(`${event.provider} / ${event.model}`);
@@ -548,7 +482,7 @@ export function App(): JSX.Element {
   };
 
   const changeChapterStatus = async (chapter: ChapterRecord): Promise<void> => {
-    const status = promptText(`Status (${CHAPTER_STATUSES.join(", ")})`, chapter.status);
+    const status = promptText(`章节状态（${CHAPTER_STATUSES.join(", ")}）`, chapter.status);
     if (!status || !CHAPTER_STATUSES.includes(status as (typeof CHAPTER_STATUSES)[number])) return;
     const updated = await window.wenforge.chapters.setStatus(chapter.id, status);
     if (updated) {
@@ -570,7 +504,7 @@ export function App(): JSX.Element {
 
   const editChapterSummary = async (): Promise<void> => {
     if (!activeChapter) return;
-    const summary = promptText("Chapter summary", activeChapter.summary ?? "");
+    const summary = promptText("章节摘要", activeChapter.summary ?? "");
     if (summary === null) return;
     const updated = await window.wenforge.chapters.update(activeChapter.id, { summary });
     if (updated) {
@@ -635,9 +569,9 @@ export function App(): JSX.Element {
 
   const createStoryBibleEntry = async (): Promise<void> => {
     if (!selectedBookId) return;
-    const title = promptText("Story bible entry title");
+    const title = promptText("故事圣经条目标题");
     if (!title) return;
-    const content = promptText("Story bible entry content");
+    const content = promptText("故事圣经条目内容");
     if (!content) return;
     await window.wenforge.storyBible.entries.create({
       bookId: selectedBookId,
@@ -653,7 +587,7 @@ export function App(): JSX.Element {
     if (activeProject) return;
     const project = await window.wenforge.projects.create({
       name: "演示：都市异能爽文",
-      description: "WenForge first-launch starter project.",
+      description: "文炉写作台首次启动演示项目。",
       genre: "都市异能",
       targetReader: "喜欢快节奏升级、悬念钩子和情绪爽点的读者"
     });
@@ -666,7 +600,7 @@ export function App(): JSX.Element {
       const project = await window.wenforge.projects.create({
         name: mode === "demo" ? "演示：都市异能爽文" : "我的新项目",
         description:
-          mode === "demo" ? "WenForge first-launch demo project." : "Blank local project."
+          mode === "demo" ? "文炉写作台首次启动演示项目。" : "空白本地项目。"
       });
       projectId = project.id;
       await refreshProjectsAfterCreate(project);
@@ -813,11 +747,7 @@ export function App(): JSX.Element {
     setSelectedChapterId(chapter.id);
     setWorkspaceView("chapter");
   };
-  const showInspector =
-    !compact &&
-    workspaceView !== "intake" &&
-    workspaceView !== "planning" &&
-    !(workspaceView === "chapter" && (activeTab === "generate" || activeTab === "candidates"));
+  const showInspector = false;
 
   return (
     <main className="min-h-screen overflow-hidden bg-transparent p-3 text-slate-100">
@@ -833,72 +763,15 @@ export function App(): JSX.Element {
               W
             </div>
             <div>
-              <h1 className="text-sm font-semibold tracking-normal text-white">WenForge Studio</h1>
+              <h1 className="text-sm font-semibold tracking-normal text-white">文炉写作台</h1>
               <p className="text-xs text-slate-500">{activeProject?.name ?? "本地写作台"}</p>
             </div>
           </div>
 
-          <button
-            className="app-no-drag mx-auto flex h-9 w-full max-w-xl items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 text-left text-sm text-slate-400 transition hover:border-forge-blue/40 hover:text-slate-200 focus:border-forge-blue/60 focus:outline-none"
-            onClick={openCommandPalette}
-            type="button"
-          >
-            <span>搜索项目、章节、命令</span>
-            <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[11px] text-slate-500">
-              Cmd K
-            </kbd>
-          </button>
-
-          <div className="app-no-drag flex items-center gap-2">
-            <StatusPill
-              label={activeRunLabel === "No active run" ? "无运行" : activeRunLabel}
-              tone="blue"
-            />
-            <StatusPill label={`本轮 $${sessionCost.toFixed(6)}`} tone="mint" />
-            <StatusPill
-              label={routeResolution?.available ? "路线就绪" : "路线待配置"}
-              tone={routeResolution?.available ? "mint" : "amber"}
-            />
-            <ProviderConnectionStrip providers={providerConnections} />
+          <nav className="app-no-drag flex items-center justify-center gap-2">
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
-                workspaceView === "chapter" && activeTab !== "generate"
-                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
-                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
-              }`}
-              onClick={() => {
-                setWorkspaceView("chapter");
-                setActiveTab("manuscript");
-              }}
-              type="button"
-            >
-              写作
-            </button>
-            <button
-              className={`rounded-md border px-3 py-1.5 text-xs transition ${
-                workspaceView === "intake"
-                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
-                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
-              }`}
-              onClick={() => setWorkspaceView("intake")}
-              type="button"
-            >
-              整理素材
-            </button>
-            <button
-              className={`rounded-md border px-3 py-1.5 text-xs transition ${
-                workspaceView === "planning"
-                  ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
-                  : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
-              }`}
-              onClick={() => setWorkspaceView("planning")}
-              type="button"
-            >
-              规划
-            </button>
-            <button
-              className={`rounded-md border px-3 py-1.5 text-xs transition ${
-                workspaceView === "chapter" && activeTab === "generate"
+                workspaceView === "chapter"
                   ? "border-forge-blue/35 bg-forge-blue/10 text-forge-blue"
                   : "border-white/10 text-slate-300 hover:border-forge-violet/40 hover:text-white"
               }`}
@@ -908,26 +781,29 @@ export function App(): JSX.Element {
               }}
               type="button"
             >
-              生成
+              章节成文
             </button>
             <select
-              aria-label="打开工作区"
-              className="h-8 rounded-md border border-white/10 bg-black/30 px-2 text-xs text-slate-300 outline-none hover:border-forge-violet/40 focus:border-forge-blue/50"
+              aria-label="高级功能"
+              className="rounded-md border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-slate-300 outline-none hover:border-forge-violet/40 hover:text-white"
               onChange={(event) => {
-                const nextView = event.target.value as WorkspaceView | "";
-                if (nextView) setWorkspaceView(nextView);
-                event.target.value = "";
+                const value = event.target.value as WorkspaceView | "";
+                if (value) setWorkspaceView(value);
+                event.currentTarget.value = "";
               }}
               value=""
             >
-              <option value="">更多</option>
+              <option value="">高级功能</option>
               <option value="intake">整理素材</option>
-              <option value="planning">规划实验室</option>
+              <option value="planning">章节细纲</option>
               <option value="storyBible">故事圣经</option>
-              <option value="costs">成本</option>
-              <option value="eval">评测</option>
+              <option value="costs">成本记录</option>
+              <option value="eval">模型评测</option>
               <option value="data">导入导出</option>
             </select>
+          </nav>
+
+          <div className="app-no-drag flex items-center gap-2">
             <button
               className={`rounded-md border px-3 py-1.5 text-xs transition ${
                 workspaceView === "settings"
@@ -940,14 +816,7 @@ export function App(): JSX.Element {
               设置
             </button>
             <button
-              className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-forge-violet/40 hover:text-white"
-              onClick={() => void toggleStudioMode()}
-              type="button"
-            >
-              {compact ? "展开" : "精简"}
-            </button>
-            <button
-              aria-label="Minimize"
+              aria-label="最小化"
               className="h-8 w-8 rounded-md border border-white/10 text-slate-400 transition hover:text-white"
               onClick={() => void window.wenforge.window.minimize()}
               type="button"
@@ -955,7 +824,7 @@ export function App(): JSX.Element {
               -
             </button>
             <button
-              aria-label="Close"
+              aria-label="关闭"
               className="h-8 w-8 rounded-md border border-white/10 text-slate-400 transition hover:border-red-400/40 hover:text-red-200"
               onClick={() => void window.wenforge.window.close()}
               type="button"
@@ -1137,7 +1006,7 @@ export function App(): JSX.Element {
         </div>
 
         <footer className="grid h-9 grid-cols-[1fr_auto] items-center border-t border-white/10 bg-black/28 px-4 text-xs text-slate-500">
-          <span>WenForge Studio {version}</span>
+          <span>文炉写作台 {version}</span>
           <span>
             {activeBook?.title ?? "无书籍"} · 本次 ${activeRunCost.toFixed(6)} · 本轮 $
             {sessionCost.toFixed(6)} · {costWarning === "prices local" ? "本地价格" : costWarning}
@@ -1164,114 +1033,6 @@ export function App(): JSX.Element {
       ) : null}
     </main>
   );
-}
-
-function StatusPill({
-  label,
-  tone
-}: {
-  label: string;
-  tone: "blue" | "mint" | "amber";
-}): JSX.Element {
-  const className =
-    tone === "blue"
-      ? "border-forge-blue/25 bg-forge-blue/10 text-forge-blue"
-      : tone === "mint"
-        ? "border-forge-mint/25 bg-forge-mint/10 text-forge-mint"
-        : "border-forge-amber/25 bg-forge-amber/10 text-forge-amber";
-  return (
-    <span
-      className={`hidden max-w-[170px] truncate rounded-full border px-3 py-1 text-xs xl:block ${className}`}
-    >
-      {label}
-    </span>
-  );
-}
-
-function ProviderConnectionStrip({
-  providers
-}: {
-  providers: ProviderConnectionStatus[];
-}): JSX.Element | null {
-  if (providers.length === 0) return null;
-  return (
-    <div className="flex max-w-[42vw] items-center gap-1 overflow-x-auto" aria-label="模型连接状态">
-      {providers.map((provider) => {
-        const tone = providerConnectionTone(provider);
-        return (
-          <span
-            className={`inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] ${tone.className}`}
-            key={provider.provider}
-            title={`${provider.label}：${tone.label}${
-              provider.models.length > 0 ? ` · ${provider.models.join(", ")}` : ""
-            }`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${tone.dotClassName}`} />
-            {provider.label}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-function providerConnectionTone(provider: ProviderConnectionStatus): {
-  label: string;
-  className: string;
-  dotClassName: string;
-} {
-  if (!provider.configured) {
-    return {
-      label: "未配置",
-      className: "border-white/10 bg-white/[0.025] text-slate-500",
-      dotClassName: "bg-slate-600"
-    };
-  }
-  if (["passed", "test_passed", "healthy"].includes(provider.status)) {
-    return {
-      label: "可用",
-      className: "border-forge-mint/25 bg-forge-mint/10 text-forge-mint",
-      dotClassName: "bg-forge-mint"
-    };
-  }
-  if (["failed", "test_failed", "down"].includes(provider.status)) {
-    return {
-      label: "失败",
-      className: "border-red-400/25 bg-red-400/10 text-red-200",
-      dotClassName: "bg-red-300"
-    };
-  }
-  if (["degraded", "blocked"].includes(provider.status)) {
-    return {
-      label: "需检查",
-      className: "border-forge-amber/25 bg-forge-amber/10 text-forge-amber",
-      dotClassName: "bg-forge-amber"
-    };
-  }
-  return {
-    label: "已保存",
-    className: "border-forge-amber/25 bg-forge-amber/10 text-forge-amber",
-    dotClassName: "bg-forge-amber"
-  };
-}
-
-function compareHeaderModelNames(a: string, b: string): number {
-  const priority = [
-    "gpt-5.5",
-    "claude-opus-4.7",
-    "gemini",
-    "deepseek-v4-pro",
-    "qwen3.7-max",
-    "kimi-k2.6"
-  ];
-  const aRank = priority.findIndex((item) => a.toLowerCase().includes(item));
-  const bRank = priority.findIndex((item) => b.toLowerCase().includes(item));
-  if (aRank !== bRank) {
-    if (aRank === -1) return 1;
-    if (bRank === -1) return -1;
-    return aRank - bRank;
-  }
-  return a.localeCompare(b);
 }
 
 function CompactLauncher({
@@ -1307,9 +1068,9 @@ function CompactLauncher({
 }): JSX.Element {
   const runProgress = progressMotionProps(
     reducedMotion,
-    activeRunLabel === "No active run" ? 12 : 68
+    activeRunLabel === NO_ACTIVE_RUN_LABEL ? 12 : 68
   );
-  const activeRunDisplay = activeRunLabel === "No active run" ? "无运行" : activeRunLabel;
+  const activeRunDisplay = activeRunLabel === NO_ACTIVE_RUN_LABEL ? "无运行" : activeRunLabel;
   return (
     <div className="flex h-full items-center justify-center p-6">
       <section className="w-full max-w-2xl rounded-xl border border-white/10 bg-graphite-900/70 p-5 shadow-soft-glow">
@@ -1490,10 +1251,10 @@ function ChapterWorkspace({
   versions: ManuscriptVersionRecord[];
 }): JSX.Element {
   const tabs: { id: WorkspaceTab; label: string }[] = [
-    { id: "manuscript", label: "Write" },
-    { id: "candidates", label: "Candidates" },
-    { id: "review", label: "Review" },
-    { id: "versions", label: "Versions" }
+    { id: "generate", label: "大纲" },
+    { id: "manuscript", label: "正文" },
+    { id: "review", label: "审稿" },
+    { id: "versions", label: "版本" }
   ];
   const generateFocused = activeTab === "generate";
 
@@ -1534,22 +1295,6 @@ function ChapterWorkspace({
             </div>
           </div>
           <div className={`flex flex-wrap gap-2 ${generateFocused ? "hidden 2xl:flex" : ""}`}>
-            <select
-              aria-label="Generate mode"
-              className="rounded-md border border-forge-blue/35 bg-forge-blue/10 px-3 py-2 text-xs text-forge-blue outline-none"
-              onChange={(event) => {
-                if (event.target.value === "single") onSetTab("generate");
-                if (event.target.value === "compare") onSetTab("candidates");
-                if (event.target.value === "fuse") onSetTab("candidates");
-                event.target.value = "";
-              }}
-              value=""
-            >
-              <option value="">Generate</option>
-              <option value="single">Single Draft</option>
-              <option value="compare">Compare Drafts</option>
-              <option value="fuse">Fuse Drafts</option>
-            </select>
             <button
               className="rounded-md border border-white/10 px-3 py-2 text-xs text-slate-300 hover:border-forge-blue/40 hover:text-white"
               onClick={onEditTargetWords}
@@ -1781,7 +1526,7 @@ function ReviewWorkspace({
     const version = await window.wenforge.manuscript.saveArtifactAsVersion({
       runId: detail.run.id,
       artifactId: latestArtifact.id,
-      title: latestArtifact.title ?? "Generated proposal",
+      title: latestArtifact.title ?? "生成稿提案",
       setCanonical,
       confirmed,
       overrideBlockingWarnings: overrideBlocking
@@ -1795,7 +1540,7 @@ function ReviewWorkspace({
 
   const applySettlement = async (): Promise<void> => {
     if (!settlement || selectedSettlementIds.size === 0) return;
-    const confirmed = window.confirm("Apply selected state-settlement updates?");
+    const confirmed = window.confirm("应用选中的设定结算更新？");
     if (!confirmed) return;
     await window.wenforge.settlement.applySelected({
       proposalId: settlement.id,
@@ -1836,10 +1581,10 @@ function ReviewWorkspace({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                Simple diff
+                简易差异
               </p>
               <p className="mt-1 text-sm text-slate-400">
-                Comparing {compareA ? `v${compareA.versionIndex}` : "empty"} to{" "}
+                对比 {compareA ? `v${compareA.versionIndex}` : "空白"} 与{" "}
                 {compareB ? `v${compareB.versionIndex}` : canonical ? "正式" : "空"}.
               </p>
             </div>
@@ -1896,10 +1641,10 @@ function ReviewWorkspace({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                Review cards
+                审稿卡
               </p>
               <h3 className="mt-1 text-lg font-semibold text-white">
-                Audits, rhythm, and revision risks
+                审稿、节奏与修订风险
               </h3>
             </div>
             <select
@@ -1919,21 +1664,21 @@ function ReviewWorkspace({
                 onClick={() => void markVisibleReviews("accepted")}
                 type="button"
               >
-                Accept all
+                全部接受
               </button>
               <button
                 className="rounded-md border border-red-400/25 px-2 py-1.5 text-xs text-red-200"
                 onClick={() => void markVisibleReviews("rejected")}
                 type="button"
               >
-                Reject all
+                全部拒绝
               </button>
             </div>
           </div>
           <div className="mt-4 grid gap-3">
             {visibleCards.length === 0 ? (
               <p className="rounded-lg border border-white/10 p-4 text-sm text-slate-500">
-                No review cards for the latest run.
+                最新运行没有审稿卡。
               </p>
             ) : null}
             {visibleCards.map((card) => (
@@ -2156,10 +1901,10 @@ function ReviewCard({
           {card.issue}
         </summary>
         {card.evidence ? (
-          <p className="mt-2 text-xs text-slate-500">Evidence: {card.evidence}</p>
+          <p className="mt-2 text-xs text-slate-500">证据：{card.evidence}</p>
         ) : null}
         {card.suggestedFix ? (
-          <p className="mt-2 text-xs text-forge-mint">Suggested fix: {card.suggestedFix}</p>
+          <p className="mt-2 text-xs text-forge-mint">建议修复：{card.suggestedFix}</p>
         ) : null}
         {raw ? <ReviewRawDetails raw={raw} /> : null}
       </details>
@@ -2260,7 +2005,7 @@ function SettlementPanel({
                 >
                   {item.recommendedStatus === "reject"
                     ? "Unsupported by accepted manuscript evidence"
-                    : "Evidence supported"}
+                    : "证据支持"}
                 </p>
                 <div className="mt-2 flex gap-2">
                   <button

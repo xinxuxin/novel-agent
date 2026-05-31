@@ -153,7 +153,7 @@ describe("chapter_generation_v1 workflow runtime", () => {
 
     expect(outline?.contentText).toContain("失踪案编号");
     expect(outline?.contentText).toContain("allow_story_changes");
-    expect(revision?.title).toBe("Final proposed manuscript");
+    expect(revision?.title).toBe("终稿候选");
     expect(revision?.contentText).toContain("失踪案编号");
     expect(revision?.contentText).toContain("母亲旧案日期");
     expect(repositories.manuscripts.getCanonical(chapter.id)?.contentMarkdown).toBe(
@@ -314,7 +314,7 @@ describe("chapter_generation_v1 workflow runtime", () => {
 
     expect(cancelled).toMatchObject({ status: "cancelled", humanGateStatus: "cancelled" });
     await expect(runtime.resume({ runId: paused.id, action: "accept" })).rejects.toThrow(
-      /paused at the human gate/
+      /人工确认节点/
     );
   });
 

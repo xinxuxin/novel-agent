@@ -352,6 +352,62 @@
       "version": "1.0.0",
       "language": "zh-CN",
       "taskType": "suspense_hook_audit"
+    },
+    {
+      "id": "focused-writing-brief",
+      "file": "focused-writing-brief.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "chapter_outline"
+    },
+    {
+      "id": "focused-draft-chapter",
+      "file": "focused-draft-chapter.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "draft_chapter"
+    },
+    {
+      "id": "focused-outline-canon-audit",
+      "file": "focused-outline-canon-audit.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "continuity_audit"
+    },
+    {
+      "id": "focused-polish-de-ai",
+      "file": "focused-polish-de-ai.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "revise_chapter"
+    },
+    {
+      "id": "focused-final-check",
+      "file": "focused-final-check.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "continuity_audit"
+    },
+    {
+      "id": "focused-chapter-summary",
+      "file": "focused-chapter-summary.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "summarize_chapter"
+    },
+    {
+      "id": "focused-expand-to-target",
+      "file": "focused-expand-to-target.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "revise_chapter"
+    },
+    {
+      "id": "focused-compress-to-target",
+      "file": "focused-compress-to-target.zh.md",
+      "version": "1.0.0",
+      "language": "zh-CN",
+      "taskType": "revise_chapter"
     }
   ],
   "schemas": [

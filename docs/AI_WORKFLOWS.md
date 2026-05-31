@@ -6,6 +6,23 @@ WenForge uses original, WenForge-native writing workflows implemented as local L
 
 Generated AI output is always proposed work until the user accepts it. Canonical manuscript and story bible changes are versioned and rollbackable.
 
+## Focused Chapter Writer
+
+Phase 23 adds `focused_chapter_writer_v1`, the default single-chapter writing path behind `章节成文`.
+
+The graph is intentionally fixed and human-gated:
+
+1. `load_chapter_outline` reads the confirmed chapter plan or the explicitly supplied outline.
+2. `build_context` collects active setting file, accepted chapter plan, recent canonical manuscripts, summaries, accepted Story Bible, and privacy-safe memory.
+3. `build_writing_brief` creates a structured writing brief.
+4. `draft_chapter` writes one chapter candidate.
+5. `audit_draft` checks the draft against the outline and canon.
+6. `polish_de_ai` produces a cleaner final candidate.
+7. `final_check` reports remaining warnings and confirms no canonical state was modified.
+8. `human_edit_gate` pauses for the user.
+
+The focused path does not run multi-draft comparison by default. Model choices remain route-driven in Settings, but the UI presents one practical chain: confirm the chapter outline, generate the current chapter, then review the candidate. Saving as a manuscript version and setting that version canonical are separate user actions.
+
 ## Chapter Generation Graph
 
 The chapter workflow runs through these graph nodes:

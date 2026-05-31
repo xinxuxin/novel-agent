@@ -83,6 +83,7 @@ import type {
   SettlementPreview
 } from "@contracts/review-settlement";
 import type {
+  BookSettingFileRecord,
   ChapterPlanRecord,
   IntakeArtifactRecord,
   IntakeMessageRecord,
@@ -529,6 +530,36 @@ export function createPreloadApi(
             invoke,
             IPC_CONTRACTS.planning.outlineVersions.setActive.channel,
             IPC_CONTRACTS.planning.outlineVersions.setActive.response,
+            { bookId, id }
+          )
+      },
+      bookSettingFiles: {
+        list: (bookId) =>
+          invokeContract<BookSettingFileRecord[]>(
+            invoke,
+            IPC_CONTRACTS.planning.bookSettingFiles.list.channel,
+            IPC_CONTRACTS.planning.bookSettingFiles.list.response,
+            { bookId }
+          ),
+        active: (bookId) =>
+          invokeContract<BookSettingFileRecord | null>(
+            invoke,
+            IPC_CONTRACTS.planning.bookSettingFiles.active.channel,
+            IPC_CONTRACTS.planning.bookSettingFiles.active.response,
+            { bookId }
+          ),
+        create: (input) =>
+          invokeContract<BookSettingFileRecord>(
+            invoke,
+            IPC_CONTRACTS.planning.bookSettingFiles.create.channel,
+            IPC_CONTRACTS.planning.bookSettingFiles.create.response,
+            input
+          ),
+        setActive: (bookId, id) =>
+          invokeContract<BookSettingFileRecord | null>(
+            invoke,
+            IPC_CONTRACTS.planning.bookSettingFiles.setActive.channel,
+            IPC_CONTRACTS.planning.bookSettingFiles.setActive.response,
             { bookId, id }
           )
       },
@@ -1599,6 +1630,15 @@ export function createPreloadApi(
             invoke,
             IPC_CONTRACTS.generation.chapter.start.channel,
             IPC_CONTRACTS.generation.chapter.start.response,
+            request
+          )
+      },
+      focused: {
+        start: (request) =>
+          invokeContract<WorkflowRunRecord>(
+            invoke,
+            IPC_CONTRACTS.generation.focused.start.channel,
+            IPC_CONTRACTS.generation.focused.start.response,
             request
           )
       },
